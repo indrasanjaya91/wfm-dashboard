@@ -16,6 +16,7 @@ st.set_page_config(page_title="OPERATION DASHBOARD", page_icon="🏢", layout="w
 # --- CUSTOM CSS (PREMIUM DARK THEME) ---
 st.markdown("""
 <style>
+    @import url('https://fonts.cdnfonts.com/css/superstar-m54');
     .stApp { background-color: #0b1121; color: #f8fafc; }
     
     /* Top Header Styling */
@@ -64,8 +65,8 @@ st.markdown("""
     div[data-testid="stDataFrame"] { border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; }
     
     /* Custom Pivot */
-    .cp-container { background-color: #0f172a; border-radius: 8px; border: 1px solid #1e293b; overflow: hidden; }
-    .cp-header { display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 1fr 1fr 1fr; background-color: #172554; font-size: 0.85rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; }
+    .cp-container { background-color: #0f172a; border-radius: 8px; border: 1px solid #1e293b; overflow-y: auto; overflow-x: hidden; max-height: 450px; }
+    .cp-header { display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 1fr 1fr 1fr; background-color: #172554; font-size: 0.85rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
     .cp-header > div { padding: 12px 15px; border-right: 1px solid #64748b; display: flex; align-items: center; justify-content: center; }
     .cp-header > div:last-child { border-right: none; }
     .cp-header div:nth-child(1), .cp-header div:nth-child(2) { justify-content: flex-start; text-align: left; }
@@ -83,10 +84,43 @@ st.markdown("""
     details[open] summary .cp-arrow { transform: rotate(90deg); }
     details summary { list-style: none; }
     details summary::-webkit-details-marker { display: none; }
-    .cp-grand { background-color: #172554; display: grid; grid-template-columns: 5fr 1fr 1fr 1fr 1fr 1fr; text-align: center; font-weight: bold; color: white; font-size: 0.85rem; border-top: 2px solid #3b82f6; }
+    .cp-grand { background-color: #172554; display: grid; grid-template-columns: 5fr 1fr 1fr 1fr 1fr 1fr; text-align: center; font-weight: bold; color: white; font-size: 0.85rem; border-top: 2px solid #3b82f6; position: sticky; bottom: 0; z-index: 10; }
     .cp-grand > div { padding: 12px 15px; border-right: 1px solid #64748b; display: flex; align-items: center; justify-content: center; }
     .cp-grand > div:last-child { border-right: none; }
     
+    /* Custom Pivot Detail MANJA */
+    .manja-header { display: grid; grid-template-columns: 4fr 1fr 1fr 1fr 1fr 1fr; background-color: #172554; font-size: 0.95rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
+    .manja-header > div { padding: 12px 15px; border-right: 1px solid #64748b; display: flex; align-items: center; justify-content: center; }
+    .manja-header > div:last-child { border-right: none; }
+    .manja-header div:nth-child(1) { justify-content: flex-start; text-align: left; }
+    .manja-row { display: grid; grid-template-columns: 4fr 1fr 1fr 1fr 1fr 1fr; padding: 10px 15px; border-bottom: 1px solid #1e293b; color: #f8fafc; font-size: 0.9rem; align-items: center; text-align: center; }
+    .manja-row > div:nth-child(1) { text-align: left; justify-content: flex-start; }
+    .manja-grand { background-color: #172554; display: grid; grid-template-columns: 4fr 1fr 1fr 1fr 1fr 1fr; text-align: center; font-weight: bold; color: white; font-size: 0.95rem; border-top: 2px solid #3b82f6; position: sticky; bottom: 0; z-index: 10; padding: 12px 15px; }
+    
+    /* MANJA WIDGETS */
+    .widget-card { background-color: #0b1121; border-radius: 10px; padding: 15px; border: 3px solid #475569; height: 330px; box-sizing: border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .widget-title { color: #f8fafc; font-size: 1rem; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+    .widget-subtitle { color: #3b82f6; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+    
+    .hm-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: center; }
+    .hm-table th, .hm-table td { border: 1px solid #1e293b; padding: 8px; }
+    .hm-table th { background-color: #0f172a; color: #cbd5e1; font-weight: bold; font-size: 0.75rem; }
+    .hm-cell-h2 { background-color: #7f1d1d; color: white; font-weight: bold; font-size: 1.1rem; }
+    .hm-cell-h1 { background-color: #b45309; color: white; font-weight: bold; font-size: 1.1rem; }
+    .hm-cell-hi { background-color: #854d0e; color: white; font-weight: bold; font-size: 1.1rem; }
+    .hm-cell-non { background-color: #14532d; color: white; font-weight: bold; font-size: 1.1rem; }
+    
+    .sc-box { background-color: #0f172a; border-radius: 8px; padding: 15px; margin-bottom: 10px; border: 1px solid #1e293b; }
+    .sc-title { font-size: 1.1rem; font-weight: bold; color: #3b82f6; margin-bottom: 5px; }
+    .sc-title.pda { color: #10b981; }
+    .sc-total { font-size: 2rem; font-weight: bold; color: white; margin-bottom: 15px; line-height: 1; }
+    .sc-total span { font-size: 0.8rem; color: #94a3b8; font-weight: normal; }
+    .sc-item { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 5px; align-items: center; }
+    .sc-item-left { display: flex; align-items: center; gap: 5px; color: #cbd5e1; font-weight: bold; }
+    .sc-dot-h2 { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
+    .sc-dot-h1 { width: 8px; height: 8px; border-radius: 50%; background-color: #f97316; }
+    .sc-dot-hi { width: 8px; height: 8px; border-radius: 50%; background-color: #eab308; }
+    .sc-dot-non { width: 8px; height: 8px; border-radius: 50%; background-color: #22c55e; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -109,14 +143,48 @@ st.markdown(f'''
 <div class="header-container">
     <div class="header-left">
         <h1 class="dash-title">SERVICE AREA ULIN</h1>
-        <p class="dash-subtitle">OPERATION DASHBOARD &ndash; Telkom Akses Provisioning & Monitoring</p>
+        <p class="dash-subtitle" style="display: flex; align-items: center; font-size: 1.45rem; letter-spacing: 1px; margin-top: -8px;">OPERATION DASHBOARD &ndash;&nbsp;<span style="font-family: 'Superstar M54', sans-serif; color: #dc2626; font-size: 1.5rem; letter-spacing: 2px; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); padding-top: 2px;">YOU'LL NEVER WALK ALONE</span></p>
     </div>
     <div class="header-right">
-        <div class="update-time">Update Terakhir<br><span style="color:white;font-weight:bold;">{now_str}</span></div>
+        <div class="update-time" id="live-clock" style="color: #60a5fa; font-weight: bold; font-size: 1.1rem; text-align: right;">Memuat waktu...</div>
         <div class="export-btn">📥 Export ⌄</div>
     </div>
 </div>
 ''', unsafe_allow_html=True)
+
+# Inject JS untuk Live Clock Real-time
+js_clock = """
+<script>
+    function updateClock() {
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        
+        const now = new Date();
+        const dayName = days[now.getDay()];
+        const day = now.getDate();
+        const monthName = months[now.getMonth()];
+        const year = now.getFullYear();
+        
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        const timeString = `${dayName}, ${day} ${monthName} ${year} | ${hours}:${minutes}:${seconds}`;
+        
+        try {
+            const el = window.parent.document.getElementById('live-clock');
+            if(el) {
+                el.innerText = timeString;
+            }
+        } catch(e) {}
+    }
+    
+    setInterval(updateClock, 1000);
+    updateClock();
+</script>
+"""
+import streamlit.components.v1 as components
+components.html(js_clock, width=0, height=0)
 
 with st.spinner("Membaca data dari satelit..."):
     df = load_data()
@@ -226,6 +294,13 @@ if not df.empty:
         df['Jam_RE'] = temp_dt.dt.strftime('%H:%M:%S').fillna('Unknown')
     else:
         df['Jam_RE'] = 'Unknown'
+        
+    jam_mod_col = find_col(['DATE MODIFIED REAL', 'Date Modified', 'Status Date'])
+    if jam_mod_col:
+        temp_dt_mod = pd.to_datetime(df[jam_mod_col], dayfirst=True, errors='coerce')
+        df['Jam_Update'] = temp_dt_mod.dt.strftime('%H:%M:%S').fillna('Unknown')
+    else:
+        df['Jam_Update'] = 'Unknown'
     
     df['Status_Upper'] = df[status_col].astype(str).str.upper().str.strip() if status_col else "UNKNOWN"
     
@@ -268,7 +343,7 @@ if not df.empty:
     potensi_df = df[df['Status_Upper'].isin(potensi_statuses)].copy()
     brk_pot = get_breakdown(potensi_df)
     
-    kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & (df['Parsed_Date_RE'] == selected_date)].copy()
+    kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & (df['Parsed_Date_PS'] == selected_date)].copy()
     brk_ken = get_breakdown(kendala_df)
     
     startwork_df = df[df['Status_Upper'] == "STARTWORK"].copy()
@@ -375,7 +450,7 @@ if not df.empty:
                 # Colors for the 1-5 rank badges
                 badge_colors = ["#059669", "#10b981", "#0891b2", "#2563eb", "#7c3aed"]
                 
-                html_str = '<div style="background-color: #0b1120; border: 2px solid #334155; border-radius: 12px; padding: 20px; font-family: sans-serif; height: 40rem; display: flex; flex-direction: column; justify-content: space-between;">'
+                html_str = '<div style="background-color: #0b1120; border: 2px solid #334155; border-radius: 12px; padding: 20px; font-family: sans-serif; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
                 
                 # Header
                 html_str += '''
@@ -623,7 +698,202 @@ if not df.empty:
     # HALAMAN LAINNYA
     # =====================================================================
     elif menu == "KENDALA":
-        st.markdown(f'<div class="metric-container mc-red" style="width: 300px; margin-bottom: 20px;"><div class="mc-title">⚠️ TOTAL LIVE KENDALA</div><div class="mc-value">{len(kendala_df)} <span style="font-size:1rem; color:#94a3b8">WO</span></div><div class="mc-sub">Seluruh status WORKFAIL/CANCL aktif</div></div>', unsafe_allow_html=True)
+        # 1. Hitung Metrik
+        total_kendala = len(kendala_df)
+        wfm_count = len(kendala_df[kendala_df['Status_Upper'] == 'WORKFAIL'])
+        cancl_count = len(kendala_df[kendala_df['Status_Upper'] == 'CANCLWORK'])
+        
+        wfm_pct = f"{(wfm_count/total_kendala*100):.2f}%".replace('.', ',') if total_kendala > 0 else "0,00%"
+        cancl_pct = f"{(cancl_count/total_kendala*100):.2f}%".replace('.', ',') if total_kendala > 0 else "0,00%"
+        
+        # 2. Render Metric Cards
+        cards_html = f'''
+        <div style="margin-bottom: 25px;">
+            <!-- Title Block -->
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                <div style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
+                    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12.8659 3.00017C12.4812 2.3335 11.5187 2.3335 11.134 3.00017L2.13401 18.6002C1.74934 19.2668 2.23059 20.1002 2.99991 20.1002H20.9999C21.7692 20.1002 22.2505 19.2668 21.8658 18.6002L12.8659 3.00017Z" fill="#ef4444"/>
+                        <path d="M12 9V14" stroke="#0b1121" stroke-width="2.5" stroke-linecap="round"/>
+                        <circle cx="12" cy="17.5" r="1.5" fill="#0b1121"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="color: white; font-weight: 900; font-size: 1.3rem; letter-spacing: 0.5px;">MONITORING KENDALA</div>
+                    <div style="color: #94a3b8; font-size: 0.9rem;">Real-time Overview</div>
+                </div>
+            </div>
+
+            <!-- Cards Row -->
+            <div style="display: flex; gap: 20px; align-items: stretch;">
+                
+                <!-- WORKFAIL Card -->
+                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                    <div style="padding: 15px 20px; display: flex; gap: 15px; flex-grow: 1;">
+                        <div style="background-color: #ef4444; width: 60px; height: 60px; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L1 21H23L12 2ZM11 16H13V18H11V16ZM11 10H13V14H11V10Z"/>
+                            </svg>
+                        </div>
+                        <div style="display: flex; flex-direction: column; justify-content: center;">
+                            <div style="color: #cbd5e1; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">WORKFAIL</div>
+                            <div style="color: #ef4444; font-size: 1.8rem; font-weight: bold; line-height: 1;">{wfm_count}</div>
+                            <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">({wfm_pct})</div>
+                        </div>
+                    </div>
+                    <div style="height: 3px; background-color: #ef4444; margin: 0 15px 15px 15px; border-radius: 2px;"></div>
+                </div>
+
+                <!-- CANCEL Card -->
+                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                    <div style="padding: 15px 20px; display: flex; gap: 15px; flex-grow: 1;">
+                        <div style="background-color: #f97316; width: 60px; height: 60px; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div style="display: flex; flex-direction: column; justify-content: center;">
+                            <div style="color: #cbd5e1; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">CANCEL (WORK)</div>
+                            <div style="color: #f97316; font-size: 1.8rem; font-weight: bold; line-height: 1;">{cancl_count}</div>
+                            <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">({cancl_pct})</div>
+                        </div>
+                    </div>
+                    <div style="height: 3px; background-color: #f97316; margin: 0 15px 15px 15px; border-radius: 2px;"></div>
+                </div>
+
+                <!-- TOTAL Card -->
+                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                    <div style="padding: 15px 20px; display: flex; gap: 15px; flex-grow: 1;">
+                        <div style="background-color: #3b82f6; width: 60px; height: 60px; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <div style="display: flex; flex-direction: column; justify-content: center;">
+                            <div style="color: #cbd5e1; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">TOTAL WO</div>
+                            <div style="color: #3b82f6; font-size: 1.8rem; font-weight: bold; line-height: 1;">{total_kendala}</div>
+                            <div style="color: #3b82f6; font-size: 0.8rem; margin-top: 4px;">(100%)</div>
+                        </div>
+                    </div>
+                    <div style="height: 3px; background-color: #3b82f6; margin: 0 15px 15px 15px; border-radius: 2px;"></div>
+                </div>
+                
+            </div>
+        </div>
+        '''
+        st.markdown(cards_html.replace('\n', ''), unsafe_allow_html=True)
+        
+        # 3. Render Plotly Charts
+        st.markdown('<br>', unsafe_allow_html=True)
+        if total_kendala > 0:
+            col1, col2, col3 = st.columns([1, 1.3, 1.3])
+            
+            # --- Chart 1: Donut ---
+            with col1:
+                with st.container(border=True):
+                    st.markdown('<div style="color: #cbd5e1; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">DISTRIBUSI STATUS WO</div>', unsafe_allow_html=True)
+                    
+                    donut_df = pd.DataFrame({
+                        'Status': ['WORKFAIL', 'CANCEL (WORK)'],
+                        'Jumlah': [wfm_count, cancl_count],
+                        'Color': ['#ef4444', '#f97316'],
+                        'Label': [f'WORKFAIL<br><b>{wfm_count}</b> ({wfm_pct})', f'CANCEL (WORK)<br><b>{cancl_count}</b> ({cancl_pct})']
+                    })
+                    donut_df = donut_df[donut_df['Jumlah'] > 0]
+                    if not donut_df.empty:
+                        fig1 = go.Figure(data=[go.Pie(
+                            labels=donut_df['Label'], 
+                            values=donut_df['Jumlah'], 
+                            hole=.6,
+                            marker_colors=donut_df['Color'],
+                            textinfo='none',
+                            hoverinfo='label'
+                        )])
+                        fig1.update_layout(
+                            showlegend=True,
+                            legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.9, font=dict(color="#cbd5e1", size=11)),
+                            annotations=[dict(text=f"TOTAL<br><b>{total_kendala}</b><br>WO", x=0.45, y=0.5, font_size=13, font_color="white", showarrow=False)],
+                            paper_bgcolor='rgba(0,0,0,0)',
+                            plot_bgcolor='rgba(0,0,0,0)',
+                            margin=dict(t=0, b=0, l=0, r=0),
+                            height=250
+                        )
+                        # Shift the pie center to the left slightly so legend fits better on the right
+                        fig1.update_traces(domain=dict(x=[0, 0.9]))
+                        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                    else:
+                        st.info("No Data")
+            
+            # --- Chart 2: Top 5 Kendala ---
+            with col2:
+                with st.container(border=True):
+                    st.markdown('<div style="color: #cbd5e1; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">TOP 5 KENDALA</div>', unsafe_allow_html=True)
+                    if morning_status_col:
+                        top_reasons = kendala_df[morning_status_col].dropna().astype(str).str.upper().value_counts().nlargest(5).reset_index()
+                        top_reasons.columns = ['Alasan', 'Jumlah']
+                        if not top_reasons.empty:
+                            # Reverse dataframe to preserve nlargest order but plot top-down
+                            top_reasons = top_reasons.iloc[::-1]
+                            fig2 = px.bar(top_reasons, x='Jumlah', y='Alasan', orientation='h')
+                            
+                            colors2 = ['#ef4444' if val == top_reasons['Jumlah'].max() else '#f97316' for val in top_reasons['Jumlah']]
+                            fig2.update_traces(marker_color=colors2, text=top_reasons['Jumlah'], textposition='outside', textfont_color='white')
+                            fig2.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                xaxis=dict(showgrid=True, gridcolor='#1e293b', title="JUMLAH WO", title_font_color="#94a3b8", tickfont_color="#cbd5e1"),
+                                yaxis=dict(showgrid=False, title="", tickfont_color="#cbd5e1"),
+                                margin=dict(t=0, b=30, l=0, r=20),
+                                height=250
+                            )
+                            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                        else:
+                            st.info("No Morning Status Data")
+                    else:
+                        st.info("Column Not Found")
+                    
+            # --- Chart 3: Top 5 Teknisi ---
+            with col3:
+                with st.container(border=True):
+                    st.markdown('<div style="color: #cbd5e1; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">TOP 5 TEKNISI DENGAN KENDALA</div>', unsafe_allow_html=True)
+                    if tim_col:
+                        top_tek = kendala_df[tim_col].dropna().astype(str).str.upper().value_counts().nlargest(5).reset_index()
+                        top_tek.columns = ['Teknisi', 'Jumlah']
+                        if not top_tek.empty:
+                            # Add rank numbers 1-5 to the y-axis labels
+                            top_tek['Teknisi_Label'] = [f"{i+1}   {name}" for i, name in enumerate(top_tek['Teknisi'])]
+                            # Reverse dataframe to preserve exact rank order
+                            top_tek = top_tek.iloc[::-1]
+                            
+                            fig3 = px.bar(top_tek, x='Jumlah', y='Teknisi_Label', orientation='h')
+                            fig3.update_traces(marker_color='#f97316', text=top_tek['Jumlah'], textposition='outside', textfont_color='white', width=0.4)
+                            
+                            # Style the top bar red (if we want to match the image precisely)
+                            # We can map colors based on the maximum value
+                            colors = ['#ef4444' if val == top_tek['Jumlah'].max() else '#f97316' for val in top_tek['Jumlah']]
+                            fig3.update_traces(marker_color=colors)
+                            
+                            fig3.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                xaxis=dict(showgrid=False, showticklabels=False, title=""),
+                                yaxis=dict(showgrid=False, title="", tickfont_color="#cbd5e1"),
+                                margin=dict(t=0, b=0, l=0, r=20),
+                                height=250
+                            )
+                            st.plotly_chart(fig3, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                        else:
+                            st.info("No Technician Data")
+                    else:
+                        st.info("Column Not Found")
+        
+        st.markdown('<br>', unsafe_allow_html=True)
         
         st.markdown('<div class="section-title-wrap"><div class="section-title">🚨 DAFTAR LENGKAP WO KENDALA (REAL-TIME)</div></div>', unsafe_allow_html=True)
         st.markdown("Berikut adalah daftar seluruh pesanan yang SAAT INI berstatus Fail/Cancel di sistem.")
@@ -633,10 +903,24 @@ if not df.empty:
             if morning_status_col: cols_to_show.append(morning_status_col)
             
             disp_fail = kendala_df[cols_to_show].rename(columns={
-                tim_col: 'NAMA TEKNISI (YANG MENGERJAKAN)',
-                status_col: 'STATUS BIMA UTAMA'
+                tim_col: 'MORNING TIM',
+                'INFO ORDER': 'NO WONUM & AO',
+                status_col: 'STATUS'
             })
-            st.dataframe(disp_fail.style.set_properties(**{'background-color': '#450a0a', 'color': '#fca5a5', 'border-color': '#333333'}), use_container_width=True, hide_index=True, height=500)
+            html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; font-family: sans-serif;">'
+            html_table += '<thead><tr style="background-color: #7f1d1d; color: white; text-align: center;">'
+            for col in disp_fail.columns:
+                html_table += f'<th style="border: 1px solid #cbd5e1; padding: 12px 8px;">{col}</th>'
+            html_table += '</tr></thead><tbody>'
+            
+            for _, row in disp_fail.iterrows():
+                html_table += '<tr style="background-color: #450a0a; color: #fca5a5; text-align: center;">'
+                for val in row:
+                    html_table += f'<td style="border: 1px solid #cbd5e1; padding: 10px 8px;">{val if pd.notna(val) and str(val).strip() != "" else "-"}</td>'
+                html_table += '</tr>'
+            html_table += '</tbody></table>'
+            
+            st.markdown(html_table, unsafe_allow_html=True)
         else:
             st.success("🎉 Luar Biasa! Bersih, tidak ada satupun pesanan yang mengalami kendala.")
 
@@ -668,13 +952,25 @@ if not df.empty:
                     re_counts_jk['Kategori'] = 'RE MASUK'
                     re_counts_djk = pd.DataFrame()
                 
-                comp_counts = pd.merge(all_hours, jam_df[jam_df['Status_Upper'].str.contains('COMPWORK', na=False)].groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                if 'Jam_Update' in df_ps_today.columns and not df_ps_today.empty:
+                    jam_ps = df_ps_today[df_ps_today['Jam_Update'] != 'Unknown'].copy()
+                    jam_ps['Jam'] = jam_ps['Jam_Update'].astype(str).str[:2] + ":00"
+                    comp_counts = pd.merge(all_hours, jam_ps.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                else:
+                    comp_counts = pd.merge(all_hours, pd.DataFrame(columns=['Jam', 'Jumlah']), on='Jam', how='left').fillna(0)
                 comp_counts['Kategori'] = 'DONE PS'
                 
-                kendala_counts = pd.merge(all_hours, jam_df[jam_df['Status_Upper'] == 'WORKFAIL'].groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                if 'Jam_Update' in kendala_df.columns and not kendala_df.empty:
+                    jam_ken = kendala_df[kendala_df['Jam_Update'] != 'Unknown'].copy()
+                    jam_ken['Jam'] = jam_ken['Jam_Update'].astype(str).str[:2] + ":00"
+                    ken_wfm = jam_ken[jam_ken['Status_Upper'] == 'WORKFAIL']
+                    kendala_counts = pd.merge(all_hours, ken_wfm.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                    ken_unsc = jam_ken[jam_ken['Status_Upper'] == 'CANCLWORK']
+                    unsc_counts = pd.merge(all_hours, ken_unsc.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                else:
+                    kendala_counts = pd.merge(all_hours, pd.DataFrame(columns=['Jam', 'Jumlah']), on='Jam', how='left').fillna(0)
+                    unsc_counts = pd.merge(all_hours, pd.DataFrame(columns=['Jam', 'Jumlah']), on='Jam', how='left').fillna(0)
                 kendala_counts['Kategori'] = 'KENDALA'
-                
-                unsc_counts = pd.merge(all_hours, jam_df[jam_df['Status_Upper'] == 'CANCLWORK'].groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
                 unsc_counts['Kategori'] = 'UNSC'
                 
                 frames = [re_counts_jk]
@@ -713,12 +1009,12 @@ if not df.empty:
                             
                     fig_jam.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
                                          font=dict(color='#cbd5e1'), xaxis_title="Waktu (Jam)", yaxis_title="Jumlah WO", 
-                                         margin=dict(t=10, b=10, l=10, r=10),
+                                         margin=dict(t=10, b=40, l=10, r=10),
                                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
                                          hovermode="x unified",
-                                         xaxis=dict(fixedrange=True, dtick=2),
-                                         yaxis=dict(fixedrange=True, dtick=1))
-                    st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False})
+                                         xaxis=dict(fixedrange=True, dtick=2, showgrid=True, gridwidth=1, gridcolor='#334155'),
+                                         yaxis=dict(fixedrange=True, dtick=1, showgrid=True, gridwidth=1, gridcolor='#334155'))
+                    st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False}, theme=None)
                     
                 with ch_col2:
                     tot_re = len(df_re_today)
@@ -778,7 +1074,7 @@ if not df.empty:
                     fig_mini.update_layout(
                         title=dict(text=cat, font=dict(color=color, size=13), x=0.5, xanchor='center'),
                         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
-                        margin=dict(t=40, b=20, l=10, r=10),
+                        margin=dict(t=40, b=45, l=10, r=10),
                         xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=8, title="Waktu (Jam)"),
                         yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO", dtick=1),
                         hovermode="x unified",
@@ -789,7 +1085,7 @@ if not df.empty:
                     fig_mini.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
                     
                     with mini_cols[i]:
-                        st.plotly_chart(fig_mini, use_container_width=True, config={'displayModeBar': False})
+                        st.plotly_chart(fig_mini, use_container_width=True, config={'displayModeBar': False}, theme=None)
             else:
                 st.info("Format jam tidak valid.")
         else:
@@ -878,8 +1174,324 @@ if not df.empty:
             st.warning("Belum ada data RE masuk untuk hari ini.")
 
     elif menu == "Detail MANJA":
-        st.markdown('<div class="section-title-wrap"><div class="section-title">⏳ <b>DETAIL PESANAN MANJA</b></div></div>', unsafe_allow_html=True)
-        st.info("Halaman Detail MANJA sedang dalam tahap pengembangan (Under Construction).")
+        st.markdown("""
+        <style>
+        .cp-container { color: #f1f5f9; font-size: 0.85rem; }
+        .manja-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; background: #1e293b; padding: 10px; font-weight: bold; }
+        .manja-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 8px 10px; border-bottom: 1px solid #334155; align-items: center; }
+        .manja-grand { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 12px 10px; background: #0f172a; font-weight: bold; border-top: 2px solid #334155; }
+        .cp-arrow { display: inline-block; transition: transform 0.2s; margin-right: 5px; }
+        details[open] > summary .cp-arrow { transform: rotate(90deg); }
+        </style>
+        <div class="section-title">⏳ DETAIL PESANAN MANJA</div>
+        """, unsafe_allow_html=True)
+        
+        # 1. Filter Data
+        df['Status_Upper'] = df['Status'].astype(str).str.upper().str.strip()
+        df_manja = df[df['Status_Upper'].isin(['STARTWORK', 'CONTWORK'])].copy()
+        
+        if 'FLAG MANJA' in df_manja.columns:
+            df_manja['FLAG MANJA'] = df_manja['FLAG MANJA'].fillna('NON MANJA').replace('', 'NON MANJA')
+        else:
+            df_manja['FLAG MANJA'] = 'NON MANJA'
+            
+        if len(df_manja) == 0:
+            st.info("Tidak ada data pesanan MANJA (STARTWORK / CONTWORK) saat ini.")
+        else:
+            st.markdown("<br>", unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            
+            hm_agg = df_manja.groupby(['CECK BY ORDER', 'FLAG MANJA']).size().reset_index(name='count')
+            cbos = df_manja['CECK BY ORDER'].dropna().unique()
+            cbo_totals = df_manja['CECK BY ORDER'].value_counts().to_dict()
+            flags = ['MANJA H++', 'MANJA H-1', 'MANJA HI', 'NON MANJA']
+            
+            # WIDGET 1: HEATMAP
+            with col1:
+                hm_html = '''
+                <div class="widget-card">
+                    <div class="widget-title"><span style="font-size: 1.2rem;">🎛️</span> HEATMAP MATRIX</div>
+                    <table class="hm-table">
+                        <tr>
+                            <th rowspan="2" style="width: 30%;">CHECK BY<br>ORDER</th>
+                            <th colspan="4">FLAG MANJA</th>
+                        </tr>
+                        <tr>
+                            <th>MANJA H++</th><th>MANJA H-1</th><th>MANJA HI</th><th>NON MANJA</th>
+                        </tr>
+                '''
+                
+                hm_colors = ['hm-cell-h2', 'hm-cell-h1', 'hm-cell-hi', 'hm-cell-non']
+                
+                for cbo in cbos:
+                    hm_html += f'<tr><td style="font-weight: bold; text-align: left; color: #f8fafc;">{cbo}</td>'
+                    cbo_data = hm_agg[hm_agg['CECK BY ORDER'] == cbo]
+                    for i, flag in enumerate(flags):
+                        val = cbo_data[cbo_data['FLAG MANJA'] == flag]['count'].sum() if flag in cbo_data['FLAG MANJA'].values else 0
+                        cls = hm_colors[i] if val > 0 else ''
+                        val_str = str(val) if val > 0 else '0'
+                        hm_html += f'<td class="{cls}">{val_str}</td>'
+                    hm_html += '</tr>'
+                
+                hm_html += '''
+                    </table>
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.65rem; color: #cbd5e1; font-weight: bold;">
+                        <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h2" style="border-radius: 2px;"></div> MANJA H++</div>
+                        <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h1" style="border-radius: 2px;"></div> MANJA H-1</div>
+                        <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-hi" style="border-radius: 2px;"></div> MANJA HI</div>
+                        <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-non" style="border-radius: 2px;"></div> NON MANJA</div>
+                    </div>
+                </div>
+                '''
+                st.markdown(hm_html, unsafe_allow_html=True)
+            
+
+            with col2:
+                # Custom SVG Flow Diagram (Sankey Alternative)
+                total_wo = len(df_manja)
+                cbo_list = list(cbo_totals.keys())
+                
+                cbo_html = ""
+                script_lines = []
+                
+                flag_colors = {
+                    'MANJA H++': ('#ef4444', 'red'), 
+                    'MANJA H-1': ('#f97316', 'orange'), 
+                    'MANJA HI': ('#eab308', 'yellow'), 
+                    'NON MANJA': ('#22c55e', 'green')
+                }
+                
+                for i, cbo in enumerate(cbo_list):
+                    cbo_id = f"cbo-{i}"
+                    cbo_data = hm_agg[hm_agg['CECK BY ORDER'] == cbo]
+                    
+                    flags_html = ""
+                    for j, flag in enumerate(flags):
+                        count = cbo_data[cbo_data['FLAG MANJA'] == flag]['count'].sum() if flag in cbo_data['FLAG MANJA'].values else 0
+                        flag_id = f"flag-{i}-{j}"
+                        color_hex, color_class = flag_colors.get(flag, ('#ffffff', ''))
+                        flags_html += f'''
+                        <div class="node-flag" id="{flag_id}">
+                            <div class="flag-box {color_class}"></div>
+                            <div style="color: #f8fafc; font-size: 0.75rem; font-weight: bold; font-family: sans-serif;">{flag} ({count})</div>
+                        </div>
+                        '''
+                        # Draw line from CBO to Flag (Gradient from CBO blue to Flag color)
+                        script_lines.append(f"drawLine('{cbo_id}', '{flag_id}', '#2563eb', '{color_hex}', 0.4, 15, 6);")
+                    
+                    # Draw line from Root to CBO (Solid/Gradient blue)
+                    script_lines.append(f"drawLine('root', '{cbo_id}', '#1e3a8a', '#2563eb', 0.6, 20, 12);")
+                    
+                    cbo_html += f'''
+                    <div class="cbo-row">
+                        <div class="node" id="{cbo_id}">
+                            <div>{cbo}</div>
+                            <div class="node-total">{cbo_totals.get(cbo, 0)} WO</div>
+                        </div>
+                        <div class="flags-container">
+                            {flags_html}
+                        </div>
+                    </div>
+                    '''
+
+                sankey_card = f'''
+                <style>
+                    body {{ margin: 0; padding: 0; background-color: transparent; font-family: sans-serif; overflow: hidden; }}
+                    .widget-card {{ background-color: #0b1121; border-radius: 10px; padding: 15px; border: 3px solid #475569; height: 330px; box-sizing: border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.3); overflow: hidden; }}
+                    .widget-title {{ color: #f8fafc; font-size: 1rem; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; font-family: sans-serif; text-transform: uppercase; }}
+                    .flow-container {{ display: flex; width: 100%; height: 265px; position: relative; align-items: center; }}
+                    .svg-layer {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }}
+                    .col-left {{ width: 28%; z-index: 2; display: flex; justify-content: flex-start; }}
+                    .col-right {{ width: 72%; z-index: 2; display: flex; flex-direction: column; justify-content: space-around; height: 100%; padding-left: 25px; }}
+                    .node {{ background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px 8px; color: #f8fafc; font-size: 0.85rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 3; position: relative; }}
+                    .node-total {{ color: #60a5fa; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }}
+                    .cbo-row {{ display: flex; justify-content: space-between; align-items: center; width: 100%; }}
+                    .flags-container {{ display: flex; flex-direction: column; gap: 6px; align-items: flex-start; z-index: 3; position: relative; }}
+                    .node-flag {{ display: flex; align-items: center; gap: 8px; background: transparent; padding: 2px 0; }}
+                    .flag-box {{ width: 14px; height: 14px; border-radius: 3px; box-shadow: 0 0 5px rgba(0,0,0,0.5); }}
+                    .red {{ background: #ef4444; }} .orange {{ background: #f97316; }} .yellow {{ background: #eab308; }} .green {{ background: #22c55e; }}
+                </style>
+                <div class="widget-card">
+                    <div class="widget-title"><span style="font-size: 1.2rem;">🌊</span> SANKY FLOW (ALIRAN DATA)</div>
+                    <div class="flow-container">
+                        <svg class="svg-layer" id="svg"></svg>
+                        <div class="col-left">
+                            <div class="node" id="root" style="border-color: #60a5fa;">
+                                <div>STARTWORK<br>TOTAL</div>
+                                <div class="node-total">{total_wo} WO</div>
+                            </div>
+                        </div>
+                        <div class="col-right">
+                            {cbo_html}
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    function drawLine(id1, id2, color1, color2, opacity, strokeWidth, offsetRight) {{
+                        const el1 = document.getElementById(id1);
+                        const el2 = document.getElementById(id2);
+                        const svg = document.getElementById('svg');
+                        const container = document.querySelector('.flow-container');
+                        
+                        if(!el1 || !el2) return;
+                        
+                        const rect1 = el1.getBoundingClientRect();
+                        const rect2 = el2.getBoundingClientRect();
+                        const contRect = container.getBoundingClientRect();
+                        
+                        let x1 = rect1.right - contRect.left;
+                        let y1 = rect1.top + rect1.height/2 - contRect.top;
+                        
+                        let x2 = rect2.left - contRect.left;
+                        let y2 = rect2.top + rect2.height/2 - contRect.top;
+                        
+                        if (id2.startsWith("flag")) {{
+                            x2 = x2 + offsetRight; // Adjust to point to the middle of the small box
+                        }}
+                        
+                        const offset = Math.max(30, Math.abs(x2 - x1) * 0.4);
+                        const d = `M ${{x1}} ${{y1}} C ${{x1 + offset}} ${{y1}}, ${{x2 - offset}} ${{y2}}, ${{x2}} ${{y2}}`;
+                        
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', d);
+                        
+                        const gradId = 'grad-' + id1 + '-' + id2;
+                        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                        const linearGradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+                        linearGradient.setAttribute('id', gradId);
+                        linearGradient.setAttribute('x1', '0%');
+                        linearGradient.setAttribute('y1', '0%');
+                        linearGradient.setAttribute('x2', '100%');
+                        linearGradient.setAttribute('y2', '0%');
+                        
+                        const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+                        stop1.setAttribute('offset', '0%');
+                        stop1.setAttribute('stop-color', color1);
+                        
+                        const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+                        stop2.setAttribute('offset', '100%');
+                        stop2.setAttribute('stop-color', color2);
+                        
+                        linearGradient.appendChild(stop1);
+                        linearGradient.appendChild(stop2);
+                        defs.appendChild(linearGradient);
+                        svg.appendChild(defs);
+                        
+                        path.setAttribute('stroke', `url(#${{gradId}})`);
+                        path.setAttribute('stroke-width', strokeWidth);
+                        path.setAttribute('fill', 'none');
+                        path.setAttribute('opacity', opacity);
+                        
+                        svg.appendChild(path);
+                    }}
+                    
+                    function renderLines() {{
+                        document.getElementById('svg').innerHTML = '';
+                        {' '.join(script_lines)}
+                    }}
+                    
+                    // Render lines initially and on resize
+                    setTimeout(renderLines, 100);
+                    window.addEventListener('resize', () => setTimeout(renderLines, 100));
+                </script>
+                '''
+                st.components.v1.html(sankey_card, height=330, scrolling=False)
+                
+            # WIDGET 3: STATUS CARD
+            with col3:
+                sc_html = '''
+                <div class="widget-card">
+                    <div class="widget-title"><span style="font-size: 1.2rem;">📋</span> STATUS CARD PER AREA</div>
+                    <div style="display: flex; gap: 10px;">
+                '''
+                
+                dots = ['sc-dot-h2', 'sc-dot-h1', 'sc-dot-hi', 'sc-dot-non']
+                
+                for i, cbo in enumerate(cbos):
+                    total_cbo = cbo_totals.get(cbo, 0)
+                    t_class = "sc-title pda" if "PDA" in str(cbo).upper() else "sc-title"
+                    
+                    sc_html += f'<div class="sc-box">'
+                    sc_html += f'<div class="{t_class}">{cbo}</div>'
+                    sc_html += f'<div class="sc-total">{total_cbo} <span>WO</span></div>'
+                    
+                    cbo_data = hm_agg[hm_agg['CECK BY ORDER'] == cbo]
+                    for j, flag in enumerate(flags):
+                        count = cbo_data[cbo_data['FLAG MANJA'] == flag]['count'].sum() if flag in cbo_data['FLAG MANJA'].values else 0
+                        pct = int(round((count / total_cbo * 100) if total_cbo > 0 else 0))
+                        sc_html += f'<div class="sc-item">'
+                        sc_html += f'<div class="sc-item-left"><div class="{dots[j]}"></div> {flag}</div>'
+                        sc_html += f'<div style="color: white;">{count} <span style="color: #64748b;">({pct}%)</span></div>'
+                        sc_html += f'</div>'
+                    
+                    sc_html += '</div>'
+                
+                sc_html += '</div></div>'
+                st.markdown(sc_html, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            # 2. Pivot Data
+            pivot = pd.pivot_table(
+                df_manja, 
+                values='Workorder', 
+                index=['CECK BY ORDER', 'Workzone', 'NO WONUM & AO'], 
+                columns='FLAG MANJA', 
+                aggfunc='count', 
+                fill_value=0
+            )
+            
+            # Ensure columns exist
+            cols = ['MANJA H++', 'MANJA H-1', 'MANJA HI', 'NON MANJA']
+            for c in cols:
+                if c not in pivot.columns:
+                    pivot[c] = 0
+            
+            pivot = pivot[cols]
+            pivot['Grand Total'] = pivot.sum(axis=1)
+            
+            # 3. Build HTML
+            html = '<div class="cp-container">'
+            html += f'<div class="manja-header"><div>CECK BY ORDER / WORKZONE / WONUM</div><div>MANJA H++</div><div>MANJA H-1</div><div>MANJA HI</div><div>NON MANJA</div><div>GRAND TOTAL</div></div>'
+            
+            html += '<div style="background-color: #0b1121;">'
+            
+            grand_totals = [0, 0, 0, 0, 0] # H++, H-1, HI, NON, Grand
+            
+            for cbo, df_cbo in pivot.groupby(level=0):
+                cbo_sum = df_cbo.sum()
+                html += f'<div class="manja-row" style="background-color: #1e293b; font-weight: bold;">'
+                html += f'<div>{cbo}</div>'
+                html += f'<div>{int(cbo_sum["MANJA H++"])}</div><div>{int(cbo_sum["MANJA H-1"])}</div><div>{int(cbo_sum["MANJA HI"])}</div><div>{int(cbo_sum["NON MANJA"])}</div><div>{int(cbo_sum["Grand Total"])}</div>'
+                html += f'</div>'
+                
+                for wz, df_wz in df_cbo.groupby(level=1):
+                    wz_sum = df_wz.sum()
+                    html += f'<div class="manja-row" style="background-color: #0f172a; border-left: 4px solid #3b82f6;">'
+                    html += f'<div style="padding-left: 20px;">{wz}</div>'
+                    html += f'<div>{int(wz_sum["MANJA H++"])}</div><div>{int(wz_sum["MANJA H-1"])}</div><div>{int(wz_sum["MANJA HI"])}</div><div>{int(wz_sum["NON MANJA"])}</div><div>{int(wz_sum["Grand Total"])}</div>'
+                    html += f'</div>'
+                    
+                    for wonum, df_wonum in df_wz.groupby(level=2):
+                        wonum_sum = df_wonum.sum()
+                        html += f'<div class="manja-row" style="border-left: 4px solid #10b981;">'
+                        html += f'<div style="padding-left: 45px; font-size: 0.85rem; color: #94a3b8;">{wonum}</div>'
+                        html += f'<div>{int(wonum_sum["MANJA H++"])}</div><div>{int(wonum_sum["MANJA H-1"])}</div><div>{int(wonum_sum["MANJA HI"])}</div><div>{int(wonum_sum["NON MANJA"])}</div><div>{int(wonum_sum["Grand Total"])}</div>'
+                        html += f'</div>'
+                
+                grand_totals[0] += int(cbo_sum["MANJA H++"])
+                grand_totals[1] += int(cbo_sum["MANJA H-1"])
+                grand_totals[2] += int(cbo_sum["MANJA HI"])
+                grand_totals[3] += int(cbo_sum["NON MANJA"])
+                grand_totals[4] += int(cbo_sum["Grand Total"])
+
+            html += '</div>'
+            
+            # Grand Total Row
+            html += f'<div class="manja-grand"><div>GRAND TOTAL KESELURUHAN</div><div>{grand_totals[0]}</div><div>{grand_totals[1]}</div><div>{grand_totals[2]}</div><div>{grand_totals[3]}</div><div>{grand_totals[4]}</div></div>'
+            
+            html += '</div>'
+            
+            st.markdown(html, unsafe_allow_html=True)
 
 else:
     st.warning("Belum ada data di Google Sheet GABUNGAN. Pastikan Robot telah men-download file CSV terbaru.")
