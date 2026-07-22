@@ -129,10 +129,13 @@ SHEET_ID = "1zA5ucYxE9gOSnKZIhEKQyV2rEdV5je__knsS9neA5iA"
 SHEET_NAME = "GABUNGAN"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def load_data():
+    import time
     try:
-        return pd.read_csv(CSV_URL)
+        # Tambahkan parameter waktu acak untuk menembus cache server Google Sheets
+        cache_busting_url = CSV_URL + f"&_t={int(time.time())}"
+        return pd.read_csv(cache_busting_url)
     except Exception as e:
         st.error(f"Gagal mengambil data dari Google Sheet: {e}")
         return pd.DataFrame()
@@ -228,7 +231,35 @@ if not df.empty:
     st.sidebar.header("📅 KONTROL WAKTU")
     
     today_default = datetime.now().date()
-    selected_date = st.sidebar.date_input("Pilih Tanggal Pantauan:", today_default)
+    st.sidebar.markdown('<p style="font-size: 0.9rem; margin-bottom: 0px;">Pilih Periode Pantauan:</p>', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.sidebar.columns([10, 1, 10])
+    with col1:
+        start_date = st.date_input("Dari", today_default, label_visibility="visible")
+    with col2:
+        st.markdown("<div style='margin-top: 35px; text-align: center; font-weight: bold; color: #94a3b8;'>-</div>", unsafe_allow_html=True)
+    with col3:
+        end_date = st.date_input("Sampai", today_default, label_visibility="visible")
+    
+    st.sidebar.markdown("""
+    <style>
+    /* Styling for sidebar date inputs */
+    section[data-testid="stSidebar"] .stDateInput > div > div > div {
+        background-color: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 8px !important;
+    }
+    section[data-testid="stSidebar"] .stDateInput label {
+        color: #94a3b8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    if start_date > end_date:
+        st.sidebar.error("'Dari' tidak boleh lebih dari 'Sampai'")
+        
+    # We still keep selected_date for backwards compatibility if needed, using end_date
+    selected_date = end_date
         
     st.sidebar.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 20px;">DASHBOARD FULFILLMENT</p>', unsafe_allow_html=True)
     
@@ -236,8 +267,8 @@ if not df.empty:
     with st.sidebar:
         menu = option_menu(
             menu_title=None,
-            options=["PS/RE", "KENDALA", "Detail RE HI (HARIAN)", "Detail MANJA"],
-            icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split"],
+            options=["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE"],
+            icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data"],
             default_index=0,
             styles={
                 "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
@@ -248,6 +279,9 @@ if not df.empty:
         )
     
     st.sidebar.markdown("---")
+    if st.sidebar.button("🔄 Segarkan Data (Clear Cache)"):
+        st.cache_data.clear()
+        st.rerun()
     st.sidebar.markdown("**Sinkronisasi Data:**")
     
     if "is_admin" not in st.session_state:
@@ -283,21 +317,24 @@ if not df.empty:
                 st.rerun()
 
     # --- PERSIAPAN DATA BERDASARKAN TANGGAL ---
-    df['Parsed_Date_PS'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce').dt.date if date_col else None
-    df['Parsed_Date_RE'] = pd.to_datetime(df[re_col], dayfirst=True, errors='coerce').dt.date if re_col else None
+    df['Parsed_Date_PS'] = pd.to_datetime(df[date_col], errors='coerce').dt.date if date_col else None
+    df['Parsed_Date_RE'] = pd.to_datetime(df[re_col], errors='coerce').dt.date if re_col else None
     
     jam_re_col = find_col(['JAM RE MASUK REAL', 'JAM RE MASUK', 'JAM RE'])
     if jam_re_col:
         df['Jam_RE'] = df[jam_re_col].astype(str).str.replace('nan', 'Unknown')
+        # Tambahkan angka 0 di depan jika formatnya '7:10:44' (panjang 7 karakter)
+        mask = df['Jam_RE'].str.len() == 7
+        df.loc[mask, 'Jam_RE'] = '0' + df.loc[mask, 'Jam_RE']
     elif re_col:
-        temp_dt = pd.to_datetime(df[re_col], dayfirst=True, errors='coerce')
+        temp_dt = pd.to_datetime(df[re_col], errors='coerce')
         df['Jam_RE'] = temp_dt.dt.strftime('%H:%M:%S').fillna('Unknown')
     else:
         df['Jam_RE'] = 'Unknown'
         
     jam_mod_col = find_col(['DATE MODIFIED REAL', 'Date Modified', 'Status Date'])
     if jam_mod_col:
-        temp_dt_mod = pd.to_datetime(df[jam_mod_col], dayfirst=True, errors='coerce')
+        temp_dt_mod = pd.to_datetime(df[jam_mod_col], errors='coerce')
         df['Jam_Update'] = temp_dt_mod.dt.strftime('%H:%M:%S').fillna('Unknown')
     else:
         df['Jam_Update'] = 'Unknown'
@@ -327,10 +364,10 @@ if not df.empty:
         }
 
     # --- DATA & METRICS ---
-    df_re_today = df[(df['Parsed_Date_RE'] == selected_date) & (~df['Status_Upper'].str.contains('COMPLETE', na=False))].copy()
+    df_re_today = df[((df['Parsed_Date_RE'] >= start_date) & (df['Parsed_Date_RE'] <= end_date)) & (~df['Status_Upper'].str.contains('COMPLETE', na=False))].copy()
     brk_re = get_breakdown(df_re_today)
     
-    df_ps_today = df[(df['Parsed_Date_PS'] == selected_date) & (df['Status_Upper'].str.contains("COMPWORK", na=False))].copy()
+    df_ps_today = df[((df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date)) & (df['Status_Upper'].str.contains("COMPWORK", na=False))].copy()
     brk_ps = get_breakdown(df_ps_today)
     
     re_hi_ao = brk_re.get('AO TSEL', 0)
@@ -338,12 +375,13 @@ if not df.empty:
     ps_re_val = (ps_hi_ao / re_hi_ao * 100) if re_hi_ao > 0 else 0
     ps_re_pct = f"{ps_re_val:.2f}%".replace('.', ',')
     ps_re_color = "#34d399" if ps_re_val >= 85.0 else "#ef4444"
-    
     potensi_statuses = ['CONTWORK', 'INSTCOMP', 'ACTCOMP', 'VALCOMP', 'VALSTART']
     potensi_df = df[df['Status_Upper'].isin(potensi_statuses)].copy()
     brk_pot = get_breakdown(potensi_df)
     
-    kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & (df['Parsed_Date_PS'] == selected_date)].copy()
+    # --- RENDER KONTEN UTAMA ---
+    
+    kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & ((df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date))].copy()
     brk_ken = get_breakdown(kendala_df)
     
     startwork_df = df[df['Status_Upper'] == "STARTWORK"].copy()
@@ -395,7 +433,7 @@ if not df.empty:
             <div class="d-card c-blue">
                 <div class="dc-header">
                     <div class="dc-icon ic-blue">📥</div>
-                    <div><div class="dc-title">RE MASUK HI</div><div class="dc-value">{len(df_re_today)}</div></div>
+                    <div><div class="dc-title">RE MASUK PERIODE</div><div class="dc-value">{len(df_re_today)}</div></div>
                 </div>
                 <div class="dc-breakdown">{bd_html(brk_re).strip()}<div class="dc-row" style="border-top: 1px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem;">{ps_re_pct}</span></div></div>
             </div>
@@ -419,7 +457,7 @@ if not df.empty:
             <div class="d-card c-orange">
                 <div class="dc-header">
                     <div class="dc-icon ic-orange">⚠️</div>
-                    <div><div class="dc-title">KENDALA HI</div><div class="dc-value">{len(kendala_df)}</div></div>
+                    <div><div class="dc-title">KENDALA PERIODE</div><div class="dc-value">{len(kendala_df)}</div></div>
                 </div>
                 <div class="dc-breakdown">{kendala_html}</div>
             </div>
@@ -459,7 +497,7 @@ if not df.empty:
                         <div style="font-size: 2.2rem;">🏆</div>
                         <div>
                             <div style="color: white; font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px;">TOP 5 TEKNISI</div>
-                            <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 2px;">(DONE PS HARI INI)</div>
+                            <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 2px;">(DONE PS PERIODE)</div>
                         </div>
                     </div>
                     <div style="border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; color: #cbd5e1; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
@@ -530,12 +568,12 @@ if not df.empty:
                 
                 st.markdown(html_str.replace('\n', ''), unsafe_allow_html=True)
             else:
-                st.markdown('<div class="section-title-wrap"><div class="section-title">🏆 TOP 5 TEKNISI (DONE PS HARI INI)</div></div>', unsafe_allow_html=True)
-                st.info("Belum ada pencapaian PS hari ini.")
+                st.markdown('<div class="section-title-wrap"><div class="section-title">🏆 TOP 5 TEKNISI (DONE PS PERIODE)</div></div>', unsafe_allow_html=True)
+                st.info("Belum ada pencapaian PS pada periode ini.")
                 
         with c_right:
             if order_col:
-                month, year = selected_date.month, selected_date.year
+                month, year = end_date.month, end_date.year
                 
                 # Convert dates to datetime to extract month/year safely
                 re_dt = pd.to_datetime(df['Parsed_Date_RE'], errors='coerce')
@@ -547,7 +585,7 @@ if not df.empty:
                 # Filter specific for AO TSEL
                 ao_mask = df[order_col].astype(str).str.upper().isin(['AO TSEL', 'AO'])
                 
-                # RE excludes COMPLETE status (same as RE MASUK HI)
+                # RE excludes COMPLETE status (same as RE MASUK PERIODE)
                 no_complete_mask = ~df['Status_Upper'].str.contains('COMPLETE', na=False)
                 
                 df_re_month = df[re_mask & ao_mask & no_complete_mask]
@@ -927,7 +965,7 @@ if not df.empty:
         else:
             st.success("🎉 Luar Biasa! Bersih, tidak ada satupun pesanan yang mengalami kendala.")
 
-    elif menu == "Detail RE HI (HARIAN)":
+    elif menu == "DETAIL RE PERIODE":
         if order_col:
             df_re_today = df_re_today[df_re_today[order_col].astype(str).str.upper().str.contains('AO', na=False)]
             df_ps_today = df_ps_today[df_ps_today[order_col].astype(str).str.upper().str.contains('AO', na=False)]
@@ -1000,7 +1038,7 @@ if not df.empty:
                                          'KENDALA': '#f59e0b',
                                          'UNSC': '#ef4444'
                                      })
-                    fig_jam.update_traces(line=dict(width=3, shape='spline'), fill='tozeroy', marker=dict(size=8), textposition='top center')
+                    fig_jam.update_traces(line=dict(width=3, shape='spline'), fill='tozeroy', marker=dict(size=8), textposition='top center', cliponaxis=False)
                     
                     fill_colors = {
                         'RE MASUK': 'rgba(59, 130, 246, 0.15)',
@@ -1016,11 +1054,12 @@ if not df.empty:
                             
                     fig_jam.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
                                          font=dict(color='#cbd5e1'), xaxis_title="Waktu (Jam)", yaxis_title="Jumlah WO", 
-                                         margin=dict(t=10, b=40, l=10, r=10),
+                                         margin=dict(t=40, b=40, l=50, r=30),
                                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
                                          hovermode="x unified",
+                                         hoverlabel=dict(bgcolor='#1e293b', font=dict(color='white')),
                                          xaxis=dict(fixedrange=True, dtick=2, showgrid=True, gridwidth=1, gridcolor='#334155'),
-                                         yaxis=dict(fixedrange=True, dtick=1, showgrid=True, gridwidth=1, gridcolor='#334155'))
+                                         yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155'))
                     st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False}, theme=None)
                     
                 with ch_col2:
@@ -1076,15 +1115,16 @@ if not df.empty:
                     fig_mini = px.line(df_cat, x='Jam', y='Jumlah', text='Text', markers=True)
                     fig_mini.update_traces(line=dict(width=2, color=color, shape='spline'), 
                                            fill='tozeroy', fillcolor=fill_color, 
-                                           marker=dict(size=4, color=color), textposition='top center')
+                                           marker=dict(size=4, color=color), textposition='top center', cliponaxis=False)
                     
                     fig_mini.update_layout(
                         title=dict(text=cat, font=dict(color=color, size=13), x=0.5, xanchor='center'),
                         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
-                        margin=dict(t=40, b=45, l=10, r=10),
+                        margin=dict(t=40, b=45, l=45, r=20),
                         xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=8, title="Waktu (Jam)"),
-                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO", dtick=1),
+                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO"),
                         hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='white')),
                         height=280
                     )
                     # Create a border around the plot area
@@ -1178,15 +1218,16 @@ if not df.empty:
             except Exception as e:
                 st.error(f"Gagal memproses Rekap RE: {e}")
         else:
-            st.warning("Belum ada data RE masuk untuk hari ini.")
+            st.warning("Belum ada data RE masuk untuk periode ini.")
 
-    elif menu == "Detail MANJA":
+    elif menu == "DETAIL MANJA":
         st.markdown("""
         <style>
-        .cp-container { color: #f1f5f9; font-size: 1.25rem; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; background: #4c1d95; padding: 3px 10px; font-weight: bold; color: #ffffff; font-size: 1.15rem; }
-        .manja-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 12px 10px; border-bottom: 1px solid #334155; align-items: center; }
-        .manja-grand { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 15px 10px; background: #4c1d95; font-weight: bold; border-top: 2px solid #334155; color: #ffffff; font-size: 1.25rem; }
+        .cp-container { color: #f1f5f9; font-size: 0.85rem; max-height: 800px; }
+        .manja-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; background: #4c1d95; padding: 12px 15px; font-weight: bold; color: #ffffff; font-size: 1.05rem; text-align: center;}
+        .manja-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; }
+        .manja-row > div:nth-child(1) { text-align: left; }
+        .manja-grand { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 12px 15px; background: #4c1d95; font-weight: bold; border-top: 2px solid #334155; color: #ffffff; font-size: 0.95rem; text-align: center; }
         .cp-arrow { display: inline-block; transition: transform 0.2s; margin-right: 5px; }
         details[open] > summary .cp-arrow { transform: rotate(90deg); }
         </style>
@@ -1525,25 +1566,29 @@ if not df.empty:
             
             grand_totals = [0, 0, 0, 0, 0] # H++, H-1, HI, NON, Grand
             
+            def fmt_num(val):
+                v = int(val)
+                return str(v) if v > 0 else ""
+            
             for cbo, df_cbo in pivot.groupby(level=0):
                 cbo_sum = df_cbo.sum()
                 html += f'<div class="manja-row" style="background-color: #1e293b; font-weight: bold;">'
-                html += f'<div style="font-weight: bold; color: #fbbf24; font-size: 1.25rem;">{cbo}</div>'
-                html += f'<div>{int(cbo_sum["MANJA H-1"])}</div><div>{int(cbo_sum["MANJA HI"])}</div><div>{int(cbo_sum["MANJA H++"])}</div><div>{int(cbo_sum["NON MANJA"])}</div><div>{int(cbo_sum["Grand Total"])}</div>'
+                html += f'<div style="font-weight: bold; color: #fbbf24; font-size: 0.95rem;">{cbo}</div>'
+                html += f'<div>{fmt_num(cbo_sum["MANJA H-1"])}</div><div>{fmt_num(cbo_sum["MANJA HI"])}</div><div>{fmt_num(cbo_sum["MANJA H++"])}</div><div>{fmt_num(cbo_sum["NON MANJA"])}</div><div>{fmt_num(cbo_sum["Grand Total"])}</div>'
                 html += f'</div>'
                 
                 for wz, df_wz in df_cbo.groupby(level=1):
                     wz_sum = df_wz.sum()
                     html += f'<div class="manja-row" style="background-color: #0f172a; border-left: 4px solid #3b82f6;">'
-                    html += f'<div style="padding-left: 20px; font-weight: bold; color: #38bdf8; font-size: 1.15rem;">{wz}</div>'
-                    html += f'<div>{int(wz_sum["MANJA H-1"])}</div><div>{int(wz_sum["MANJA HI"])}</div><div>{int(wz_sum["MANJA H++"])}</div><div>{int(wz_sum["NON MANJA"])}</div><div>{int(wz_sum["Grand Total"])}</div>'
+                    html += f'<div style="padding-left: 20px; font-weight: bold; color: #38bdf8; font-size: 0.90rem;">{wz}</div>'
+                    html += f'<div>{fmt_num(wz_sum["MANJA H-1"])}</div><div>{fmt_num(wz_sum["MANJA HI"])}</div><div>{fmt_num(wz_sum["MANJA H++"])}</div><div>{fmt_num(wz_sum["NON MANJA"])}</div><div>{fmt_num(wz_sum["Grand Total"])}</div>'
                     html += f'</div>'
                     
                     for wonum, df_wonum in df_wz.groupby(level=2):
                         wonum_sum = df_wonum.sum()
                         html += f'<div class="manja-row" style="border-left: 4px solid #10b981;">'
-                        html += f'<div style="padding-left: 45px; font-size: 1.05rem; color: white; font-weight: bold;">{wonum}</div>'
-                        html += f'<div>{int(wonum_sum["MANJA H-1"])}</div><div>{int(wonum_sum["MANJA HI"])}</div><div>{int(wonum_sum["MANJA H++"])}</div><div>{int(wonum_sum["NON MANJA"])}</div><div>{int(wonum_sum["Grand Total"])}</div>'
+                        html += f'<div style="padding-left: 45px; font-size: 0.85rem; color: white; font-weight: bold;">{wonum}</div>'
+                        html += f'<div>{fmt_num(wonum_sum["MANJA H-1"])}</div><div>{fmt_num(wonum_sum["MANJA HI"])}</div><div>{fmt_num(wonum_sum["MANJA H++"])}</div><div>{fmt_num(wonum_sum["NON MANJA"])}</div><div>{fmt_num(wonum_sum["Grand Total"])}</div>'
                         html += f'</div>'
                 
                 grand_totals[0] += int(cbo_sum["MANJA H-1"])
@@ -1555,11 +1600,108 @@ if not df.empty:
             html += '</div>'
             
             # Grand Total Row
-            html += f'<div class="manja-grand"><div>GRAND TOTAL KESELURUHAN</div><div>{grand_totals[0]}</div><div>{grand_totals[1]}</div><div>{grand_totals[2]}</div><div>{grand_totals[3]}</div><div>{grand_totals[4]}</div></div>'
+            html += f'<div class="manja-grand"><div>GRAND TOTAL KESELURUHAN</div><div>{int(grand_totals[0])}</div><div>{int(grand_totals[1])}</div><div>{int(grand_totals[2])}</div><div>{int(grand_totals[3])}</div><div>{int(grand_totals[4])}</div></div>'
             
             html += '</div>'
             
             st.markdown(html, unsafe_allow_html=True)
+            
+    elif menu == "WO ODS PERIODE":
+        st.markdown("""
+        <div class="section-title">📊 WO ODS PERIODE</div>
+        """, unsafe_allow_html=True)
+        
+        wz_col = find_col(['WORZONE', 'WORKZONE', 'Workzone', 'ZONE', 'Zone'])
+        ods_date_col = find_col(['TANGGAL WO ODS'])
+        ods_flag_col = find_col(['WO ODS'])
+        
+        if ods_date_col and ods_flag_col:
+            df['Parsed_ODS_Date'] = pd.to_datetime(df[ods_date_col], errors='coerce').dt.date
+            df_ods = df[((df['Parsed_ODS_Date'] >= start_date) & (df['Parsed_ODS_Date'] <= end_date)) & (df[ods_flag_col].astype(str).str.upper().str.contains('ONE DAY SERVICE', na=False))].copy()
+        else:
+            df_ods = df[((df['Parsed_Date_RE'] >= start_date) & (df['Parsed_Date_RE'] <= end_date)) & ((df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date))].copy()
+        
+        if not df_ods.empty:
+            # Gabungkan tanggal dan jam menjadi format datetime lengkap
+            df_ods['DATE CREATE FULL'] = df_ods['Parsed_Date_RE'].astype(str) + " " + df_ods.get('Jam_RE', '')
+            df_ods['DATE CREATE FULL'] = df_ods['DATE CREATE FULL'].str.replace(' Unknown', '')
+            
+            cols_to_extract = []
+            rename_map = {}
+            
+            if 'INFO ORDER' in df_ods.columns:
+                cols_to_extract.append('INFO ORDER')
+                rename_map['INFO ORDER'] = 'NO WONUM & AO'
+            
+            cols_to_extract.append('DATE CREATE FULL')
+            rename_map['DATE CREATE FULL'] = 'DATE CREATE REAL'
+                
+            if wz_col:
+                cols_to_extract.append(wz_col)
+                rename_map[wz_col] = 'WORZONE'
+                
+            if tim_col:
+                cols_to_extract.append(tim_col)
+                rename_map[tim_col] = 'MORNING TIM'
+                
+            if status_col:
+                cols_to_extract.append(status_col)
+                rename_map[status_col] = 'STATUS'
+                
+            if morning_status_col:
+                cols_to_extract.append(morning_status_col)
+                rename_map[morning_status_col] = 'MORNING STATUS WO'
+                
+            if len(cols_to_extract) > 0:
+                disp_ods = df_ods[cols_to_extract].rename(columns=rename_map)
+                disp_ods.insert(0, 'NO', range(1, len(disp_ods) + 1))
+                
+                # HTML Table for similar styling as the mockup (yellow header)
+                html = '<div class="cp-container" style="overflow-x: auto;">'
+                html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: center; color: #f1f5f9; white-space: nowrap;">'
+                
+                # Header
+                html += '<tr style="background-color: #facc15; color: #1e293b; font-weight: bold;">'
+                for col in disp_ods.columns:
+                    html += f'<th style="padding: 8px; border: 1px solid #334155;">{col}</th>'
+                html += '</tr>'
+                
+                # Rows
+                for _, row in disp_ods.iterrows():
+                    html += '<tr style="border-bottom: 1px solid #334155; background-color: transparent;">'
+                    for col in disp_ods.columns:
+                        val = str(row[col]) if pd.notna(row[col]) else ""
+                        
+                        if col == 'STATUS' and val != "":
+                            val_str = val.upper().strip()
+                            bg_color = '#475569'
+                            text_color = 'white'
+                            if val_str == 'STARTWORK':
+                                bg_color = '#64748b'
+                            elif val_str == 'VALSTART':
+                                bg_color = '#39ff14'
+                                text_color = 'black'
+                            elif val_str == 'COMPWORK':
+                                bg_color = '#22c55e'
+                            elif val_str == 'WORKFAIL':
+                                bg_color = '#facc15'
+                                text_color = 'black'
+                            elif val_str == 'CANCLWORK':
+                                bg_color = '#ef4444'
+                            elif val_str == 'COMPLETE':
+                                bg_color = '#3b82f6'
+                                
+                            val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
+                            
+                        html += f'<td style="padding: 8px; border: 1px solid #334155;">{val}</td>'
+                    html += '</tr>'
+                
+                html += '</table></div>'
+                st.markdown(html, unsafe_allow_html=True)
+            else:
+                st.warning("Kolom data yang dibutuhkan tidak ditemukan di Google Sheet.")
+        else:
+            st.warning("Belum ada data WO ODS (Order masuk) untuk periode ini.")
 
 else:
     st.warning("Belum ada data di Google Sheet GABUNGAN. Pastikan Robot telah men-download file CSV terbaru.")
