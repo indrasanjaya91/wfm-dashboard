@@ -65,7 +65,7 @@ st.markdown("""
     div[data-testid="stDataFrame"] { border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; }
     
     /* Custom Pivot */
-    .cp-container { background-color: #0f172a; border-radius: 8px; border: 1px solid #1e293b; overflow-y: auto; overflow-x: hidden; max-height: 450px; }
+    .cp-container { background-color: #0f172a; border-radius: 8px; border: 1px solid #1e293b; overflow-y: auto; overflow-x: hidden; max-height: 800px; }
     .cp-header { display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 1fr 1fr 1fr; background-color: #172554; font-size: 0.85rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
     .cp-header > div { padding: 12px 15px; border-right: 1px solid #64748b; display: flex; align-items: center; justify-content: center; }
     .cp-header > div:last-child { border-right: none; }
@@ -105,21 +105,21 @@ st.markdown("""
     .hm-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: center; }
     .hm-table th, .hm-table td { border: 1px solid #1e293b; padding: 8px; }
     .hm-table th { background-color: #0f172a; color: #cbd5e1; font-weight: bold; font-size: 0.75rem; }
-    .hm-cell-h2 { background-color: #7f1d1d; color: white; font-weight: bold; font-size: 1.1rem; }
-    .hm-cell-h1 { background-color: #b45309; color: white; font-weight: bold; font-size: 1.1rem; }
-    .hm-cell-hi { background-color: #854d0e; color: white; font-weight: bold; font-size: 1.1rem; }
+    .hm-cell-h2 { background-color: #854d0e; color: white; font-weight: bold; font-size: 1.1rem; }
+    .hm-cell-h1 { background-color: #7f1d1d; color: white; font-weight: bold; font-size: 1.1rem; }
+    .hm-cell-hi { background-color: #b45309; color: white; font-weight: bold; font-size: 1.1rem; }
     .hm-cell-non { background-color: #14532d; color: white; font-weight: bold; font-size: 1.1rem; }
     
-    .sc-box { background-color: #0f172a; border-radius: 8px; padding: 15px; margin-bottom: 10px; border: 1px solid #1e293b; }
-    .sc-title { font-size: 1.1rem; font-weight: bold; color: #3b82f6; margin-bottom: 5px; }
+    .sc-box { background-color: #0f172a; border-radius: 8px; padding: 15px; margin-bottom: 10px; border: 1px solid #1e293b; flex: 1; min-width: 0; }
+    .sc-title { font-size: 1.3rem; font-weight: bold; color: #3b82f6; margin-bottom: 5px; }
     .sc-title.pda { color: #10b981; }
-    .sc-total { font-size: 2rem; font-weight: bold; color: white; margin-bottom: 15px; line-height: 1; }
-    .sc-total span { font-size: 0.8rem; color: #94a3b8; font-weight: normal; }
-    .sc-item { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 5px; align-items: center; }
+    .sc-total { font-size: 2.2rem; font-weight: bold; color: white; margin-bottom: 15px; line-height: 1; }
+    .sc-total span { font-size: 1.0rem; color: #94a3b8; font-weight: normal; }
+    .sc-item { display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 5px; align-items: center; }
     .sc-item-left { display: flex; align-items: center; gap: 5px; color: #cbd5e1; font-weight: bold; }
-    .sc-dot-h2 { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
-    .sc-dot-h1 { width: 8px; height: 8px; border-radius: 50%; background-color: #f97316; }
-    .sc-dot-hi { width: 8px; height: 8px; border-radius: 50%; background-color: #eab308; }
+    .sc-dot-h2 { width: 8px; height: 8px; border-radius: 50%; background-color: #eab308; }
+    .sc-dot-h1 { width: 8px; height: 8px; border-radius: 50%; background-color: #ef4444; }
+    .sc-dot-hi { width: 8px; height: 8px; border-radius: 50%; background-color: #f97316; }
     .sc-dot-non { width: 8px; height: 8px; border-radius: 50%; background-color: #22c55e; }
 </style>
 """, unsafe_allow_html=True)
@@ -129,7 +129,7 @@ SHEET_ID = "1zA5ucYxE9gOSnKZIhEKQyV2rEdV5je__knsS9neA5iA"
 SHEET_NAME = "GABUNGAN"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=600)
 def load_data():
     try:
         return pd.read_csv(CSV_URL)
@@ -838,21 +838,25 @@ if not df.empty:
                         top_reasons = kendala_df[morning_status_col].dropna().astype(str).str.upper().value_counts().nlargest(5).reset_index()
                         top_reasons.columns = ['Alasan', 'Jumlah']
                         if not top_reasons.empty:
-                            # Reverse dataframe to preserve nlargest order but plot top-down
-                            top_reasons = top_reasons.iloc[::-1]
-                            fig2 = px.bar(top_reasons, x='Jumlah', y='Alasan', orientation='h')
+                            html_bars2 = '<div style="display: flex; flex-direction: column; justify-content: space-evenly; height: 250px; padding: 5px 0;">'
+                            max_val2 = top_reasons['Jumlah'].max()
+                            rank_colors2 = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#facc15']
                             
-                            colors2 = ['#ef4444' if val == top_reasons['Jumlah'].max() else '#f97316' for val in top_reasons['Jumlah']]
-                            fig2.update_traces(marker_color=colors2, text=top_reasons['Jumlah'], textposition='outside', textfont_color='white')
-                            fig2.update_layout(
-                                paper_bgcolor='rgba(0,0,0,0)',
-                                plot_bgcolor='rgba(0,0,0,0)',
-                                xaxis=dict(showgrid=True, gridcolor='#1e293b', title="JUMLAH WO", title_font_color="#94a3b8", tickfont_color="#cbd5e1"),
-                                yaxis=dict(showgrid=False, title="", tickfont_color="#cbd5e1"),
-                                margin=dict(t=0, b=30, l=0, r=20),
-                                height=250
-                            )
-                            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                            for i, row in enumerate(top_reasons.itertuples()):
+                                name2 = row.Alasan
+                                val2 = row.Jumlah
+                                color2 = rank_colors2[i] if i < len(rank_colors2) else rank_colors2[-1]
+                                width_pct2 = (val2 / max_val2) * 100 if max_val2 > 0 else 0
+                                
+                                html_bars2 += f'<div style="display: flex; align-items: center; width: 100%;">'
+                                html_bars2 += f'<div style="color: #cbd5e1; width: 170px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.8rem; margin-right: 10px; flex-shrink: 0;" title="{name2}">{name2}</div>'
+                                html_bars2 += f'<div style="flex-grow: 1; display: flex; align-items: center; padding-right: 10px;">'
+                                html_bars2 += f'<div style="background-color: {color2}; height: 14px; width: {width_pct2}%;"></div>'
+                                html_bars2 += f'<div style="color: #ffffff; font-weight: bold; font-size: 0.8rem; margin-left: 8px;">{val2}</div>'
+                                html_bars2 += f'</div></div>'
+                                
+                            html_bars2 += '</div>'
+                            st.markdown(html_bars2, unsafe_allow_html=True)
                         else:
                             st.info("No Morning Status Data")
                     else:
@@ -866,28 +870,27 @@ if not df.empty:
                         top_tek = kendala_df[tim_col].dropna().astype(str).str.upper().value_counts().nlargest(5).reset_index()
                         top_tek.columns = ['Teknisi', 'Jumlah']
                         if not top_tek.empty:
-                            # Add rank numbers 1-5 to the y-axis labels
-                            top_tek['Teknisi_Label'] = [f"{i+1}   {name}" for i, name in enumerate(top_tek['Teknisi'])]
-                            # Reverse dataframe to preserve exact rank order
-                            top_tek = top_tek.iloc[::-1]
+                            html_bars = '<div style="display: flex; flex-direction: column; justify-content: space-evenly; height: 250px; padding: 5px 0;">'
+                            max_val = top_tek['Jumlah'].max()
+                            rank_colors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#facc15']
                             
-                            fig3 = px.bar(top_tek, x='Jumlah', y='Teknisi_Label', orientation='h')
-                            fig3.update_traces(marker_color='#f97316', text=top_tek['Jumlah'], textposition='outside', textfont_color='white', width=0.4)
-                            
-                            # Style the top bar red (if we want to match the image precisely)
-                            # We can map colors based on the maximum value
-                            colors = ['#ef4444' if val == top_tek['Jumlah'].max() else '#f97316' for val in top_tek['Jumlah']]
-                            fig3.update_traces(marker_color=colors)
-                            
-                            fig3.update_layout(
-                                paper_bgcolor='rgba(0,0,0,0)',
-                                plot_bgcolor='rgba(0,0,0,0)',
-                                xaxis=dict(showgrid=False, showticklabels=False, title=""),
-                                yaxis=dict(showgrid=False, title="", tickfont_color="#cbd5e1"),
-                                margin=dict(t=0, b=0, l=0, r=20),
-                                height=250
-                            )
-                            st.plotly_chart(fig3, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                            for i, row in enumerate(top_tek.itertuples()):
+                                rank = i + 1
+                                name = row.Teknisi
+                                val = row.Jumlah
+                                color = rank_colors[i] if i < len(rank_colors) else rank_colors[-1]
+                                width_pct = (val / max_val) * 100 if max_val > 0 else 0
+                                
+                                html_bars += f'<div style="display: flex; align-items: center; width: 100%;">'
+                                html_bars += f'<div style="background-color: #1e293b; color: #94a3b8; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; margin-right: 12px; flex-shrink: 0;">{rank}</div>'
+                                html_bars += f'<div style="color: #cbd5e1; width: 140px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.8rem; margin-right: 10px; flex-shrink: 0;" title="{name}">{name}</div>'
+                                html_bars += f'<div style="flex-grow: 1; display: flex; align-items: center; padding-right: 10px;">'
+                                html_bars += f'<div style="background-color: {color}; height: 14px; width: {width_pct}%;"></div>'
+                                html_bars += f'<div style="color: #ffffff; font-weight: bold; font-size: 0.8rem; margin-left: 8px;">{val}</div>'
+                                html_bars += f'</div></div>'
+                                
+                            html_bars += '</div>'
+                            st.markdown(html_bars, unsafe_allow_html=True)
                         else:
                             st.info("No Technician Data")
                     else:
@@ -925,8 +928,12 @@ if not df.empty:
             st.success("🎉 Luar Biasa! Bersih, tidak ada satupun pesanan yang mengalami kendala.")
 
     elif menu == "Detail RE HI (HARIAN)":
-        st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 20px;"><div class="mc-title">📥 TOTAL JUMLAH RE HARI INI</div><div class="mc-value">{len(df_re_today)} <span style="font-size:1rem; color:#94a3b8">WO</span></div></div>', unsafe_allow_html=True)
-        
+        if order_col:
+            df_re_today = df_re_today[df_re_today[order_col].astype(str).str.upper().str.contains('AO', na=False)]
+            df_ps_today = df_ps_today[df_ps_today[order_col].astype(str).str.upper().str.contains('AO', na=False)]
+            kendala_df = kendala_df[kendala_df[order_col].astype(str).str.upper().str.contains('AO', na=False)]
+            
+        st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 20px;"><div class="mc-title">📥 TOTAL JUMLAH RE HARI INI (AO TSEL)</div><div class="mc-value">{len(df_re_today)} <span style="font-size:1rem; color:#94a3b8">WO</span></div></div>', unsafe_allow_html=True)
         st.markdown('<div class="section-title-wrap"><div class="section-title">📈 DISTRIBUSI JAM MASUK RE & PROGRESS</div></div>', unsafe_allow_html=True)
         if len(df_re_today) > 0 and 'Jam_RE' in df_re_today.columns:
             jam_df = df_re_today[df_re_today['Jam_RE'] != 'Unknown'].copy()
@@ -1176,10 +1183,10 @@ if not df.empty:
     elif menu == "Detail MANJA":
         st.markdown("""
         <style>
-        .cp-container { color: #f1f5f9; font-size: 0.85rem; }
-        .manja-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; background: #1e293b; padding: 10px; font-weight: bold; }
-        .manja-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 8px 10px; border-bottom: 1px solid #334155; align-items: center; }
-        .manja-grand { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 12px 10px; background: #0f172a; font-weight: bold; border-top: 2px solid #334155; }
+        .cp-container { color: #f1f5f9; font-size: 1.25rem; max-height: 800px; }
+        .manja-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; background: #4c1d95; padding: 3px 10px; font-weight: bold; color: #ffffff; font-size: 1.15rem; }
+        .manja-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 12px 10px; border-bottom: 1px solid #334155; align-items: center; }
+        .manja-grand { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 15px 10px; background: #4c1d95; font-weight: bold; border-top: 2px solid #334155; color: #ffffff; font-size: 1.25rem; }
         .cp-arrow { display: inline-block; transition: transform 0.2s; margin-right: 5px; }
         details[open] > summary .cp-arrow { transform: rotate(90deg); }
         </style>
@@ -1199,15 +1206,15 @@ if not df.empty:
             st.info("Tidak ada data pesanan MANJA (STARTWORK / CONTWORK) saat ini.")
         else:
             st.markdown("<br>", unsafe_allow_html=True)
-            col1, col2, col3 = st.columns(3)
+            col_top1, col_top2 = st.columns(2)
             
             hm_agg = df_manja.groupby(['CECK BY ORDER', 'FLAG MANJA']).size().reset_index(name='count')
             cbos = df_manja['CECK BY ORDER'].dropna().unique()
             cbo_totals = df_manja['CECK BY ORDER'].value_counts().to_dict()
-            flags = ['MANJA H++', 'MANJA H-1', 'MANJA HI', 'NON MANJA']
+            flags = ['MANJA H-1', 'MANJA HI', 'MANJA H++', 'NON MANJA']
             
             # WIDGET 1: HEATMAP
-            with col1:
+            with col_top1:
                 hm_html = '''
                 <div class="widget-card">
                     <div class="widget-title"><span style="font-size: 1.2rem;">🎛️</span> HEATMAP MATRIX</div>
@@ -1217,11 +1224,11 @@ if not df.empty:
                             <th colspan="4">FLAG MANJA</th>
                         </tr>
                         <tr>
-                            <th>MANJA H++</th><th>MANJA H-1</th><th>MANJA HI</th><th>NON MANJA</th>
+                            <th>MANJA H-1</th><th>MANJA HI</th><th>MANJA H++</th><th>NON MANJA</th>
                         </tr>
                 '''
                 
-                hm_colors = ['hm-cell-h2', 'hm-cell-h1', 'hm-cell-hi', 'hm-cell-non']
+                hm_colors = ['hm-cell-h1', 'hm-cell-hi', 'hm-cell-h2', 'hm-cell-non']
                 
                 for cbo in cbos:
                     hm_html += f'<tr><td style="font-weight: bold; text-align: left; color: #f8fafc;">{cbo}</td>'
@@ -1236,9 +1243,9 @@ if not df.empty:
                 hm_html += '''
                     </table>
                     <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.65rem; color: #cbd5e1; font-weight: bold;">
-                        <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h2" style="border-radius: 2px;"></div> MANJA H++</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h1" style="border-radius: 2px;"></div> MANJA H-1</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-hi" style="border-radius: 2px;"></div> MANJA HI</div>
+                        <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h2" style="border-radius: 2px;"></div> MANJA H++</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-non" style="border-radius: 2px;"></div> NON MANJA</div>
                     </div>
                 </div>
@@ -1246,7 +1253,7 @@ if not df.empty:
                 st.markdown(hm_html, unsafe_allow_html=True)
             
 
-            with col2:
+            with col_top2:
                 # Custom SVG Flow Diagram (Sankey Alternative)
                 total_wo = len(df_manja)
                 cbo_list = list(cbo_totals.keys())
@@ -1255,9 +1262,9 @@ if not df.empty:
                 script_lines = []
                 
                 flag_colors = {
-                    'MANJA H++': ('#ef4444', 'red'), 
-                    'MANJA H-1': ('#f97316', 'orange'), 
-                    'MANJA HI': ('#eab308', 'yellow'), 
+                    'MANJA H-1': ('#ef4444', 'red'), 
+                    'MANJA HI': ('#f97316', 'orange'), 
+                    'MANJA H++': ('#eab308', 'yellow'), 
                     'NON MANJA': ('#22c55e', 'green')
                 }
                 
@@ -1396,16 +1403,77 @@ if not df.empty:
                 </script>
                 '''
                 st.components.v1.html(sankey_card, height=330, scrolling=False)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_bot1, col_bot2 = st.columns(2)
+            
+            # WIDGET 4: DONUT CHART
+            with col_bot1:
+                count_h2 = len(df_manja[df_manja['FLAG MANJA'] == 'MANJA H++'])
+                count_h1 = len(df_manja[df_manja['FLAG MANJA'] == 'MANJA H-1'])
+                count_hi = len(df_manja[df_manja['FLAG MANJA'] == 'MANJA HI'])
+                count_non = len(df_manja[df_manja['FLAG MANJA'] == 'NON MANJA'])
                 
+                pct_h2 = (count_h2 / total_wo * 100) if total_wo else 0
+                pct_h1 = (count_h1 / total_wo * 100) if total_wo else 0
+                pct_hi = (count_hi / total_wo * 100) if total_wo else 0
+                pct_non = (count_non / total_wo * 100) if total_wo else 0
+                
+                p1 = pct_h1
+                p2 = p1 + pct_hi
+                p3 = p2 + pct_h2
+                
+                donut_html = f'''
+                <div class="widget-card">
+                    <div class="widget-title" style="margin-bottom: 20px;"><span style="font-size: 1.2rem;">🍩</span> DONUT CHART</div>
+                    <div style="display: flex; align-items: center; justify-content: space-around; height: 240px; padding: 0 10px;">
+                        <!-- Donut -->
+                        <div style="position: relative; width: 200px; height: 200px; border-radius: 50%; background: conic-gradient(#ef4444 0% {p1}%, #f97316 {p1}% {p2}%, #eab308 {p2}% {p3}%, #22c55e {p3}% 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+                            <!-- Inner hole -->
+                            <div style="width: 140px; height: 140px; background-color: #0b1121; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                                <span style="color: #cbd5e1; font-size: 0.95rem; font-weight: bold; margin-bottom: 2px;">TOTAL</span>
+                                <span style="color: white; font-size: 2.5rem; font-weight: bold; line-height: 1;">{total_wo}</span>
+                                <span style="color: #cbd5e1; font-size: 0.95rem; margin-top: 2px;">WO</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Legend -->
+                        <div style="display: flex; flex-direction: column; gap: 18px;">
+                            <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
+                                <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #ef4444; box-shadow: 0 0 5px #ef4444;"></div>
+                                <div style="width: 85px;">MANJA H-1</div>
+                                <div style="color: white; font-weight: bold;">{count_h1} &nbsp;&nbsp; ({int(round(pct_h1))}%)</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
+                                <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #f97316; box-shadow: 0 0 5px #f97316;"></div>
+                                <div style="width: 85px;">MANJA HI</div>
+                                <div style="color: white; font-weight: bold;">{count_hi} &nbsp;&nbsp; ({int(round(pct_hi))}%)</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
+                                <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #eab308; box-shadow: 0 0 5px #eab308;"></div>
+                                <div style="width: 85px;">MANJA H++</div>
+                                <div style="color: white; font-weight: bold;">{count_h2} &nbsp;&nbsp; ({int(round(pct_h2))}%)</div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
+                                <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #22c55e; box-shadow: 0 0 5px #22c55e;"></div>
+                                <div style="width: 85px;">NON MANJA</div>
+                                <div style="color: white; font-weight: bold;">{count_non} &nbsp;&nbsp; ({int(round(pct_non))}%)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                '''
+                st.markdown(donut_html.replace('\n', ''), unsafe_allow_html=True)
+
             # WIDGET 3: STATUS CARD
-            with col3:
+            with col_bot2:
                 sc_html = '''
                 <div class="widget-card">
                     <div class="widget-title"><span style="font-size: 1.2rem;">📋</span> STATUS CARD PER AREA</div>
                     <div style="display: flex; gap: 10px;">
                 '''
                 
-                dots = ['sc-dot-h2', 'sc-dot-h1', 'sc-dot-hi', 'sc-dot-non']
+                dots = ['sc-dot-h1', 'sc-dot-hi', 'sc-dot-h2', 'sc-dot-non']
                 
                 for i, cbo in enumerate(cbos):
                     total_cbo = cbo_totals.get(cbo, 0)
@@ -1421,14 +1489,14 @@ if not df.empty:
                         pct = int(round((count / total_cbo * 100) if total_cbo > 0 else 0))
                         sc_html += f'<div class="sc-item">'
                         sc_html += f'<div class="sc-item-left"><div class="{dots[j]}"></div> {flag}</div>'
-                        sc_html += f'<div style="color: white;">{count} <span style="color: #64748b;">({pct}%)</span></div>'
+                        sc_html += f'<div style="color: white; font-weight: bold;">{count} &nbsp;&nbsp; ({pct}%)</div>'
                         sc_html += f'</div>'
                     
                     sc_html += '</div>'
                 
                 sc_html += '</div></div>'
                 st.markdown(sc_html, unsafe_allow_html=True)
-
+                
             st.markdown("<br>", unsafe_allow_html=True)
             # 2. Pivot Data
             pivot = pd.pivot_table(
@@ -1441,7 +1509,7 @@ if not df.empty:
             )
             
             # Ensure columns exist
-            cols = ['MANJA H++', 'MANJA H-1', 'MANJA HI', 'NON MANJA']
+            cols = ['MANJA H-1', 'MANJA HI', 'MANJA H++', 'NON MANJA']
             for c in cols:
                 if c not in pivot.columns:
                     pivot[c] = 0
@@ -1451,7 +1519,7 @@ if not df.empty:
             
             # 3. Build HTML
             html = '<div class="cp-container">'
-            html += f'<div class="manja-header"><div>CECK BY ORDER / WORKZONE / WONUM</div><div>MANJA H++</div><div>MANJA H-1</div><div>MANJA HI</div><div>NON MANJA</div><div>GRAND TOTAL</div></div>'
+            html += f'<div class="manja-header"><div>CECK BY ORDER / WORKZONE / WONUM</div><div>MANJA H-1</div><div>MANJA HI</div><div>MANJA H++</div><div>NON MANJA</div><div>GRAND TOTAL</div></div>'
             
             html += '<div style="background-color: #0b1121;">'
             
@@ -1460,27 +1528,27 @@ if not df.empty:
             for cbo, df_cbo in pivot.groupby(level=0):
                 cbo_sum = df_cbo.sum()
                 html += f'<div class="manja-row" style="background-color: #1e293b; font-weight: bold;">'
-                html += f'<div>{cbo}</div>'
-                html += f'<div>{int(cbo_sum["MANJA H++"])}</div><div>{int(cbo_sum["MANJA H-1"])}</div><div>{int(cbo_sum["MANJA HI"])}</div><div>{int(cbo_sum["NON MANJA"])}</div><div>{int(cbo_sum["Grand Total"])}</div>'
+                html += f'<div style="font-weight: bold; color: #fbbf24; font-size: 1.25rem;">{cbo}</div>'
+                html += f'<div>{int(cbo_sum["MANJA H-1"])}</div><div>{int(cbo_sum["MANJA HI"])}</div><div>{int(cbo_sum["MANJA H++"])}</div><div>{int(cbo_sum["NON MANJA"])}</div><div>{int(cbo_sum["Grand Total"])}</div>'
                 html += f'</div>'
                 
                 for wz, df_wz in df_cbo.groupby(level=1):
                     wz_sum = df_wz.sum()
                     html += f'<div class="manja-row" style="background-color: #0f172a; border-left: 4px solid #3b82f6;">'
-                    html += f'<div style="padding-left: 20px;">{wz}</div>'
-                    html += f'<div>{int(wz_sum["MANJA H++"])}</div><div>{int(wz_sum["MANJA H-1"])}</div><div>{int(wz_sum["MANJA HI"])}</div><div>{int(wz_sum["NON MANJA"])}</div><div>{int(wz_sum["Grand Total"])}</div>'
+                    html += f'<div style="padding-left: 20px; font-weight: bold; color: #38bdf8; font-size: 1.15rem;">{wz}</div>'
+                    html += f'<div>{int(wz_sum["MANJA H-1"])}</div><div>{int(wz_sum["MANJA HI"])}</div><div>{int(wz_sum["MANJA H++"])}</div><div>{int(wz_sum["NON MANJA"])}</div><div>{int(wz_sum["Grand Total"])}</div>'
                     html += f'</div>'
                     
                     for wonum, df_wonum in df_wz.groupby(level=2):
                         wonum_sum = df_wonum.sum()
                         html += f'<div class="manja-row" style="border-left: 4px solid #10b981;">'
-                        html += f'<div style="padding-left: 45px; font-size: 0.85rem; color: #94a3b8;">{wonum}</div>'
-                        html += f'<div>{int(wonum_sum["MANJA H++"])}</div><div>{int(wonum_sum["MANJA H-1"])}</div><div>{int(wonum_sum["MANJA HI"])}</div><div>{int(wonum_sum["NON MANJA"])}</div><div>{int(wonum_sum["Grand Total"])}</div>'
+                        html += f'<div style="padding-left: 45px; font-size: 1.05rem; color: white; font-weight: bold;">{wonum}</div>'
+                        html += f'<div>{int(wonum_sum["MANJA H-1"])}</div><div>{int(wonum_sum["MANJA HI"])}</div><div>{int(wonum_sum["MANJA H++"])}</div><div>{int(wonum_sum["NON MANJA"])}</div><div>{int(wonum_sum["Grand Total"])}</div>'
                         html += f'</div>'
                 
-                grand_totals[0] += int(cbo_sum["MANJA H++"])
-                grand_totals[1] += int(cbo_sum["MANJA H-1"])
-                grand_totals[2] += int(cbo_sum["MANJA HI"])
+                grand_totals[0] += int(cbo_sum["MANJA H-1"])
+                grand_totals[1] += int(cbo_sum["MANJA HI"])
+                grand_totals[2] += int(cbo_sum["MANJA H++"])
                 grand_totals[3] += int(cbo_sum["NON MANJA"])
                 grand_totals[4] += int(cbo_sum["Grand Total"])
 
