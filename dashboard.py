@@ -1027,11 +1027,11 @@ if not df.empty:
                             
                     fig_jam.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
                                          font=dict(color='#cbd5e1'), xaxis_title="Waktu (Jam)", yaxis_title="Jumlah WO", 
-                                         margin=dict(t=10, b=40, l=10, r=10),
+                                         margin=dict(t=10, b=40, l=50, r=10),
                                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
                                          hovermode="x unified",
                                          xaxis=dict(fixedrange=True, dtick=2, showgrid=True, gridwidth=1, gridcolor='#334155'),
-                                         yaxis=dict(fixedrange=True, dtick=1, showgrid=True, gridwidth=1, gridcolor='#334155'))
+                                         yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155'))
                     st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False}, theme=None)
                     
                 with ch_col2:
@@ -1092,9 +1092,9 @@ if not df.empty:
                     fig_mini.update_layout(
                         title=dict(text=cat, font=dict(color=color, size=13), x=0.5, xanchor='center'),
                         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
-                        margin=dict(t=40, b=45, l=10, r=10),
+                        margin=dict(t=40, b=45, l=50, r=10),
                         xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=8, title="Waktu (Jam)"),
-                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO", dtick=1),
+                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO"),
                         hovermode="x unified",
                         height=280
                     )
@@ -1580,12 +1580,17 @@ if not df.empty:
 
         st.markdown("""
         <style>
-        .cp-container { color: #f1f5f9; font-size: 0.85rem; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: #facc15; padding: 9px 15px; font-weight: bold; color: #020617; font-size: 1.0rem; text-align: center; border-radius: 4px 4px 0 0;}
-        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: #cbd5e1; font-size: 0.9rem;}
+        .cp-container { color: #f1f5f9; font-size: 0.75rem; max-height: 800px; }
+        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: #facc15; padding: 7px 15px; font-weight: bold; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; }
+        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 0.75rem; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
         .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
         .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
         .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
+        .manja-header > div { border-right: 1px solid rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; }
+        .manja-header > div:last-child { border-right: none; }
+        .manja-row > div { border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; }
+        .cp-container .manja-row > div:nth-child(1) { justify-content: center !important; text-align: center !important; }
+        .manja-row > div:last-child { border-right: none; }
         </style>
         <div class="section-title">📊 WO ODS HI</div>
         """, unsafe_allow_html=True)
@@ -1613,10 +1618,10 @@ if not df.empty:
     <div>NO</div>
     <div>NO WONUM & AO</div>
     <div>DATE RE</div>
-    <div>WORZONE</div>
-    <div>MORNING TIM</div>
+    <div>WORKZONE</div>
+    <div>TIM</div>
     <div>STATUS</div>
-    <div>MORNING STATUS WO</div>
+    <div>DETAIL WO</div>
 </div>
 """
             nowonum_col = find_col(['NO WONUM & AO', 'NO WONUM'])
@@ -1650,11 +1655,11 @@ if not df.empty:
                 
                 html += f"""
 <div class="manja-row">
-    <div style="color: white; font-weight: bold;">{i}</div>
-    <div style="font-size: 0.8rem; color: white; font-weight: bold;">{no_wonum}</div>
+    <div>{i}</div>
+    <div>{no_wonum}</div>
     <div>{date_cr}</div>
     <div>{wz}</div>
-    <div style="font-size: 0.8rem;">{tim}</div>
+    <div>{tim}</div>
     <div>{status_html}</div>
     <div>{morning_st}</div>
 </div>
@@ -1673,7 +1678,7 @@ if not df.empty:
         </div>
         <div style="color:#64748b; font-size:0.75rem; font-weight:600; text-transform:uppercase; margin-left:32px;">STARTWORK TOTAL {len(df[(df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date) & (df['Status_Upper'].str.contains('COMPWORK', na=False))])} WO COMPWORK</div>
     </div>
-    <div style="background:#1e293b; padding:6px 15px; border-radius:6px; font-size:0.8rem; color:#94a3b8; border: 1px solid #334155;">
+    <div style="background:#1e293b; padding:6px 15px; border-radius:6px; font-size:0.8rem; color:#94a3b8; border: 2px solid #475569;">
         <i class="bi bi-calendar-event" style="color: #60a5fa; margin-right: 5px;"></i> Periode: {start_date.strftime('%d %b %Y')} - {end_date.strftime('%d %b %Y')}
     </div>
 </div>
@@ -1720,12 +1725,12 @@ if not df.empty:
                 
                 svg_paths = ""
                 html_cards = f"""
-                <div style="position:absolute; left:{col0_x}px; top:10px; width:120px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; color:#cbd5e1; font-size:0.7rem; font-weight:700;">TOTAL ALL PS HI</div>
-                <div style="position:absolute; left:{col1_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; color:#cbd5e1; font-size:0.7rem; font-weight:700;">PS BY DATE RE</div>
-                <div style="position:absolute; left:{col2_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; color:#cbd5e1; font-size:0.7rem; font-weight:700;">JENIS ORDER</div>
-                <div style="position:absolute; left:{col0_x}px; top:{root_y - 70}px; width:120px; height:140px; background:#0f172a; border:1px solid #334155; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index:10;">
+                <div style="position:absolute; left:{col0_x}px; top:10px; width:120px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">TOTAL ALL PS HI</div>
+                <div style="position:absolute; left:{col1_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">PS BY DATE RE</div>
+                <div style="position:absolute; left:{col2_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">JENIS ORDER</div>
+                <div style="position:absolute; left:{col0_x}px; top:{root_y - 70}px; width:120px; height:140px; background:#0f172a; border:2px solid #475569; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index:10;">
                     <i class="bi bi-file-earmark-text" style="color:#60a5fa; font-size:1.8rem; margin-bottom:8px;"></i>
-                    <div style="color:#f8fafc; font-size:0.8rem; font-weight:700; margin-bottom:5px;">TOTAL</div>
+                    <div style="color:#f8fafc; font-size:1.0rem; font-weight:700; margin-bottom:5px;">TOTAL PS</div>
                     <div style="color:#f8fafc; font-size:2.5rem; font-weight:700; line-height:1; margin-bottom:5px;">{total_wo}</div>
                     <div style="color:#94a3b8; font-size:0.8rem; font-weight:700;">WO</div>
                 </div>
@@ -1750,12 +1755,11 @@ if not df.empty:
                     col = color_map.get(k, '#3b82f6')
                     if '²' in k: col = '#2563eb'
                     html_cards += f"""
-                    <div style="position:absolute; left:{col1_x}px; top:{y - 40}px; width:160px; height:80px; background:#0f172a; border:1px solid #1e293b; border-left: 4px solid {col}; border-radius:8px; display:flex; flex-direction:column; justify-content:center; padding-left:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index:10;">
-                        <div style="color:#cbd5e1; font-size:0.8rem; font-weight:700; margin-bottom:3px;">{k}</div>
+                    <div style="position:absolute; left:{col1_x}px; top:{y - 40}px; width:160px; height:80px; background:#0f172a; border:2px solid #475569; border-left: 4px solid {col}; border-radius:8px; display:flex; flex-direction:column; justify-content:center; padding-left:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index:10;">
+                        <div style="color:#cbd5e1; font-size:0.95rem; font-weight:700; margin-bottom:3px;">{k}</div>
                         <div style="display:flex; align-items:baseline; gap:5px;">
-                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#94a3b8; font-size:0.7rem; font-weight:700;">WO</div>
+                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#94a3b8; font-size:0.7rem; font-weight:700;">WO</div><div style="color:{col}; font-size:0.75rem; font-weight:700; margin-left:3px;">({pct:.0f}%)</div>
                         </div>
-                        <div style="color:{col}; font-size:0.75rem; font-weight:700; margin-top:2px;">({pct:.0f}%)</div>
                     </div>
                     """
                     
@@ -1780,17 +1784,16 @@ if not df.empty:
                     pct = (val / total_wo * 100) if total_wo > 0 else 0
                     col = color_map.get(k, '#ef4444')
                     html_cards += f"""
-                    <div style="position:absolute; left:{col2_x}px; top:{y - 40}px; width:160px; height:80px; background:#0f172a; border:1px solid #1e293b; border-left: 4px solid {col}; border-radius:8px; display:flex; flex-direction:column; justify-content:center; padding-left:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index:10;">
-                        <div style="color:#cbd5e1; font-size:0.8rem; font-weight:700; margin-bottom:3px;">{k}</div>
+                    <div style="position:absolute; left:{col2_x}px; top:{y - 40}px; width:160px; height:80px; background:#0f172a; border:2px solid #475569; border-left: 4px solid {col}; border-radius:8px; display:flex; flex-direction:column; justify-content:center; padding-left:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index:10;">
+                        <div style="color:#cbd5e1; font-size:0.95rem; font-weight:700; margin-bottom:3px;">{k}</div>
                         <div style="display:flex; align-items:baseline; gap:5px;">
-                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#94a3b8; font-size:0.7rem; font-weight:700;">WO</div>
+                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#94a3b8; font-size:0.7rem; font-weight:700;">WO</div><div style="color:{col}; font-size:0.75rem; font-weight:700; margin-left:3px;">({pct:.0f}%)</div>
                         </div>
-                        <div style="color:{col}; font-size:0.75rem; font-weight:700; margin-top:2px;">({pct:.0f}%)</div>
                     </div>
                     """
                 
                 final_html = f"""
-                <div style="position:relative; width:100%; height:{height}px; background:#0b1120; border-radius:12px; border:1px solid #1e293b; overflow:hidden; margin-bottom:20px;">
+                <div style="position:relative; width:100%; height:{height}px; background:#0b1120; border-radius:12px; border:2px solid #475569; overflow:hidden; margin-bottom:20px;">
                     <svg width="100%" height="100%" style="position:absolute; top:0; left:0; pointer-events:none;">
                         {svg_paths}
                     </svg>
@@ -1830,16 +1833,16 @@ if not df.empty:
                 
                 cards_html = f"""
                 <div style="display:flex; gap:15px; margin-top:10px;">
-                    <div style="flex:1; background:#0f172a; padding:15px; border-radius:8px; border: 1px solid #1e293b;">
-                        <div style="color:#cbd5e1; font-size:0.75rem; font-weight:700; margin-bottom:15px;">RINGKASAN PS BY DATE RE</div>
+                    <div style="flex:1; background:#0f172a; padding:15px; border-radius:8px; border: 2px solid #475569;">
+                        <div style="color:#cbd5e1; font-size:0.9rem; font-weight:700; margin-bottom:15px;">RINGKASAN PS BY DATE RE</div>
                         <div style="display:flex; justify-content:space-around; text-align:center;">{card1_inner}</div>
                     </div>
-                    <div style="flex:1; background:#0f172a; padding:15px; border-radius:8px; border: 1px solid #1e293b;">
-                        <div style="color:#cbd5e1; font-size:0.75rem; font-weight:700; margin-bottom:15px;">RINGKASAN JENIS ORDER</div>
+                    <div style="flex:1; background:#0f172a; padding:15px; border-radius:8px; border: 2px solid #475569;">
+                        <div style="color:#cbd5e1; font-size:0.9rem; font-weight:700; margin-bottom:15px;">RINGKASAN JENIS ORDER</div>
                         <div style="display:flex; justify-content:space-around; text-align:center;">{card2_inner}</div>
                     </div>
-                    <div style="flex:1; background:#0f172a; padding:15px; border-radius:8px; border: 1px solid #1e293b; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                        <div style="color:#cbd5e1; font-size:0.75rem; font-weight:700; margin-bottom:15px;">TOTAL KESELURUHAN</div>
+                    <div style="flex:1; background:#0f172a; padding:15px; border-radius:8px; border: 2px solid #475569; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <div style="color:#cbd5e1; font-size:0.9rem; font-weight:700; margin-bottom:15px;">TOTAL KESELURUHAN</div>
                         <div style="display:flex; align-items:center; gap:15px;">
                             <i class="bi bi-clipboard-data" style="color:#60a5fa; font-size:2.5rem;"></i>
                             <div style="display:flex; flex-direction:column;">
