@@ -139,7 +139,6 @@ def load_data():
         return pd.DataFrame()
 
 # --- HEADER BERSAMA ---
-now_str = datetime.now().strftime("%d %B %Y %H:%M WIB")
 st.markdown(f'''
 <div class="header-container">
     <div class="header-left">
@@ -147,8 +146,15 @@ st.markdown(f'''
         <p class="dash-subtitle" style="display: flex; align-items: center; font-size: 1.45rem; letter-spacing: 1px; margin-top: -8px;">OPERATION DASHBOARD &ndash;&nbsp;<span style="font-family: 'Superstar M54', sans-serif; color: #dc2626; font-size: 1.5rem; letter-spacing: 2px; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); padding-top: 2px;">YOU'LL NEVER WALK ALONE</span></p>
     </div>
     <div class="header-right">
-        <div class="update-time" id="live-clock" style="color: #60a5fa; font-weight: bold; font-size: 1.1rem; text-align: right;">Memuat waktu...</div>
-        <div class="export-btn">📥 Export ⌄</div>
+        <div style="position: fixed; top: 14px; right: 200px; z-index: 999999; border: 1px solid #eab308; border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; gap: 10px; background-color: #0f172a; box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);">
+            <div style="background-color: #3b82f6; width: 10px; height: 10px; border-radius: 2px;"></div>
+            <div style="color: #cbd5e1; font-size: 0.85rem; font-weight: bold; font-family: sans-serif; letter-spacing: 0.5px;">
+                UPDATE: <span id="live-clock-top" style="color: white;">Memuat waktu...</span> WIB
+            </div>
+            <div style="background-color: #059669; color: white; font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; font-weight: bold; margin-left: 5px;">VIA DASHBOARD</div>
+        </div>
+        <div class="update-time" id="live-clock-inline" style="color: #60a5fa; font-weight: bold; font-size: 1.1rem; text-align: right;">Memuat waktu...</div>
+        <div class="export-btn">📥 Export ▾</div>
     </div>
 </div>
 ''', unsafe_allow_html=True)
@@ -158,25 +164,28 @@ js_clock = """
 <script>
     function updateClock() {
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthsLong = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         
         const now = new Date();
         const dayName = days[now.getDay()];
-        const day = now.getDate();
+        const day = String(now.getDate()).padStart(2, '0');
         const monthName = months[now.getMonth()];
+        const monthLongName = monthsLong[now.getMonth()];
         const year = now.getFullYear();
         
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
         
-        const timeString = `${dayName}, ${day} ${monthName} ${year} | ${hours}:${minutes}:${seconds}`;
+        const timeTop = `${day} ${monthName} ${year} | ${hours}:${minutes}`;
+        const timeInline = `${dayName}, ${now.getDate()} ${monthLongName} ${year} | ${hours}:${minutes}:${seconds}`;
         
         try {
-            const el = window.parent.document.getElementById('live-clock');
-            if(el) {
-                el.innerText = timeString;
-            }
+            const elTop = window.parent.document.getElementById('live-clock-top');
+            if(elTop) elTop.innerText = timeTop;
+            const elInline = window.parent.document.getElementById('live-clock-inline');
+            if(elInline) elInline.innerText = timeInline;
         } catch(e) {}
     }
     
