@@ -138,6 +138,28 @@ def load_data():
         st.error(f"Gagal mengambil data dari Google Sheet: {e}")
         return pd.DataFrame()
 
+
+# Read last_sync.txt to get the actual last pulled time and source
+import os
+sync_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_sync.txt")
+last_sync_time = "Belum Ada Data"
+sync_source = "VIA DASHBOARD"
+
+if os.path.exists(sync_file):
+    try:
+        with open(sync_file, "r") as f:
+            content = f.read().strip()
+            parts = content.split(" | VIA ")
+            if len(parts) == 2:
+                last_sync_time = parts[0].replace(" WIB", "")
+                sync_source = "VIA " + parts[1]
+            else:
+                last_sync_time = content.replace(" WIB", "")
+    except:
+        pass
+else:
+    last_sync_time = "Belum Ada Data"
+
 # --- HEADER BERSAMA ---
 st.markdown(f'''
 <div class="header-container">
@@ -149,9 +171,9 @@ st.markdown(f'''
         <div style="position: fixed; top: 14px; right: 200px; z-index: 999999; border: 1px solid #eab308; border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; gap: 10px; background-color: #0f172a; box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);">
             <div style="background-color: #3b82f6; width: 10px; height: 10px; border-radius: 2px;"></div>
             <div style="color: #cbd5e1; font-size: 0.85rem; font-weight: bold; font-family: sans-serif; letter-spacing: 0.5px;">
-                UPDATE: <span id="live-clock-top" style="color: white;">Memuat waktu...</span> WIB
+                UPDATE: <span style="color: white; margin-left: 4px;">{last_sync_time}</span>
             </div>
-            <div style="background-color: #059669; color: white; font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; font-weight: bold; margin-left: 5px;">VIA DASHBOARD</div>
+            <div style="background-color: #059669; color: white; font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; font-weight: bold; margin-left: 5px;">{sync_source}</div>
         </div>
         <div class="update-time" id="live-clock-inline" style="color: #60a5fa; font-weight: bold; font-size: 1.1rem; text-align: right;">Memuat waktu...</div>
         <div class="export-btn">📥 Export ▾</div>
@@ -182,8 +204,7 @@ js_clock = """
         const timeInline = `${dayName}, ${now.getDate()} ${monthLongName} ${year} | ${hours}:${minutes}:${seconds}`;
         
         try {
-            const elTop = window.parent.document.getElementById('live-clock-top');
-            if(elTop) elTop.innerText = timeTop;
+
             const elInline = window.parent.document.getElementById('live-clock-inline');
             if(elInline) elInline.innerText = timeInline;
         } catch(e) {}
@@ -943,7 +964,7 @@ if not df.empty:
                 html_table += '</tr>'
             html_table += '</tbody></table>'
             
-            st.markdown(html_table, unsafe_allow_html=True)
+            st.markdown(html_table.replace('\n', ''), unsafe_allow_html=True)
         else:
             st.success("🎉 Luar Biasa! Bersih, tidak ada satupun pesanan yang mengalami kendala.")
 
@@ -962,7 +983,7 @@ if not df.empty:
                 all_hours = pd.DataFrame({'Jam': [f"{i:02d}:00" for i in range(24)]})
                 
                 # Tambahkan :00 ke Jam untuk formatting sumbu X
-                jam_df['Jam'] = jam_df['Jam_RE'].astype(str).str[:2] + ":00"
+                jam_df['Jam'] = jam_df['Jam_RE'].astype(str).apply(lambda x: x.split(':')[0].zfill(2) + ':00' if ':' in str(x) else '00:00')
                 
                 # Split RE MASUK berdasarkan JAM KERJA
                 if 'JAM KERJA' in jam_df.columns:
@@ -1033,6 +1054,7 @@ if not df.empty:
                     for trace in fig_jam.data:
                         if trace.name in fill_colors:
                             trace.fillcolor = fill_colors[trace.name]
+
                             
                     fig_jam.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
                                          font=dict(color='#cbd5e1'), xaxis_title="Waktu (Jam)", yaxis_title="Jumlah WO", 
@@ -1045,6 +1067,10 @@ if not df.empty:
                     
                 with ch_col2:
                     tot_re = len(df_re_today)
+                    try:
+                        df_re_today.to_csv(r"C:\Users\User\.gemini\antigravity\scratch\wfm_automation\debug_df_re.csv", index=False)
+                    except Exception as e:
+                        print(e)
                     tot_ps = len(df_ps_today)
                     tot_ken = len(kendala_df)
                     
@@ -1153,13 +1179,46 @@ if not df.empty:
                 final_df = final_df.rename(columns=cols_rename)
                 final_df.insert(0, 'NO', range(1, len(final_df) + 1))
                 final_df = final_df.fillna('-')
+                with open(r"C:\Users\User\.gemini\antigravity\scratch\wfm_automation\debug_cols.txt", "w") as f_dbg: f_dbg.write(str(final_df.columns.tolist()))
                 
                 html_table = '<div style="height: 600px; overflow-y: auto; border: 1px solid #1e293b; border-radius: 8px;">'
                 html_table += '<table style="width: 100%; border-collapse: collapse; text-align: center; color: white; font-size: 0.85rem; font-family: sans-serif;">'
                 html_table += '<thead style="position: sticky; top: 0; background-color: #1e293b; z-index: 1;"><tr>'
-                for col in final_df.columns:
-                    html_table += f'<th style="padding: 12px; border-bottom: 2px solid #334155;">{col}</th>'
-                html_table += '</tr></thead><tbody>'
+                for i, col in enumerate(final_df.columns):
+                    unique_vals = sorted(list(set([str(x).strip() for x in final_df[col] if str(x).strip() != ''])))
+                    
+                    checkboxes_html = ""
+                    for val in unique_vals:
+                        import re as regex
+                        clean_val = regex.sub('<[^<]+>', '', val)
+                        checkboxes_html += f'''
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 0.75rem; padding: 2px 0;">
+                            <input type="checkbox" class="filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;">
+                            <span class="filter-text-{i}">{clean_val}</span>
+                        </label>
+                        '''
+                        
+                    html_table += f'''
+                    <th style="padding: 12px; border-bottom: 2px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">
+                        <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
+                            <span style="font-weight: bold; font-size: 0.8rem; color: #94a3b8;">{col}</span>
+                            <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 0.65rem; padding: 2px 4px; border-radius: 4px;">▼</div>
+                        </div>
+                        <div class="custom-filter-menu" id="filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
+                            <input type="text" class="filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 0.75rem; outline: none;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.7rem; color: #38bdf8; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                                <span class="filter-select-all" data-colindex="{i}" style="cursor: pointer;">Pilih Semua</span>
+                                <span class="filter-clear-all" data-colindex="{i}" style="cursor: pointer;">Bersihkan</span>
+                            </div>
+                            <div class="filter-options-container" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding-right: 5px;">
+                                {checkboxes_html}
+                            </div>
+                            <div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;">
+                                <button class="filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 0.75rem; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button>
+                            </div>
+                        </div>
+                    </th>'''
+                html_table += '</tr></thead><tbody id="rekap-tbody">'
                 
                 for _, row in final_df.iterrows():
                     html_table += '<tr style="border-bottom: 1px solid #1e293b; background-color: #0f172a;">'
@@ -1194,7 +1253,150 @@ if not df.empty:
                 
                 html_table += '</tbody></table></div>'
                 
-                st.markdown(html_table, unsafe_allow_html=True)
+                st.markdown(html_table.replace('\n', ''), unsafe_allow_html=True)
+                
+                # --- JAVASCRIPT INJECTION UNTUK FILTER TABEL (ADVANCED) ---
+                js_filter = '''
+                <script>
+                const parentDoc = window.parent.document;
+                function setupAdvancedFilters() {
+                    const icons = parentDoc.querySelectorAll('.custom-filter-icon');
+                    if (icons.length === 0) return;
+                    
+                    icons.forEach(icon => {
+                        if (icon.dataset.listener) return;
+                        icon.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const colIdx = this.getAttribute('data-colindex');
+                            const menu = parentDoc.getElementById('filter-menu-' + colIdx);
+                            const isHidden = menu.style.display === 'none';
+                            parentDoc.querySelectorAll('.custom-filter-menu').forEach(m => m.style.display = 'none');
+                            if (isHidden) {
+                                menu.style.display = 'block';
+                            }
+                        });
+                        icon.dataset.listener = 'true';
+                    });
+
+                    if (!parentDoc.body.dataset.filterClick) {
+                        parentDoc.body.addEventListener('click', function(e) {
+                            if (!e.target.closest('.custom-filter-menu') && !e.target.closest('.custom-filter-icon')) {
+                                parentDoc.querySelectorAll('.custom-filter-menu').forEach(m => m.style.display = 'none');
+                            }
+                        });
+                        parentDoc.body.dataset.filterClick = 'true';
+                    }
+
+                    const searchInputs = parentDoc.querySelectorAll('.filter-search');
+                    searchInputs.forEach(input => {
+                        if (input.dataset.listener) return;
+                        input.addEventListener('keyup', function() {
+                            const term = this.value.toLowerCase();
+                            const colIdx = this.getAttribute('data-colindex');
+                            const labels = parentDoc.querySelectorAll('.filter-text-' + colIdx);
+                            labels.forEach(label => {
+                                const text = label.textContent.toLowerCase();
+                                const container = label.parentElement;
+                                if (text.includes(term)) {
+                                    container.style.display = 'flex';
+                                } else {
+                                    container.style.display = 'none';
+                                }
+                            });
+                        });
+                        input.dataset.listener = 'true';
+                    });
+
+                    parentDoc.querySelectorAll('.filter-select-all').forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.filter-cb-' + colIdx).forEach(cb => {
+                                if (cb.parentElement.style.display !== 'none') {
+                                    cb.checked = true;
+                                }
+                            });
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+
+                    parentDoc.querySelectorAll('.filter-clear-all').forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.filter-cb-' + colIdx).forEach(cb => {
+                                if (cb.parentElement.style.display !== 'none') {
+                                    cb.checked = false;
+                                }
+                            });
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+
+                    parentDoc.querySelectorAll('.filter-apply-btn').forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            applyTableFilters();
+                            parentDoc.querySelectorAll('.custom-filter-menu').forEach(m => m.style.display = 'none');
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+                }
+
+                function applyTableFilters() {
+                    const tbody = parentDoc.getElementById('rekap-tbody');
+                    if (!tbody) return;
+                    const trs = tbody.getElementsByTagName('tr');
+                    
+                    const menus = parentDoc.querySelectorAll('.custom-filter-menu');
+                    const filters = {};
+                    menus.forEach(menu => {
+                        const id = menu.getAttribute('id');
+                        const colIdx = parseInt(id.replace('filter-menu-', ''));
+                        const checkboxes = menu.querySelectorAll('.filter-cb-' + colIdx + ':checked');
+                        const selected = Array.from(checkboxes).map(cb => cb.value.toLowerCase().trim());
+                        filters[colIdx] = selected;
+                    });
+
+                    for (let i = 0; i < trs.length; i++) {
+                        let tr = trs[i];
+                        let show = true;
+                        
+                        for (let colIdx in filters) {
+                            const allowedVals = filters[colIdx];
+                            if (allowedVals.length === 0) {
+                                show = false;
+                                break;
+                            }
+                            
+                            const totalCbs = parentDoc.querySelectorAll('.filter-cb-' + colIdx).length;
+                            if (allowedVals.length === totalCbs) {
+                                continue;
+                            }
+
+                            let td = tr.getElementsByTagName('td')[colIdx];
+                            if (td) {
+                                let cellText = (td.textContent || td.innerText).toLowerCase().trim();
+                                if (!allowedVals.includes(cellText)) {
+                                    show = false;
+                                    break;
+                                }
+                            }
+                        }
+                        tr.style.display = show ? "" : "none";
+                    }
+                }
+
+                let filterInterval = setInterval(() => {
+                    if (parentDoc.getElementById('rekap-tbody')) {
+                        setupAdvancedFilters();
+                        clearInterval(filterInterval);
+                    }
+                }, 500);
+                </script>
+                '''
+                import streamlit.components.v1 as components
+                components.html(js_filter, width=0, height=0)
             except Exception as e:
                 st.error(f"Gagal memproses Rekap RE: {e}")
         else:
