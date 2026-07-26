@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import psutil
+import textwrap
 import re
 import plotly.express as px
 from datetime import datetime
@@ -131,12 +133,19 @@ SHEET_NAME = "GABUNGAN"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
 
 @st.cache_data(ttl=600)
-def load_data():
+def load_data(sync_time_val):
     try:
-        return pd.read_csv(CSV_URL)
+        df = pd.read_csv(CSV_URL)
+        cloud_sync = None
+        if 'Workorder' in df.columns and 'Description' in df.columns:
+            meta = df[df['Workorder'] == 'METADATA_SYNC']
+            if not meta.empty:
+                cloud_sync = str(meta.iloc[0]['Description'])
+                df = df[df['Workorder'] != 'METADATA_SYNC']
+        return df, cloud_sync
     except Exception as e:
         st.error(f"Gagal mengambil data dari Google Sheet: {e}")
-        return pd.DataFrame()
+        return pd.DataFrame(), None
 
 
 # Read last_sync.txt to get the actual last pulled time and source
@@ -159,6 +168,17 @@ if os.path.exists(sync_file):
         pass
 else:
     last_sync_time = "Belum Ada Data"
+
+with st.spinner("Membaca data dari satelit..."):
+    df, cloud_sync = load_data(last_sync_time)
+    
+if last_sync_time == "Belum Ada Data" and cloud_sync:
+    parts = cloud_sync.split(" | VIA ")
+    if len(parts) == 2:
+        last_sync_time = parts[0].replace(" WIB", "")
+        sync_source = "VIA " + parts[1]
+    else:
+        last_sync_time = cloud_sync.replace(" WIB", "")
 
 # --- HEADER BERSAMA ---
 st.markdown(f'''
@@ -217,8 +237,8 @@ js_clock = """
 import streamlit.components.v1 as components
 components.html(js_clock, width=0, height=0)
 
-with st.spinner("Membaca data dari satelit..."):
-    df = load_data()
+with st.spinner("Mempersiapkan dasbor..."):
+      pass # df sudah diload di atas
 
 if not df.empty:
     # --- PENCARI KOLOM OTOMATIS ---
@@ -277,8 +297,8 @@ if not df.empty:
     with st.sidebar:
         menu = option_menu(
             menu_title=None,
-            options=["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL"],
-            icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart"],
+            options=["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL", "MONITORING SERVER"],
+            icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"],
             default_index=0,
             styles={
                 "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
@@ -311,7 +331,7 @@ if not df.empty:
             if st.sidebar.button("🚀 Tarik Data WFM Terbaru"):
                 with st.spinner("🤖 Robot sedang bekerja... (Tunggu 1-2 menit)"):
                     try:
-                        subprocess.run(["python", "main.py", "DASHBOARD"], capture_output=True, text=True, check=True)
+                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web"], capture_output=True, text=True, check=True)
                         st.cache_data.clear()
                         st.success("✅ Berhasil menarik data! Halaman akan dimuat ulang...")
                         time.sleep(2)
@@ -1041,7 +1061,7 @@ if not df.empty:
                                          'KENDALA': '#f59e0b',
                                          'UNSC': '#ef4444'
                                      })
-                    fig_jam.update_traces(line=dict(width=3, shape='spline'), fill='tozeroy', marker=dict(size=8), textposition='top center')
+                    fig_jam.update_traces(line=dict(width=3, shape='spline'), fill='tozeroy', marker=dict(size=8), textposition='top center', textfont=dict(color='#ffffff'))
                     
                     fill_colors = {
                         'RE MASUK': 'rgba(59, 130, 246, 0.15)',
@@ -1061,6 +1081,7 @@ if not df.empty:
                                          margin=dict(t=10, b=40, l=50, r=10),
                                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
                                          hovermode="x unified",
+                                         hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
                                          xaxis=dict(fixedrange=True, dtick=2, showgrid=True, gridwidth=1, gridcolor='#334155'),
                                          yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155'))
                     st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False}, theme=None)
@@ -1122,7 +1143,7 @@ if not df.empty:
                     fig_mini = px.line(df_cat, x='Jam', y='Jumlah', text='Text', markers=True)
                     fig_mini.update_traces(line=dict(width=2, color=color, shape='spline'), 
                                            fill='tozeroy', fillcolor=fill_color, 
-                                           marker=dict(size=4, color=color), textposition='top center')
+                                           marker=dict(size=4, color=color), textposition='top center', textfont=dict(color='#ffffff'))
                     
                     fig_mini.update_layout(
                         title=dict(text=cat, font=dict(color=color, size=13), x=0.5, xanchor='center'),
@@ -1131,6 +1152,7 @@ if not df.empty:
                         xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=8, title="Waktu (Jam)"),
                         yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO"),
                         hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
                         height=280
                     )
                     # Create a border around the plot area
@@ -1149,13 +1171,18 @@ if not df.empty:
         if len(df_re_today) > 0:
             try:
                 rekap_df = df_re_today.copy()
-                if 'Jam_RE' in rekap_df.columns:
+                if 'DATE CREATE REAL' in rekap_df.columns:
+                    rekap_df = rekap_df.sort_values('DATE CREATE REAL', ascending=True)
+                elif 'Jam_RE' in rekap_df.columns:
                     rekap_df = rekap_df.sort_values('Jam_RE', ascending=True)
                 
                 cols_to_show = []
                 cols_rename = {}
                 
-                if 'Jam_RE' in rekap_df.columns:
+                if 'DATE CREATE REAL' in rekap_df.columns:
+                    cols_to_show.append('DATE CREATE REAL')
+                    cols_rename['DATE CREATE REAL'] = 'DATE RE MASUK'
+                elif 'Jam_RE' in rekap_df.columns:
                     cols_to_show.append('Jam_RE')
                     cols_rename['Jam_RE'] = 'JAM RE MASUK REAL'
                     
@@ -1183,7 +1210,7 @@ if not df.empty:
                 
                 html_table = '<div style="height: 600px; overflow-y: auto; border: 1px solid #1e293b; border-radius: 8px;">'
                 html_table += '<table style="width: 100%; border-collapse: collapse; text-align: center; color: white; font-size: 0.85rem; font-family: sans-serif;">'
-                html_table += '<thead style="position: sticky; top: 0; background-color: #1e293b; z-index: 1;"><tr>'
+                html_table += '<thead style="position: sticky; top: 0; background-color: #16a34a; z-index: 1;"><tr>'
                 for i, col in enumerate(final_df.columns):
                     unique_vals = sorted(list(set([str(x).strip() for x in final_df[col] if str(x).strip() != ''])))
                     
@@ -1201,7 +1228,7 @@ if not df.empty:
                     html_table += f'''
                     <th style="padding: 12px; border-bottom: 2px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">
                         <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
-                            <span style="font-weight: bold; font-size: 0.8rem; color: #94a3b8;">{col}</span>
+                            <span style="font-weight: bold; font-size: 0.8rem; color: #ffffff; text-transform: uppercase;">{col}</span>
                             <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 0.65rem; padding: 2px 4px; border-radius: 4px;">▼</div>
                         </div>
                         <div class="custom-filter-menu" id="filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
@@ -1230,20 +1257,32 @@ if not df.empty:
                             bg_color = 'transparent'
                             text_color = 'white'
                             if val_str == 'STARTWORK':
-                                bg_color = '#64748b'
+                                bg_color = '#6B7280'
+                                text_color = 'black'
+                            elif val_str == 'CONTWORK':
+                                bg_color = '#2563EB'
+                                text_color = 'white'
+                            elif val_str == 'INSTCOMP':
+                                bg_color = '#3B82F6'
+                                text_color = 'white'
+                            elif val_str == 'ACTCOMP':
+                                bg_color = '#06B6D4'
+                                text_color = 'white'
+                            elif val_str == 'VALCOMP':
+                                bg_color = '#14B8A6'
                                 text_color = 'white'
                             elif val_str == 'VALSTART':
+                                bg_color = '#10B981'
+                                text_color = 'white'
+                            elif val_str == 'COMPWORK':
                                 bg_color = '#39ff14'
                                 text_color = 'black'
-                            elif val_str == 'COMPWORK':
-                                bg_color = '#22c55e'
-                                text_color = 'white'
                             elif val_str == 'WORKFAIL':
-                                bg_color = '#facc15'
-                                text_color = 'black'
-                            elif val_str == 'CANCLWORK':
-                                bg_color = '#ef4444'
+                                bg_color = '#DC2626'
                                 text_color = 'white'
+                            elif val_str == 'CANCLWORK':
+                                bg_color = '#F59E0B'
+                                text_color = 'black'
                             
                             pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
                             html_table += f'<td style="padding: 10px;">{pill}</td>'
@@ -1792,12 +1831,12 @@ if not df.empty:
         st.markdown("""
         <style>
         .cp-container { color: #f1f5f9; font-size: 0.75rem; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: #facc15; padding: 7px 15px; font-weight: bold; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; }
+        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: bold; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; }
         .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 0.75rem; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
         .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
         .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
         .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
-        .manja-header > div { border-right: 1px solid rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; }
+        .manja-header > div { border-right: 2px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
         .manja-header > div:last-child { border-right: none; }
         .manja-row > div { border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; }
         .cp-container .manja-row > div:nth-child(1) { justify-content: center !important; text-align: center !important; }
@@ -1854,12 +1893,38 @@ if not df.empty:
                 if tim.lower() == 'nan': tim = ""
                 
                 status = str(row['Status_Upper']) if 'Status_Upper' in row else ""
-                if status == 'COMPWORK':
-                    status_html = f'<div class="pill-compwork">{status}</div>'
-                elif status == 'STARTWORK':
-                    status_html = f'<div class="pill-startwork">{status}</div>'
-                else:
-                    status_html = f'<div class="pill-other">{status}</div>'
+                val_str = status.upper().strip()
+                bg_color = 'transparent'
+                text_color = 'white'
+                if val_str == 'STARTWORK':
+                    bg_color = '#6B7280'
+                    text_color = 'black'
+                elif val_str == 'CONTWORK':
+                    bg_color = '#2563EB'
+                    text_color = 'white'
+                elif val_str == 'INSTCOMP':
+                    bg_color = '#3B82F6'
+                    text_color = 'white'
+                elif val_str == 'ACTCOMP':
+                    bg_color = '#06B6D4'
+                    text_color = 'white'
+                elif val_str == 'VALCOMP':
+                    bg_color = '#14B8A6'
+                    text_color = 'white'
+                elif val_str == 'VALSTART':
+                    bg_color = '#10B981'
+                    text_color = 'white'
+                elif val_str == 'COMPWORK':
+                    bg_color = '#39ff14'
+                    text_color = 'black'
+                elif val_str == 'WORKFAIL':
+                    bg_color = '#DC2626'
+                    text_color = 'white'
+                elif val_str == 'CANCLWORK':
+                    bg_color = '#F59E0B'
+                    text_color = 'black'
+                
+                status_html = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{status}</div>'
                     
                 morning_st = str(row['MORNING STATUS WO']) if 'MORNING STATUS WO' in row and pd.notna(row['MORNING STATUS WO']) else ""
                 if morning_st.lower() == 'nan': morning_st = ""
@@ -2079,3 +2144,277 @@ if not df.empty:
                 
         else:
             st.error("Kolom 'CECK BY ORDER' atau 'DETAIL PS KAPAN' tidak ditemukan.")
+
+    elif menu == "MONITORING SERVER":
+        st.markdown('<div class="section-title-wrap"><div class="section-title">🖥️ SYSTEM MONITORING SERVER</div></div>', unsafe_allow_html=True)
+        
+        try:
+            # CPU
+            cpu_usage = psutil.cpu_percent(interval=0.5)
+            cpu_cores = psutil.cpu_count(logical=True)
+            cpu_freq = psutil.cpu_freq().current if psutil.cpu_freq() else 0
+            
+            # RAM
+            mem = psutil.virtual_memory()
+            ram_usage = mem.percent
+            ram_used_gb = mem.used / (1024 ** 3)
+            ram_total_gb = mem.total / (1024 ** 3)
+            ram_avail_gb = mem.available / (1024 ** 3)
+            
+            # DISK
+            disk = psutil.disk_usage('/')
+            disk_usage = disk.percent
+            disk_used_gb = disk.used / (1024 ** 3)
+            disk_total_gb = disk.total / (1024 ** 3)
+            disk_free_gb = disk.free / (1024 ** 3)
+            
+            # UPTIME
+            import datetime
+            boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
+            now = datetime.datetime.now()
+            uptime_td = now - boot_time
+            days = uptime_td.days
+            hours, remainder = divmod(uptime_td.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            uptime_str = f"{days}d {hours}h {minutes}m"
+            boot_str = boot_time.strftime("%Y-%m-%d %H:%M")
+        except Exception as e:
+            st.error(f"Error reading system metrics: {e}")
+            cpu_usage = ram_usage = disk_usage = 0
+            cpu_cores = cpu_freq = ram_used_gb = ram_total_gb = ram_avail_gb = 0
+            disk_used_gb = disk_total_gb = disk_free_gb = 0
+            uptime_str = "N/A"
+            boot_str = "N/A"
+
+        # USE textwrap.dedent HERE SO MARKDOWN DOESNT SEE INDENTS
+        html_content = textwrap.dedent(f'''
+        <style>
+        .mon-grid {{
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }}
+        .mon-card {{
+            background-color: #0f172a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            border: 1px solid #1e293b;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }}
+        .mon-header {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }}
+        .mon-icon {{
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }}
+        .mon-title {{
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin: 0;
+            text-transform: uppercase;
+        }}
+        .mon-val {{
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #f8fafc;
+            margin: 0;
+        }}
+        .mon-bar-bg {{
+            height: 6px;
+            background-color: #1e293b;
+            border-radius: 3px;
+            margin: 15px 0 10px 0;
+            overflow: hidden;
+        }}
+        .mon-bar-fg {{
+            height: 100%;
+            border-radius: 3px;
+        }}
+        .mon-desc {{
+            font-size: 0.7rem;
+            color: #64748b;
+            margin: 0;
+        }}
+        
+        .ic-cpu {{ background-color: rgba(99, 102, 241, 0.15); color: #818cf8; }}
+        .bg-cpu {{ background-color: #818cf8; width: {cpu_usage}%; }}
+        
+        .ic-ram {{ background-color: rgba(16, 185, 129, 0.15); color: #34d399; }}
+        .bg-ram {{ background-color: #34d399; width: {ram_usage}%; }}
+        
+        .ic-disk {{ background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; }}
+        .bg-disk {{ background-color: #fbbf24; width: {disk_usage}%; }}
+        
+        .ic-up {{ background-color: rgba(239, 68, 68, 0.15); color: #f87171; }}
+        
+        .ic-temp {{ background-color: rgba(244, 63, 94, 0.15); color: #fb7185; }}
+        
+        /* Ensure responsiveness for small screens */
+        @media (max-width: 1200px) {{
+            .mon-grid {{ grid-template-columns: repeat(3, 1fr); }}
+        }}
+        @media (max-width: 768px) {{
+            .mon-grid {{ grid-template-columns: 1fr; }}
+        }}
+        </style>
+        
+        <div class="mon-grid">
+            <!-- CPU -->
+            <div class="mon-card">
+                <div class="mon-header">
+                    <div class="mon-icon ic-cpu">🧠</div>
+                    <div>
+                        <p class="mon-title">CPU USAGE</p>
+                        <p class="mon-val">{cpu_usage}%</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="mon-bar-bg"><div class="mon-bar-fg bg-cpu"></div></div>
+                    <p class="mon-desc">{cpu_cores} Core(s) • Freq: {cpu_freq:.0f} MHz</p>
+                </div>
+            </div>
+            
+            <!-- RAM -->
+            <div class="mon-card">
+                <div class="mon-header">
+                    <div class="mon-icon ic-ram">📝</div>
+                    <div>
+                        <p class="mon-title">RAM</p>
+                        <p class="mon-val">{ram_usage}%</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="mon-bar-bg"><div class="mon-bar-fg bg-ram"></div></div>
+                    <p class="mon-desc">{ram_used_gb:.2f} GB / {ram_total_gb:.2f} GB • Avail: {ram_avail_gb:.2f} GB</p>
+                </div>
+            </div>
+            
+            <!-- DISK -->
+            <div class="mon-card">
+                <div class="mon-header">
+                    <div class="mon-icon ic-disk">💾</div>
+                    <div>
+                        <p class="mon-title">DISK</p>
+                        <p class="mon-val">{disk_usage}%</p>
+                    </div>
+                </div>
+                <div>
+                    <div class="mon-bar-bg"><div class="mon-bar-fg bg-disk"></div></div>
+                    <p class="mon-desc">{disk_used_gb:.2f} GB / {disk_total_gb:.2f} GB • Free: {disk_free_gb:.2f} GB</p>
+                </div>
+            </div>
+            
+            <!-- UPTIME -->
+            <div class="mon-card">
+                <div class="mon-header">
+                    <div class="mon-icon ic-up">⏱️</div>
+                    <div>
+                        <p class="mon-title">UPTIME</p>
+                        <p class="mon-val" style="font-size: 1.4rem; padding-top:4px;">{uptime_str}</p>
+                    </div>
+                </div>
+                <div style="flex-grow:1; display:flex; align-items:flex-end;">
+                    <p class="mon-desc" style="padding-top:15px;">Boot: {boot_str}</p>
+                </div>
+            </div>
+            
+            <!-- SUHU -->
+            <div class="mon-card">
+                <div class="mon-header">
+                    <div class="mon-icon ic-temp">🌡️</div>
+                    <div>
+                        <p class="mon-title">SUHU SERVER</p>
+                        <p class="mon-val">N/A</p>
+                    </div>
+                </div>
+                <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:flex-end;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px; padding-top:10px;">
+                        <span style="font-size:0.75rem; color:#94a3b8;">🟢 CPU (Tctl)</span>
+                        <span style="font-size:0.75rem; color:#34d399; font-weight:bold;">N/A</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="font-size:0.75rem; color:#94a3b8;">🟢 GPU (edge)</span>
+                        <span style="font-size:0.75rem; color:#34d399; font-weight:bold;">N/A</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ''')
+        
+        import re
+        html_content = re.sub(r'^\s+', '', html_content, flags=re.MULTILINE).replace('\n', '')
+        st.markdown(html_content, unsafe_allow_html=True)
+        
+        st.info("💡 **Catatan Suhu Server:** Pembacaan suhu hardware di Windows memerlukan akses level Administrator dan Driver khusus (seperti HWMonitor), sehingga belum dapat ditampilkan secara langsung oleh sistem ini.")
+
+        # Menampilkan Riwayat Penarikan Data (History Log)
+        st.markdown('<div class="section-title-wrap" style="margin-top: 30px;"><div class="section-title">📊 RIWAYAT PENARIKAN DATA HARI INI</div></div>', unsafe_allow_html=True)
+        
+        history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sync_history.csv")
+        if os.path.exists(history_file):
+            try:
+                hist_df = pd.read_csv(history_file)
+                today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+                # Filter hari ini
+                hist_df = hist_df[hist_df['Date'] == today_str]
+                total_tarik = len(hist_df)
+                
+                if total_tarik > 0:
+                    # Render tabel elegan dengan markdown
+                    table_html = f'''
+                    <div style="background-color: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
+                        <p style="color: #38bdf8; font-weight: bold; font-size: 1.1rem; margin-bottom: 15px;">TOTAL TRANSAKSI HARI INI: <span style="background-color: #38bdf8; color: #0f172a; padding: 3px 10px; border-radius: 20px; font-size: 1rem;">{total_tarik} Kali</span></p>
+                        <table style="width: 100%; border-collapse: collapse; color: #cbd5e1; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #1e293b; text-align: left; color: #94a3b8;">
+                                    <th style="padding: 10px;">WAKTU</th>
+                                    <th style="padding: 10px;">USER</th>
+                                    <th style="padding: 10px;">SUMBER</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    '''
+                    for _, row in hist_df.iterrows():
+                        time_val = row['Time']
+                        user_val = row['User']
+                        source_val = row['Source']
+                        icon = "🤖" if source_val == "TELEGRAM" else "💻"
+                        color = "#34d399" if source_val == "TELEGRAM" else "#fbbf24"
+                        
+                        table_html += f'''
+                                <tr style="border-bottom: 1px solid #1e293b;">
+                                    <td style="padding: 12px 10px;">⏰ {time_val}</td>
+                                    <td style="padding: 12px 10px; font-weight: bold; color: white;">👤 {user_val}</td>
+                                    <td style="padding: 12px 10px; color: {color};">{icon} {source_val}</td>
+                                </tr>
+                        '''
+                    table_html += '''
+                            </tbody>
+                        </table>
+                    </div>
+                    '''
+                    import re
+                    table_html = re.sub(r'^\s+', '', table_html, flags=re.MULTILINE).replace('\n', '')
+                    st.markdown(table_html, unsafe_allow_html=True)
+                else:
+                    st.info("Belum ada transaksi penarikan data yang terekam hari ini.")
+            except Exception as e:
+                st.error(f"Gagal membaca riwayat: {e}")
+        else:
+            st.info("Belum ada histori penarikan data (file log belum terbentuk). Lakukan penarikan data minimal 1 kali.")
+
