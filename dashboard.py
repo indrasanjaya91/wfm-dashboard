@@ -40,7 +40,8 @@ st.markdown("""
     .c-orange { border-top: 4px solid #f59e0b; }
     .c-teal { border-top: 4px solid #0d9488; }
     
-    .dc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+    .dc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 15px; }
+    .dc-header-left { display: flex; align-items: flex-start; gap: 12px; }
     .dc-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     .ic-blue { background-color: rgba(59,130,246,0.2); color: #3b82f6; }
     .ic-green { background-color: rgba(16,185,129,0.2); color: #10b981; }
@@ -48,13 +49,15 @@ st.markdown("""
     .ic-orange { background-color: rgba(245,158,11,0.2); color: #f59e0b; }
     .ic-teal { background-color: rgba(13,148,136,0.2); color: #0d9488; }
     
-    .dc-title { font-size: 0.75rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; margin-bottom: 2px; }
-    .dc-value { font-size: 2rem; font-weight: 800; color: white; line-height: 1; }
+    .dc-title { font-size: 0.95rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; margin: 0; margin-top: 4px; }
+    .dc-value { font-size: 2.7rem; font-weight: 800; color: white; line-height: 1; text-align: right; margin-top: 2px; }
     
-    .dc-breakdown { font-size: 0.75rem; color: #94a3b8; }
-    .dc-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-    .dc-row-val { font-weight: bold; color: white; }
-    .dc-row span:first-child { color: white; font-weight: bold; }
+    .dc-breakdown { font-size: 0.85rem; color: #94a3b8; margin-top: 10px; }
+    .dc-row { display: grid; grid-template-columns: 4.8rem 15px 1fr; align-items: center; margin-bottom: 5px; }
+    .dc-row-val { font-weight: bold; color: white; text-align: right; }
+    .dc-row span:first-child { color: white; font-weight: bold; text-align: left; }
+    .dc-row span:nth-child(2) { text-align: center; }
+    .dc-row span:last-child { text-align: right; }
     .dc-row-manja { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; text-align: center; margin-bottom: 5px; }
     .dc-row-manja span:first-child { text-align: left; color: white; font-weight: bold; }
     .dc-row-kendala { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; text-align: center; margin-bottom: 5px; }
@@ -258,6 +261,7 @@ if not df.empty:
     ao_col = find_col(['AO', 'NO SC/AO', 'SC Order No/Track ID/CSRM No'])
     morning_status_col = find_col(['MORNING STATUS WO', 'MORNING STATUS', 'STATUS DETAIL'])
     flag_manja_col = find_col(['FLAG MANJA', 'MANJA', 'KATEGORI MANJA'])
+    customer_col = find_col(['Customer Name', 'CUSTOMER NAME', 'NAMA PELANGGAN'])
 
     # --- SIDEBAR: KONTROL & NAVIGASI ---
     logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
@@ -420,6 +424,7 @@ if not df.empty:
         # --- 5 GRID CARDS ---
         def bd_html(brk):
             return f'''
+                <div style="font-size:0.85rem; margin-bottom:8px; visibility:hidden;">&nbsp;</div>
                 <div class="dc-row"><span>AO TSEL</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['AO TSEL']}</span></div>
                 <div class="dc-row"><span>PDA TSEL</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['PDA TSEL']}</span></div>
                 <div class="dc-row"><span>INDIBIZ</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['INDIBIZ']}</span></div>
@@ -429,7 +434,7 @@ if not df.empty:
         manja_total = len(manja_df)
         manja_html = ""
         if flag_manja_col and order_col:
-            manja_html += '<div class="dc-row-manja" style="color:white; font-weight:bold; font-size:0.65rem;"><span></span><span>H-</span><span>HI</span><span>H+</span></div>'
+            manja_html += '<div class="dc-row-manja" style="color:white; font-weight:bold; font-size:0.85rem; margin-bottom:8px;"><span></span><span>H-</span><span>HI</span><span>H+</span></div>'
             for prod in PROD_COLS:
                 sub = manja_df[manja_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
                 h_min = len(sub[sub[flag_manja_col].astype(str).str.contains("H-", regex=False, na=False)])
@@ -441,7 +446,7 @@ if not df.empty:
             
         kendala_html = ""
         if order_col:
-            kendala_html += '<div class="dc-row-kendala" style="color:white; font-size:0.75rem; font-weight:bold; margin-bottom:8px;"><span></span><span>WFM</span><span>UNSC</span></div>'
+            kendala_html += '<div class="dc-row-kendala" style="color:white; font-size:0.85rem; font-weight:bold; margin-bottom:8px;"><span></span><span>WFM</span><span>UNSC</span></div>'
             for prod in PROD_COLS:
                 sub = kendala_df[kendala_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
                 wfm = len(sub[sub['Status_Upper'] == 'WORKFAIL'])
@@ -455,40 +460,55 @@ if not df.empty:
             <!-- CARD 1 -->
             <div class="d-card c-blue">
                 <div class="dc-header">
-                    <div class="dc-icon ic-blue">📥</div>
-                    <div><div class="dc-title">RE MASUK HI</div><div class="dc-value">{len(df_re_today)}</div></div>
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-blue">📥</div>
+                        <div class="dc-title">RE MASUK HI</div>
+                    </div>
+                    <div class="dc-value">{len(df_re_today)}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_re).strip()}<div class="dc-row" style="border-top: 1px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem;">{ps_re_pct}</span></div></div>
+                <div class="dc-breakdown">{bd_html(brk_re).strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem;">{ps_re_pct}</span></div></div>
             </div>
             <!-- CARD 2 -->
             <div class="d-card c-green">
                 <div class="dc-header">
-                    <div class="dc-icon ic-green">✓</div>
-                    <div><div class="dc-title">DONE PS</div><div class="dc-value">{len(df_ps_today)}</div></div>
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-green">✅</div>
+                        <div class="dc-title">DONE PS</div>
+                    </div>
+                    <div class="dc-value">{len(df_ps_today)}</div>
                 </div>
                 <div class="dc-breakdown">{bd_html(brk_ps)}</div>
             </div>
             <!-- CARD 3 -->
             <div class="d-card c-purple">
                 <div class="dc-header">
-                    <div class="dc-icon ic-purple">◎</div>
-                    <div><div class="dc-title">PONTENSI PS</div><div class="dc-value">{len(potensi_df)}</div></div>
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-purple">🎯</div>
+                        <div class="dc-title">PONTENSI PS</div>
+                    </div>
+                    <div class="dc-value">{len(potensi_df)}</div>
                 </div>
                 <div class="dc-breakdown">{bd_html(brk_pot)}</div>
             </div>
             <!-- CARD 4 -->
             <div class="d-card c-orange">
                 <div class="dc-header">
-                    <div class="dc-icon ic-orange">⚠️</div>
-                    <div><div class="dc-title">KENDALA HI</div><div class="dc-value">{len(kendala_df)}</div></div>
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-orange">⚠️</div>
+                        <div class="dc-title">KENDALA HI</div>
+                    </div>
+                    <div class="dc-value">{len(kendala_df)}</div>
                 </div>
                 <div class="dc-breakdown">{kendala_html}</div>
             </div>
             <!-- CARD 5 -->
             <div class="d-card c-teal">
                 <div class="dc-header">
-                    <div class="dc-icon ic-teal">👤</div>
-                    <div><div class="dc-title">MANJA</div><div class="dc-value">{manja_total}</div></div>
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-teal">👤</div>
+                        <div class="dc-title">MANJA</div>
+                    </div>
+                    <div class="dc-value">{manja_total}</div>
                 </div>
                 <div class="dc-breakdown">{manja_html}</div>
             </div>
@@ -960,35 +980,70 @@ if not df.empty:
         st.markdown('<br>', unsafe_allow_html=True)
         
         st.markdown('<div class="section-title-wrap"><div class="section-title">🚨 DAFTAR LENGKAP WO KENDALA (REAL-TIME)</div></div>', unsafe_allow_html=True)
-        st.markdown("Berikut adalah daftar seluruh pesanan yang SAAT INI berstatus Fail/Cancel di sistem.")
-        
         if len(kendala_df) > 0 and tim_col:
-            cols_to_show = [tim_col, 'INFO ORDER', status_col]
-            if morning_status_col: cols_to_show.append(morning_status_col)
-            
-            disp_fail = kendala_df[cols_to_show].rename(columns={
-                tim_col: 'MORNING TIM',
-                'INFO ORDER': 'NO WONUM & AO',
-                status_col: 'STATUS'
-            })
-            html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; font-family: sans-serif;">'
-            html_table += '<thead><tr style="background-color: #7f1d1d; color: white; text-align: center;">'
-            for col in disp_fail.columns:
-                html_table += f'<th style="border: 1px solid #cbd5e1; padding: 12px 8px;">{col}</th>'
-            html_table += '</tr></thead><tbody>'
-            
-            for _, row in disp_fail.iterrows():
-                html_table += '<tr style="background-color: #450a0a; color: #fca5a5; text-align: center;">'
-                for val in row:
-                    html_table += f'<td style="border: 1px solid #cbd5e1; padding: 10px 8px;">{val if pd.notna(val) and str(val).strip() != "" else "-"}</td>'
-                html_table += '</tr>'
-            html_table += '</tbody></table>'
-            
-            st.markdown(html_table.replace('\n', ''), unsafe_allow_html=True)
+              kendala_df = kendala_df.reset_index(drop=True)
+              kendala_df['NO'] = kendala_df.index + 1
+              
+              date_create_col = None
+              if 'DATE CREATE REAL' in kendala_df.columns:
+                  date_create_col = 'DATE CREATE REAL'
+              
+              cols_to_show = ['NO']
+              if date_create_col:
+                  cols_to_show.append(date_create_col)
+              cols_to_show.extend([tim_col, 'INFO ORDER', status_col])
+              
+              if morning_status_col: cols_to_show.append(morning_status_col)
+              
+              rename_dict = {
+                  tim_col: 'MORNING TIM',
+                  'INFO ORDER': 'NO WONUM & AO',
+                  status_col: 'STATUS'
+              }
+              if date_create_col:
+                  rename_dict[date_create_col] = 'DATE RE MASUK'
+              
+              disp_fail = kendala_df[cols_to_show].rename(columns=rename_dict)
+              
+              html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; font-family: sans-serif;">'
+              html_table += '<thead><tr style="background-color: #7f1d1d; color: white; text-align: center;">'
+              for col in disp_fail.columns:
+                  html_table += f'<th style="border: 1px solid #cbd5e1; padding: 12px 8px;">{col}</th>'
+              html_table += '</tr></thead><tbody>'
+              
+              for _, row in disp_fail.iterrows():
+                  html_table += '<tr style="background-color: #450a0a; color: #fca5a5; text-align: center;">'
+                  for col_name in disp_fail.columns:
+                      val = row[col_name]
+                      display_val = val if pd.notna(val) and str(val).strip() != "" else "-"
+                      
+                      if col_name == 'STATUS':
+                          val_str = str(val).upper().strip()
+                          bg_color = 'transparent'
+                          text_color = '#fca5a5'
+                          if val_str == 'STARTWORK': bg_color, text_color = '#6B7280', 'black'
+                          elif val_str == 'CONTWORK': bg_color, text_color = '#2563EB', 'white'
+                          elif val_str == 'INSTCOMP': bg_color, text_color = '#3B82F6', 'white'
+                          elif val_str == 'ACTCOMP': bg_color, text_color = '#06B6D4', 'white'
+                          elif val_str == 'VALCOMP': bg_color, text_color = '#14B8A6', 'white'
+                          elif val_str == 'VALSTART': bg_color, text_color = '#10B981', 'white'
+                          elif val_str == 'COMPWORK': bg_color, text_color = '#39ff14', 'black'
+                          elif val_str == 'WORKFAIL': bg_color, text_color = '#DC2626', 'white'
+                          elif val_str == 'CANCLWORK': bg_color, text_color = '#F59E0B', 'black'
+                          
+                          if bg_color != 'transparent':
+                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val_str}</div>'
+                              
+                      html_table += f'<td style="border: 1px solid #cbd5e1; padding: 10px 8px;">{display_val}</td>'
+                  html_table += '</tr>'
+              html_table += '</tbody></table>'
+              
+              st.markdown(html_table.replace('\n', ''), unsafe_allow_html=True)
         else:
             st.success("🎉 Luar Biasa! Bersih, tidak ada satupun pesanan yang mengalami kendala.")
 
     elif menu == "DETAIL RE PERIODE":
+        df_re_today_all = df_re_today.copy()
         if order_col:
             df_re_today = df_re_today[df_re_today[order_col].astype(str).str.upper().str.contains('AO', na=False)]
             df_ps_today = df_ps_today[df_ps_today[order_col].astype(str).str.upper().str.contains('AO', na=False)]
@@ -1109,17 +1164,17 @@ if not df.empty:
                     
                     html_str = (
                         '<div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
-                        '<div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 20px;">TOTAL WO (GRAND TOTALS)</div>'
+                        '<div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 20px;">GRAND TOTAL WO AO TSEL</div>'
                         '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 10px; margin-bottom: 20px;">'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #a855f7; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #a855f7; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
                         '</div>'
                         f'<div style="border-top: 1px dashed #334155; padding-top: 20px; margin-top: auto; font-size: 1.05rem; font-weight: bold; color: #94a3b8; text-align: left;">'
                         f'<div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>RE JAM KERJA</span> <span style="color:white;">{tot_jk} ({pct_jk}%)</span></div>'
                         f'<div style="display:flex; justify-content:space-between;"><span>RE DILUAR JAM KERJA</span> <span style="color:white;">{tot_djk} ({pct_djk}%)</span></div>'
-                        f'</div>'
+                        '</div>'
                         '</div>'
                     )
                     st.markdown(html_str, unsafe_allow_html=True)
@@ -1139,18 +1194,20 @@ if not df.empty:
                 
                 for i, (cat, color, fill_color) in enumerate(categories):
                     df_cat = chart_df[chart_df['Kategori'] == cat]
+                    max_y_mini = df_cat['Jumlah'].max() if not df_cat.empty else 5
                     
                     fig_mini = px.line(df_cat, x='Jam', y='Jumlah', text='Text', markers=True)
                     fig_mini.update_traces(line=dict(width=2, color=color, shape='spline'), 
                                            fill='tozeroy', fillcolor=fill_color, 
-                                           marker=dict(size=4, color=color), textposition='top center', textfont=dict(color='#ffffff'))
+                                           marker=dict(size=4, color=color), textposition='top center', 
+                                           textfont=dict(color='#ffffff'), cliponaxis=False)
                     
                     fig_mini.update_layout(
                         title=dict(text=cat, font=dict(color=color, size=13), x=0.5, xanchor='center'),
                         plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
                         margin=dict(t=40, b=45, l=50, r=10),
                         xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=8, title="Waktu (Jam)"),
-                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO"),
+                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Jumlah WO", range=[0, max_y_mini * 1.25 if max_y_mini > 0 else 1]),
                         hovermode="x unified",
                         hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
                         height=280
@@ -1168,9 +1225,9 @@ if not df.empty:
             
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-title-wrap"><div class="section-title">📑 Rekap RE Masuk Harian</div></div>', unsafe_allow_html=True)
-        if len(df_re_today) > 0:
+        if len(df_re_today_all) > 0:
             try:
-                rekap_df = df_re_today.copy()
+                rekap_df = df_re_today_all.copy()
                 if 'DATE CREATE REAL' in rekap_df.columns:
                     rekap_df = rekap_df.sort_values('DATE CREATE REAL', ascending=True)
                 elif 'Jam_RE' in rekap_df.columns:
@@ -1186,9 +1243,17 @@ if not df.empty:
                     cols_to_show.append('Jam_RE')
                     cols_rename['Jam_RE'] = 'JAM RE MASUK REAL'
                     
+                if order_col and order_col in rekap_df.columns:
+                    cols_to_show.append(order_col)
+                    cols_rename[order_col] = 'ORDER'
+                    
                 if 'INFO ORDER' in rekap_df.columns:
                     cols_to_show.append('INFO ORDER')
                     cols_rename['INFO ORDER'] = 'NO WONUM & AO'
+                    
+                if customer_col and customer_col in rekap_df.columns:
+                    cols_to_show.append(customer_col)
+                    cols_rename[customer_col] = 'CUSTOMER NAME'
                     
                 if 'Status_Upper' in rekap_df.columns:
                     cols_to_show.append('Status_Upper')
@@ -1206,6 +1271,10 @@ if not df.empty:
                 final_df = final_df.rename(columns=cols_rename)
                 final_df.insert(0, 'NO', range(1, len(final_df) + 1))
                 final_df = final_df.fillna('-')
+                
+                if 'CUSTOMER NAME' in final_df.columns:
+                    final_df['CUSTOMER NAME'] = final_df['CUSTOMER NAME'].astype(str).str.upper()
+                    
                 with open(r"C:\Users\User\.gemini\antigravity\scratch\wfm_automation\debug_cols.txt", "w") as f_dbg: f_dbg.write(str(final_df.columns.tolist()))
                 
                 html_table = '<div style="height: 600px; overflow-y: auto; border: 1px solid #1e293b; border-radius: 8px;">'
@@ -1286,6 +1355,19 @@ if not df.empty:
                             
                             pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
                             html_table += f'<td style="padding: 10px;">{pill}</td>'
+                        elif col == 'ORDER':
+                            val_str = str(val).upper().strip()
+                            bg_color, text_color = 'transparent', 'white'
+                            if val_str == 'AO TSEL': bg_color, text_color = '#7f1d1d', 'white'
+                            elif val_str == 'PDA TSEL': bg_color, text_color = '#14532d', 'white'
+                            elif val_str == 'INDIBIZ': bg_color, text_color = '#1e3a8a', 'white'
+                            elif val_str == 'ISP VULA': bg_color, text_color = '#4b5563', 'black'
+                            
+                            if bg_color != 'transparent':
+                                pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
+                                html_table += f'<td style="padding: 10px;">{pill}</td>'
+                            else:
+                                html_table += f'<td style="padding: 10px;">{val}</td>'
                         else:
                             html_table += f'<td style="padding: 10px;">{val}</td>'
                     html_table += '</tr>'
@@ -1827,6 +1909,108 @@ if not df.empty:
             st.markdown(html, unsafe_allow_html=True)
 
     elif menu == "WO ODS PERIODE":
+
+        # --- TREND CHARTS ---
+        c1, c2 = st.columns(2)
+        
+        # Data preparation for both charts
+        # Ensure we only use data for WO ODS (from GABUNGAN AV/AW columns)
+        ods_col_tmp = find_col(['WO ODS', 'WO_ODS', 'ODS'])
+        if ods_col_tmp:
+            df_charts = df[df[ods_col_tmp].astype(str).str.strip().str.upper() == 'ONE DAY SERVICE'].copy()
+        else:
+            df_charts = df.copy()
+            
+        date_col = 'DATE CREATE REAL' if 'DATE CREATE REAL' in df_charts.columns else 'DATE RE'
+        dt_series = pd.to_datetime(df_charts[date_col], errors='coerce')
+        
+        # Chart 1: Trend Status (Dalam Bulan) - Filter by start_date's month
+        with c1:
+            with st.container(border=True):
+                mask_month = (dt_series.dt.month == start_date.month) & (dt_series.dt.year == start_date.year)
+                df_month = df_charts[mask_month].copy()
+                df_month['Day'] = dt_series[mask_month].dt.day
+                
+                fig1 = go.Figure()
+                max_y1 = 10
+                if not df_month.empty:
+                    counts = df_month.groupby(['Day', 'Status_Upper']).size().unstack(fill_value=0)
+                    
+                    import calendar
+                    _, last_day = calendar.monthrange(start_date.year, start_date.month)
+                    all_days = pd.Index(range(1, last_day + 1), name='Day')
+                    counts = counts.reindex(all_days, fill_value=0)
+                    
+                    lines_config = [
+                        ('COMPWORK', '#10b981', 'rgba(16, 185, 129, 0.2)', 'COMPWORK'),
+                        ('STARTWORK', '#f59e0b', 'rgba(245, 158, 11, 0.2)', 'STARTWORK'),
+                        ('WORKFAIL', '#ef4444', 'rgba(239, 68, 68, 0.2)', 'WORKFAIL'),
+                        ('CANCLWORK', '#64748b', 'rgba(100, 116, 139, 0.2)', 'CANCELWORK')
+                    ]
+                    
+                    for status, color, fill_color, label in lines_config:
+                        y_vals = counts[status] if status in counts.columns else pd.Series(0, index=all_days)
+                        text_vals = [str(int(v)) if v > 0 else "" for v in y_vals]
+                        fig1.add_trace(go.Scatter(
+                            x=all_days, y=y_vals, mode='lines+markers+text', name=label,
+                            text=text_vals, textposition='top center', textfont=dict(color='white', size=11, weight='bold'),
+                            line=dict(color=color, width=3, shape='spline'),
+                            fill='tozeroy', fillcolor=fill_color,
+                            marker=dict(color=color, size=6),
+                            cliponaxis=False
+                        ))
+                    
+                    max_y1 = counts.max().max() if not counts.empty else 10
+                fig1.update_layout(
+                    title=dict(text="TREND STATUS (DALAM BULAN)", font=dict(color="#f8fafc", size=14, family="sans-serif")),
+                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
+                    font=dict(color='#cbd5e1', family="sans-serif"), margin=dict(l=30, r=20, t=50, b=30),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10)),
+                    xaxis=dict(showgrid=False, tickmode='linear', dtick=3, tick0=1),
+                    yaxis=dict(showgrid=True, gridcolor='#1e293b', zeroline=False, range=[0, max_y1 * 1.2 if max_y1 > 0 else 1]),
+                    height=300
+                )
+                st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+        
+        # Chart 2: Trend WO Berdasarkan Date RE (Jam) - Filter by selected period
+        with c2:
+            with st.container(border=True):
+                mask_period = (dt_series.dt.date >= start_date) & (dt_series.dt.date <= end_date)
+                df_period = df_charts[mask_period].copy()
+                df_period['Hour'] = dt_series[mask_period].dt.hour
+                
+                fig2 = go.Figure()
+                max_y2 = 10
+                if not df_period.empty:
+                    hourly = df_period.groupby('Hour').size()
+                    all_hours = pd.Index(range(24), name='Hour')
+                    hourly = hourly.reindex(all_hours, fill_value=0)
+                    
+                    x_labels = [f"{h:02d}:00" for h in all_hours]
+                    text_vals = [str(int(v)) if v > 0 else "" for v in hourly]
+                    
+                    fig2.add_trace(go.Scatter(
+                        x=x_labels, y=hourly, mode='lines+markers+text', name='WO',
+                        text=text_vals, textposition='top center', textfont=dict(color='white', size=11, weight='bold'),
+                        line=dict(color='#3b82f6', width=3, shape='spline'),
+                        fill='tozeroy', fillcolor='rgba(59, 130, 246, 0.2)',
+                        marker=dict(color='#3b82f6', size=6),
+                        cliponaxis=False
+                    ))
+                    
+                    max_y2 = hourly.max() if not hourly.empty else 10
+                fig2.update_layout(
+                    title=dict(text="TREND WO BERDASARKAN DATE RE (JAM)", font=dict(color="#f8fafc", size=14, family="sans-serif")),
+                    plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
+                    font=dict(color='#cbd5e1', family="sans-serif"), margin=dict(l=30, r=20, t=50, b=30),
+                    showlegend=False,
+                    xaxis=dict(showgrid=False, tickangle=-45, nticks=12),
+                    yaxis=dict(showgrid=True, gridcolor='#1e293b', zeroline=False, range=[0, max_y2 * 1.2 if max_y2 > 0 else 1]),
+                    height=300
+                )
+                st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+            
+        st.markdown("<br>", unsafe_allow_html=True)
 
         st.markdown("""
         <style>
