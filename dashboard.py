@@ -31,12 +31,13 @@ st.markdown("""
     .update-time { font-size: 0.85rem; color: #94a3b8; text-align: right; line-height: 1.2; }
     .export-btn { background-color: #1e293b; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; color: white; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 
-    /* 5 Grid Cards */
-    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; }
+    /* 6 Grid Cards */
+    .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 20px; }
     .d-card { background-color: #0f172a; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border: 1px solid #1e293b; }
     .c-blue { border-top: 4px solid #3b82f6; }
     .c-green { border-top: 4px solid #10b981; }
     .c-purple { border-top: 4px solid #8b5cf6; }
+    .c-cyan { border-top: 4px solid #06b6d4; }
     .c-orange { border-top: 4px solid #f59e0b; }
     .c-teal { border-top: 4px solid #0d9488; }
     
@@ -46,6 +47,7 @@ st.markdown("""
     .ic-blue { background-color: rgba(59,130,246,0.2); color: #3b82f6; }
     .ic-green { background-color: rgba(16,185,129,0.2); color: #10b981; }
     .ic-purple { background-color: rgba(139,92,246,0.2); color: #8b5cf6; }
+    .ic-cyan { background-color: rgba(6,182,212,0.2); color: #06b6d4; }
     .ic-orange { background-color: rgba(245,158,11,0.2); color: #f59e0b; }
     .ic-teal { background-color: rgba(13,148,136,0.2); color: #0d9488; }
     
@@ -348,21 +350,21 @@ if not df.empty:
                 st.rerun()
 
     # --- PERSIAPAN DATA BERDASARKAN TANGGAL ---
-    df['Parsed_Date_PS'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce').dt.date if date_col else None
-    df['Parsed_Date_RE'] = pd.to_datetime(df[re_col], dayfirst=True, errors='coerce').dt.date if re_col else None
+    df['Parsed_Date_PS'] = pd.to_datetime(df[date_col], format='mixed', errors='coerce').dt.date if date_col else None
+    df['Parsed_Date_RE'] = pd.to_datetime(df[re_col], format='mixed', errors='coerce').dt.date if re_col else None
     
     jam_re_col = find_col(['JAM RE MASUK REAL', 'JAM RE MASUK', 'JAM RE'])
     if jam_re_col:
         df['Jam_RE'] = df[jam_re_col].astype(str).str.replace('nan', 'Unknown')
     elif re_col:
-        temp_dt = pd.to_datetime(df[re_col], dayfirst=True, errors='coerce')
+        temp_dt = pd.to_datetime(df[re_col], format='mixed', errors='coerce')
         df['Jam_RE'] = temp_dt.dt.strftime('%H:%M:%S').fillna('Unknown')
     else:
         df['Jam_RE'] = 'Unknown'
         
     jam_mod_col = find_col(['DATE MODIFIED REAL', 'Date Modified', 'Status Date'])
     if jam_mod_col:
-        temp_dt_mod = pd.to_datetime(df[jam_mod_col], dayfirst=True, errors='coerce')
+        temp_dt_mod = pd.to_datetime(df[jam_mod_col], format='mixed', errors='coerce')
         df['Jam_Update'] = temp_dt_mod.dt.strftime('%H:%M:%S').fillna('Unknown')
     else:
         df['Jam_Update'] = 'Unknown'
@@ -407,6 +409,9 @@ if not df.empty:
     potensi_statuses = ['CONTWORK', 'INSTCOMP', 'ACTCOMP', 'VALCOMP', 'VALSTART']
     potensi_df = df[df['Status_Upper'].isin(potensi_statuses)].copy()
     brk_pot = get_breakdown(potensi_df)
+    
+    prog_df = df[(df[morning_status_col].astype(str).str.strip().str.upper() == 'SEDANG DIKERJAKAN') & (df['Status_Upper'] == 'STARTWORK')].copy() if morning_status_col else pd.DataFrame()
+    brk_prog = get_breakdown(prog_df)
     
     kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & (df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date)].copy()
     brk_ken = get_breakdown(kendala_df)
@@ -456,7 +461,7 @@ if not df.empty:
             kendala_html = "<div style='text-align:center; padding-top:20px'>NO DATA</div>"
             
         grid_html = f'''
-        <div class="grid-5">
+        <div class="grid-6">
             <!-- CARD 1 -->
             <div class="d-card c-blue">
                 <div class="dc-header">
@@ -484,11 +489,22 @@ if not df.empty:
                 <div class="dc-header">
                     <div class="dc-header-left">
                         <div class="dc-icon ic-purple">🎯</div>
-                        <div class="dc-title">PONTENSI PS</div>
+                        <div class="dc-title">POTENSI PS</div>
                     </div>
                     <div class="dc-value">{len(potensi_df)}</div>
                 </div>
                 <div class="dc-breakdown">{bd_html(brk_pot)}</div>
+            </div>
+            <!-- CARD 4: WO PROGRESS -->
+            <div class="d-card c-cyan">
+                <div class="dc-header">
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-cyan">⚙️</div>
+                        <div class="dc-title">PROGRESS</div>
+                    </div>
+                    <div class="dc-value">{len(prog_df)}</div>
+                </div>
+                <div class="dc-breakdown">{bd_html(brk_prog)}</div>
             </div>
             <!-- CARD 4 -->
             <div class="d-card c-orange">
@@ -1922,7 +1938,7 @@ if not df.empty:
             df_charts = df.copy()
             
         date_col = 'DATE CREATE REAL' if 'DATE CREATE REAL' in df_charts.columns else 'DATE RE'
-        dt_series = pd.to_datetime(df_charts[date_col], errors='coerce')
+        dt_series = pd.to_datetime(df_charts[date_col], format='mixed', errors='coerce')
         
         # Chart 1: Trend Status (Dalam Bulan) - Filter by start_date's month
         with c1:
@@ -2033,7 +2049,7 @@ if not df.empty:
         tgl_ods_col = find_col(['TANGGAL WO ODS', 'TGL ODS', 'TGL WO ODS'])
         
         if ods_col and tgl_ods_col:
-            df['Parsed_Date_ODS'] = pd.to_datetime(df[tgl_ods_col], errors='coerce').dt.date
+            df['Parsed_Date_ODS'] = pd.to_datetime(df[tgl_ods_col], format='mixed', errors='coerce').dt.date
             df_ods = df[(df[ods_col].astype(str).str.strip().str.upper() == 'ONE DAY SERVICE') & 
                         (df['Parsed_Date_ODS'] >= start_date) & 
                         (df['Parsed_Date_ODS'] <= end_date) & 
