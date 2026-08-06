@@ -337,7 +337,7 @@ if not df.empty:
             if st.sidebar.button("🚀 Tarik Data WFM Terbaru"):
                 with st.spinner("🤖 Robot sedang bekerja... (Tunggu 1-2 menit)"):
                     try:
-                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web"], capture_output=True, text=True, check=True)
+                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING"], capture_output=True, text=True, check=True)
                         st.cache_data.clear()
                         st.success("✅ Berhasil menarik data! Halaman akan dimuat ulang...")
                         time.sleep(2)
@@ -1495,6 +1495,7 @@ if not df.empty:
                         filters[colIdx] = selected;
                     });
 
+                    let visibleCount = 1;
                     for (let i = 0; i < trs.length; i++) {
                         let tr = trs[i];
                         let show = true;
@@ -1521,6 +1522,13 @@ if not df.empty:
                             }
                         }
                         tr.style.display = show ? "" : "none";
+                        if (show) {
+                            let td0 = tr.getElementsByTagName('td')[0];
+                            if (td0) {
+                                td0.innerHTML = visibleCount;
+                            }
+                            visibleCount++;
+                        }
                     }
                 }
 
