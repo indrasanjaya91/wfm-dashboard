@@ -16,11 +16,77 @@ import time
 # --- PENGATURAN HALAMAN ---
 st.set_page_config(page_title="OPERATION DASHBOARD", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
+@st.cache_resource
+def get_auto_puller():
+    import threading
+    import random
+    import time
+    import subprocess
+    
+    class AutoPuller:
+        def __init__(self):
+            self.running = False
+            self.thread = None
+            self.next_run_time = None
+            
+        def _loop(self):
+            while self.running:
+                # Tidur bervariasi antara 29:30 hingga 29:59 detik untuk menghindari deteksi anti-bot
+                sleep_time = (29 * 60) + random.randint(30, 59)
+                self.next_run_time = time.time() + sleep_time
+                
+                # Tidur dalam interval 1 detik agar bisa dihentikan kapan saja secara instan, dan mendukung reset waktu
+                while self.running and self.next_run_time and time.time() < self.next_run_time:
+                    time.sleep(1)
+                    
+                if not self.running:
+                    self.next_run_time = None
+                    return
+                    
+                # Menjalankan perintah penarikan data
+                try:
+                    subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING", "Otomatis"], capture_output=True, text=True)
+                except Exception:
+                    pass
+                    
+        def start(self):
+            if not self.running:
+                self.running = True
+                self.thread = threading.Thread(target=self._loop, daemon=True)
+                self.thread.start()
+                
+        def stop(self):
+            self.running = False
+            self.thread = None
+            
+        def reset_timer(self):
+            if self.running:
+                sleep_time = (29 * 60) + random.randint(30, 59)
+                self.next_run_time = time.time() + sleep_time
+            
+    return AutoPuller()
+
+auto_puller = get_auto_puller()
+
 # --- CUSTOM CSS (PREMIUM DARK THEME) ---
 st.markdown("""
 <style>
     @import url('https://fonts.cdnfonts.com/css/superstar-m54');
     .stApp { background-color: #0b1121; color: #f8fafc; }
+    
+    /* Global Container Border Override */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border: 2.5px solid #94a3b8 !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Custom Border for Kendala Charts (Innermost Block) */
+    div[data-testid="stVerticalBlock"]:has(.custom-border-target):not(:has(div[data-testid="stVerticalBlock"]:has(.custom-border-target))) {
+        border: 2.5px solid #94a3b8 !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        background-color: #0f172a !important;
+    }
     
     /* Top Header Styling */
     .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 15px; margin-bottom: 20px; }
@@ -33,7 +99,7 @@ st.markdown("""
 
     /* 6 Grid Cards */
     .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 20px; }
-    .d-card { background-color: #0f172a; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border: 1px solid #1e293b; }
+    .d-card { background-color: #0f172a; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border: 2.5px solid #334155; }
     .c-blue { border-top: 4px solid #3b82f6; }
     .c-green { border-top: 4px solid #10b981; }
     .c-purple { border-top: 4px solid #8b5cf6; }
@@ -52,14 +118,74 @@ st.markdown("""
     .ic-teal { background-color: rgba(13,148,136,0.2); color: #0d9488; }
     
     .dc-title { font-size: 0.95rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; margin: 0; margin-top: 4px; }
+    
+    /* Custom Toggle Switch (ON/OFF) */
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:nth-child(2) {
+        background-color: #ef4444 !important; /* Red for OFF */
+        width: 60px !important;
+        height: 30px !important;
+        border-radius: 15px !important;
+        position: relative;
+        transition: background-color 0.2s ease;
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label:not([data-selected="true"]) > div:nth-child(2)::after {
+        content: "OFF";
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: white;
+        font-size: 13px;
+        font-weight: 900;
+        z-index: 0;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label[data-selected="true"] > div:nth-child(2) {
+        background-color: #10b981 !important; /* Green for ON */
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label[data-selected="true"] > div:nth-child(2)::after {
+        content: "ON";
+        position: absolute;
+        left: 10px;
+        right: auto;
+        top: 50%;
+        transform: translateY(-50%);
+        color: white;
+        font-size: 13px;
+        font-weight: 900;
+        z-index: 0;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:nth-child(2) > div {
+        z-index: 1;
+        position: absolute !important;
+        left: 3px !important;
+        top: 3px !important;
+        height: 24px !important;
+        width: 24px !important;
+        border-radius: 50% !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+        transition: transform 0.2s ease !important;
+        background-color: white !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label[data-selected="true"] > div:nth-child(2) > div {
+        transform: translateX(30px) !important;
+    }
+
+    /* Custom Pivot */
     .dc-value { font-size: 2.7rem; font-weight: 800; color: white; line-height: 1; text-align: right; margin-top: 2px; }
     
     .dc-breakdown { font-size: 0.85rem; color: #94a3b8; margin-top: 10px; }
     .dc-row { display: grid; grid-template-columns: 4.8rem 15px 1fr; align-items: center; margin-bottom: 5px; }
     .dc-row-val { font-weight: bold; color: white; text-align: right; }
-    .dc-row span:first-child { color: white; font-weight: bold; text-align: left; }
-    .dc-row span:nth-child(2) { text-align: center; }
-    .dc-row span:last-child { text-align: right; }
+    .dc-row > span:first-child { color: white; font-weight: bold; text-align: left; }
+    .dc-row > span:nth-child(2) { text-align: center; }
+    .dc-row > span:last-child, .dc-row > div:last-child { text-align: right; }
     .dc-row-manja { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; text-align: center; margin-bottom: 5px; }
     .dc-row-manja span:first-child { text-align: left; color: white; font-weight: bold; }
     .dc-row-kendala { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; text-align: center; margin-bottom: 5px; }
@@ -318,7 +444,10 @@ if not df.empty:
     st.sidebar.markdown("**Sinkronisasi Data:**")
     
     if "is_admin" not in st.session_state:
-        st.session_state.is_admin = False
+        if st.query_params.get("admin") == "true":
+            st.session_state.is_admin = True
+        else:
+            st.session_state.is_admin = False
 
     is_cloud = os.environ.get("STREAMLIT_CLOUD") == "true"
 
@@ -329,24 +458,100 @@ if not df.empty:
             admin_pin = st.sidebar.text_input("🔑 PIN Admin (Untuk Tarik Data):", type="password")
             if admin_pin == "888888":
                 st.session_state.is_admin = True
+                st.query_params["admin"] = "true"
                 st.rerun()
             elif admin_pin != "":
                 st.sidebar.error("❌ PIN Salah! Akses View-Only.")
         else:
             st.sidebar.success("✅ Mode Admin Aktif")
-            if st.sidebar.button("🚀 Tarik Data WFM Terbaru"):
-                with st.spinner("🤖 Robot sedang bekerja... (Tunggu 1-2 menit)"):
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("⚙️ **TARIK DATA MANUAL (WFM & IBOOSTER):**")
+            
+            # Pilihan Tarik Manual WFM & MORNING
+            if st.sidebar.button("🚀 Tarik WFM & Morning"):
+                with st.spinner("⏳ Robot sedang bekerja... (Tunggu 1-2 menit)"):
                     try:
-                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING"], capture_output=True, text=True, check=True)
+                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING", "Manual"], capture_output=True, text=True, check=True)
                         st.cache_data.clear()
-                        st.success("✅ Berhasil menarik data! Halaman akan dimuat ulang...")
+                        if auto_puller.running:
+                            auto_puller.reset_timer()
+                        st.sidebar.success("✅ Berhasil menarik data! Halaman akan dimuat ulang...")
                         time.sleep(2)
                         st.rerun()
                     except Exception as e:
+                        st.sidebar.error(f"❌ Terjadi kesalahan: {e}")
+                        
+            # Pilihan Tarik Manual IBOOSTER
+            if st.sidebar.button("🚀 Tarik Data Ibooster"):
+                with st.spinner("⏳ Robot menarik data Ibooster (AO & INDIBIZ)... (Tunggu agak lama)"):
+                    try:
+                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "IBOOSTER", "Manual"], capture_output=True, text=True, check=True)
+                        st.sidebar.success("✅ Berhasil menarik data Ibooster gabungan!")
+                        time.sleep(2)
+                    except Exception as e:
                         st.sidebar.error("❌ Robot Gagal menarik data.")
+                        
+            # Pilihan Tarik Otomatis menggunakan Toggle Gulir
+            st.sidebar.markdown("---")
+            is_auto = st.sidebar.toggle("🤖 Aktifkan Tarik Otomatis", value=auto_puller.running)
+            
+            if is_auto and not auto_puller.running:
+                auto_puller.start()
+                st.rerun()
+            elif not is_auto and auto_puller.running:
+                auto_puller.stop()
+                st.rerun()
+                
+            if auto_puller.running:
+                if auto_puller.next_run_time:
+                    import streamlit.components.v1 as components
+                    
+                    countdown_html = f"""
+                    <div id="countdown" style="
+                        background-color: rgba(6, 182, 212, 0.1);
+                        border-left: 4px solid #06b6d4;
+                        padding: 10px;
+                        border-radius: 5px;
+                        color: #06b6d4;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        font-size: 13px;
+                        font-weight: 600;
+                    ">
+                        ⏳ Menghitung waktu...
+                    </div>
+                    <script>
+                        var targetTime = {auto_puller.next_run_time} * 1000;
+                        var elem = document.getElementById("countdown");
+                        setInterval(function() {{
+                            var now = new Date().getTime();
+                            var distance = targetTime - now;
+                            
+                            if (distance < 0) {{
+                                elem.innerHTML = "🚀 Sedang menarik data...";
+                                return;
+                            }}
+                            
+                            var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                            
+                            if (minutes < 10) minutes = "0" + minutes;
+                            if (seconds < 10) seconds = "0" + seconds;
+                            
+                            elem.innerHTML = "⏳ Tarik otomatis dalam: " + minutes + ":" + seconds;
+                        }}, 1000);
+                    </script>
+                    """
+                    with st.sidebar:
+                        components.html(countdown_html, height=45)
+                else:
+                    st.sidebar.info("⏳ Robot Otomatis **AKTIF** (Menunggu jadwal...).")
+                
+            st.sidebar.markdown("---")
             
             if st.sidebar.button("🔒 Keluar Admin"):
                 st.session_state.is_admin = False
+                if "admin" in st.query_params:
+                    del st.query_params["admin"]
                 st.rerun()
 
     # --- PERSIAPAN DATA BERDASARKAN TANGGAL ---
@@ -428,12 +633,17 @@ if not df.empty:
         
         # --- 5 GRID CARDS ---
         def bd_html(brk):
+            total = sum(brk.values()) if brk else 0
+            def fmt(val):
+                pct = f"({(val/total*100):.0f}%)" if total > 0 else "(0%)"
+                return f'<div class="dc-row-val" style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;"><span>{val}</span><span style="font-size: 0.85rem; color: #94a3b8; width: 52px; text-align: right; font-weight: bold; white-space: nowrap;">{pct}</span></div>'
+            
             return f'''
                 <div style="font-size:0.85rem; margin-bottom:8px; visibility:hidden;">&nbsp;</div>
-                <div class="dc-row"><span>AO TSEL</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['AO TSEL']}</span></div>
-                <div class="dc-row"><span>PDA TSEL</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['PDA TSEL']}</span></div>
-                <div class="dc-row"><span>INDIBIZ</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['INDIBIZ']}</span></div>
-                <div class="dc-row"><span>ISP VULA</span><span style="color:#475569">:</span><span class="dc-row-val">{brk['ISP VULA']}</span></div>
+                <div class="dc-row"><span>AO TSEL</span><span style="color:#475569">:</span>{fmt(brk.get('AO TSEL', 0))}</div>
+                <div class="dc-row"><span>PDA TSEL</span><span style="color:#475569">:</span>{fmt(brk.get('PDA TSEL', 0))}</div>
+                <div class="dc-row"><span>INDIBIZ</span><span style="color:#475569">:</span>{fmt(brk.get('INDIBIZ', 0))}</div>
+                <div class="dc-row"><span>ISP VULA</span><span style="color:#475569">:</span>{fmt(brk.get('ISP VULA', 0))}</div>
             '''
             
         manja_total = len(manja_df)
@@ -547,7 +757,7 @@ if not df.empty:
                 # Colors for the 1-5 rank badges
                 badge_colors = ["#059669", "#10b981", "#0891b2", "#2563eb", "#7c3aed"]
                 
-                html_str = '<div style="background-color: #0b1120; border: 2px solid #334155; border-radius: 12px; padding: 20px; font-family: sans-serif; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
+                html_str = '<div style="background-color: #0b1120; border: 2.5px solid #334155; border-radius: 12px; padding: 20px; font-family: sans-serif; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
                 
                 # Header
                 html_str += '''
@@ -678,7 +888,7 @@ if not df.empty:
                     summary['TANGGAL'] = summary['TANGGAL'].astype(str)
                     
                     # Wrap table in a premium card matching the left side
-                    html_table = '<div style="background-color: #0b1120; border: 2px solid #334155; border-radius: 12px; padding: 20px; font-family: sans-serif; height: 40rem; display: flex; flex-direction: column;">'
+                    html_table = '<div style="background-color: #0b1120; border: 2.5px solid #334155; border-radius: 12px; padding: 20px; font-family: sans-serif; height: 40rem; display: flex; flex-direction: column;">'
                     
                     # Custom Header exactly like the left side
                     html_table += '''
@@ -797,11 +1007,49 @@ if not df.empty:
     elif menu == "KENDALA":
         # 1. Hitung Metrik
         total_kendala = len(kendala_df)
-        wfm_count = len(kendala_df[kendala_df['Status_Upper'] == 'WORKFAIL'])
-        cancl_count = len(kendala_df[kendala_df['Status_Upper'] == 'CANCLWORK'])
+        
+        wfm_df = kendala_df[kendala_df['Status_Upper'] == 'WORKFAIL']
+        wfm_count = len(wfm_df)
+        
+        cancl_df = kendala_df[kendala_df['Status_Upper'] == 'CANCLWORK']
+        cancl_count = len(cancl_df)
         
         wfm_pct = f"{(wfm_count/total_kendala*100):.2f}%".replace('.', ',') if total_kendala > 0 else "0,00%"
         cancl_pct = f"{(cancl_count/total_kendala*100):.2f}%".replace('.', ',') if total_kendala > 0 else "0,00%"
+        
+        color_map_order = {
+            'AO TSEL': '#b91c1c', 
+            'INDIBIZ': '#1d4ed8', 
+            'PDA TSEL': '#15803d', 
+            'ISP VULA': '#475569', 
+            'DATIN': '#ca8a04'
+        }
+        def get_color(order):
+            for key, val in color_map_order.items():
+                if key in str(order).upper(): return val
+            return '#94a3b8'
+
+        # Hitung breakdown order untuk WORKFAIL
+        wfm_breakdown_html = ""
+        wfm_items = []
+        brk_wfm = get_breakdown(wfm_df)
+        for k, v in brk_wfm.items():
+            if v > 0:
+                pct = f"{(v/wfm_count*100):.1f}%".replace('.', ',') if wfm_count > 0 else "0,0%"
+                clr = get_color(k)
+                wfm_items.append(f'<div style="color: white; font-size: 0.75rem; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
+        wfm_breakdown_html = f'<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">{"".join(wfm_items)}</div>'
+            
+        # Hitung breakdown order untuk CANCLWORK
+        cancl_breakdown_html = ""
+        cancl_items = []
+        brk_cancl = get_breakdown(cancl_df)
+        for k, v in brk_cancl.items():
+            if v > 0:
+                pct = f"{(v/cancl_count*100):.1f}%".replace('.', ',') if cancl_count > 0 else "0,0%"
+                clr = get_color(k)
+                cancl_items.append(f'<div style="color: white; font-size: 0.75rem; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
+        cancl_breakdown_html = f'<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">{"".join(cancl_items)}</div>'
         
         # 2. Render Metric Cards
         cards_html = f'''
@@ -825,7 +1073,7 @@ if not df.empty:
             <div style="display: flex; gap: 20px; align-items: stretch;">
                 
                 <!-- WORKFAIL Card -->
-                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 2.5px solid #94a3b8; display: flex; flex-direction: column; position: relative; overflow: hidden;">
                     <div style="padding: 15px 20px; display: flex; gap: 15px; flex-grow: 1;">
                         <div style="background-color: #ef4444; width: 60px; height: 60px; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
@@ -833,16 +1081,19 @@ if not df.empty:
                             </svg>
                         </div>
                         <div style="display: flex; flex-direction: column; justify-content: center;">
-                            <div style="color: #cbd5e1; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">WORKFAIL</div>
+                            <div style="color: white; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px;">WORKFAIL</div>
                             <div style="color: #ef4444; font-size: 1.8rem; font-weight: bold; line-height: 1;">{wfm_count}</div>
                             <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">({wfm_pct})</div>
+                        </div>
+                        <div style="margin-left: auto; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
+                            {wfm_breakdown_html}
                         </div>
                     </div>
                     <div style="height: 3px; background-color: #ef4444; margin: 0 15px 15px 15px; border-radius: 2px;"></div>
                 </div>
 
                 <!-- CANCEL Card -->
-                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 2.5px solid #94a3b8; display: flex; flex-direction: column; position: relative; overflow: hidden;">
                     <div style="padding: 15px 20px; display: flex; gap: 15px; flex-grow: 1;">
                         <div style="background-color: #f97316; width: 60px; height: 60px; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -852,16 +1103,19 @@ if not df.empty:
                             </svg>
                         </div>
                         <div style="display: flex; flex-direction: column; justify-content: center;">
-                            <div style="color: #cbd5e1; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">CANCEL (WORK)</div>
+                            <div style="color: white; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px;">CANCLWORK</div>
                             <div style="color: #f97316; font-size: 1.8rem; font-weight: bold; line-height: 1;">{cancl_count}</div>
                             <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">({cancl_pct})</div>
+                        </div>
+                        <div style="margin-left: auto; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
+                            {cancl_breakdown_html}
                         </div>
                     </div>
                     <div style="height: 3px; background-color: #f97316; margin: 0 15px 15px 15px; border-radius: 2px;"></div>
                 </div>
 
                 <!-- TOTAL Card -->
-                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; display: flex; flex-direction: column; position: relative; overflow: hidden;">
+                <div style="flex: 1; background-color: #0f172a; border-radius: 12px; border: 2.5px solid #94a3b8; display: flex; flex-direction: column; position: relative; overflow: hidden;">
                     <div style="padding: 15px 20px; display: flex; gap: 15px; flex-grow: 1;">
                         <div style="background-color: #3b82f6; width: 60px; height: 60px; border-radius: 12px; display: flex; justify-content: center; align-items: center; flex-shrink: 0;">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -873,7 +1127,7 @@ if not df.empty:
                             </svg>
                         </div>
                         <div style="display: flex; flex-direction: column; justify-content: center;">
-                            <div style="color: #cbd5e1; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px;">TOTAL WO</div>
+                            <div style="color: white; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px;">TOTAL WO</div>
                             <div style="color: #3b82f6; font-size: 1.8rem; font-weight: bold; line-height: 1;">{total_kendala}</div>
                             <div style="color: #3b82f6; font-size: 0.8rem; margin-top: 4px;">(100%)</div>
                         </div>
@@ -889,18 +1143,19 @@ if not df.empty:
         # 3. Render Plotly Charts
         st.markdown('<br>', unsafe_allow_html=True)
         if total_kendala > 0:
-            col1, col2, col3 = st.columns([1, 1.3, 1.3])
+            col1, col1b, col2, col3 = st.columns([1, 1, 1.3, 1.3])
             
             # --- Chart 1: Donut ---
             with col1:
-                with st.container(border=True):
-                    st.markdown('<div style="color: #cbd5e1; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">DISTRIBUSI STATUS WO</div>', unsafe_allow_html=True)
+                with st.container():
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div style="color: white; font-size: 1.1rem; font-weight: 900; margin-top: -15px; margin-bottom: 10px;">DISTRIBUSI STATUS WO</div>', unsafe_allow_html=True)
                     
                     donut_df = pd.DataFrame({
-                        'Status': ['WORKFAIL', 'CANCEL (WORK)'],
+                        'Status': ['WORKFAIL', 'CANCLWORK'],
                         'Jumlah': [wfm_count, cancl_count],
                         'Color': ['#ef4444', '#f97316'],
-                        'Label': [f'WORKFAIL<br><b>{wfm_count}</b> ({wfm_pct})', f'CANCEL (WORK)<br><b>{cancl_count}</b> ({cancl_pct})']
+                        'Label': [f'WORKFAIL&nbsp;&nbsp;&nbsp;&nbsp;{wfm_count} ({wfm_pct})', f'CANCLWORK&nbsp;&nbsp;&nbsp;&nbsp;{cancl_count} ({cancl_pct})']
                     })
                     donut_df = donut_df[donut_df['Jumlah'] > 0]
                     if not donut_df.empty:
@@ -914,28 +1169,87 @@ if not df.empty:
                         )])
                         fig1.update_layout(
                             showlegend=True,
-                            legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.9, font=dict(color="#cbd5e1", size=11)),
-                            annotations=[dict(text=f"TOTAL<br><b>{total_kendala}</b><br>WO", x=0.45, y=0.5, font_size=13, font_color="white", showarrow=False)],
+                            legend=dict(orientation="v", yanchor="top", y=-0.1, xanchor="left", x=0, font=dict(color="#cbd5e1", size=11)),
+                            annotations=[dict(text=f"TOTAL<br><b>{total_kendala}</b><br>WO", x=0.5, y=0.5, font_size=13, font_color="white", showarrow=False)],
                             paper_bgcolor='rgba(0,0,0,0)',
                             plot_bgcolor='rgba(0,0,0,0)',
-                            margin=dict(t=0, b=0, l=0, r=0),
-                            height=250
+                            margin=dict(t=0, b=50, l=0, r=0),
+                            height=300
                         )
-                        # Shift the pie center to the left slightly so legend fits better on the right
-                        fig1.update_traces(domain=dict(x=[0, 0.9]))
+                        # Center the pie
+                        fig1.update_traces(domain=dict(x=[0, 1]))
                         st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False}, theme=None)
                     else:
                         st.info("No Data")
+                        
+            # --- Chart 1b: Donut Proporsi Kendala Berdasarkan Jenis Order ---
+            with col1b:
+                with st.container():
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div style="color: white; font-size: 1.1rem; font-weight: 900; margin-top: -15px; margin-bottom: 10px;">KENDALA DARI JENIS ORDER</div>', unsafe_allow_html=True)
+                    
+                    if order_col and order_col in kendala_df.columns:
+                        order_counts = kendala_df[order_col].dropna().astype(str).str.upper().value_counts().reset_index()
+                        order_counts.columns = ['Order', 'Jumlah']
+                        
+                        if not order_counts.empty:
+                            # Predefine colors for known types to match the ORDER column table styling
+                            color_map = {'INDIBIZ': '#1e3a8a', 'AO TSEL': '#7f1d1d', 'AO': '#7f1d1d', 'PDA TSEL': '#14532d', 'PDA': '#14532d', 'ISP VULA': '#4b5563'}
+                            default_colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                            
+                            colors = []
+                            labels = []
+                            for idx, row in order_counts.iterrows():
+                                order_type = row['Order']
+                                count = row['Jumlah']
+                                pct = f"{(count / total_kendala) * 100:.1f}%"
+                                
+                                c = color_map.get(order_type)
+                                if not c:
+                                    c = default_colors[idx % len(default_colors)]
+                                colors.append(c)
+                                
+                                labels.append(f'{order_type}&nbsp;&nbsp;&nbsp;&nbsp;{count} ({pct})')
+                                
+                            order_counts['Color'] = colors
+                            order_counts['Label'] = labels
+                            
+                            fig1b = go.Figure(data=[go.Pie(
+                                labels=order_counts['Label'], 
+                                values=order_counts['Jumlah'], 
+                                hole=.65,
+                                marker_colors=order_counts['Color'],
+                                textinfo='percent',
+                                textfont=dict(color='white', size=11, family="sans-serif"),
+                                hoverinfo='label'
+                            )])
+                            
+                            fig1b.update_layout(
+                                showlegend=True,
+                                legend=dict(orientation="v", yanchor="top", y=-0.1, xanchor="left", x=0, font=dict(color="#cbd5e1", size=11)),
+                                annotations=[dict(text=f"TOTAL<br><span style='font-size: 18px; font-weight: bold;'>{total_kendala}</span><br>KENDALA", x=0.5, y=0.5, font_size=11, font_color="white", showarrow=False)],
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                margin=dict(t=0, b=50, l=0, r=0),
+                                height=300
+                            )
+                            fig1b.update_traces(domain=dict(x=[0, 1]))
+                            st.plotly_chart(fig1b, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                        else:
+                            st.info("No Order Data")
+                    else:
+                        st.info("Kolom Order Tidak Ditemukan")
             
             # --- Chart 2: Top 5 Kendala ---
             with col2:
-                with st.container(border=True):
-                    st.markdown('<div style="color: #cbd5e1; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">TOP 5 KENDALA</div>', unsafe_allow_html=True)
+                with st.container():
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div style="color: white; font-size: 1.1rem; font-weight: 900; margin-top: -15px; margin-bottom: 10px;">TOP 5 KENDALA</div>', unsafe_allow_html=True)
                     if morning_status_col:
                         top_reasons = kendala_df[morning_status_col].dropna().astype(str).str.upper().value_counts().nlargest(5).reset_index()
                         top_reasons.columns = ['Alasan', 'Jumlah']
                         if not top_reasons.empty:
-                            html_bars2 = '<div style="display: flex; flex-direction: column; justify-content: space-evenly; height: 250px; padding: 5px 0;">'
+                            html_bars2 = '<div style="display: flex; flex-direction: column; justify-content: space-evenly; height: 300px; padding: 5px 0;">'
                             max_val2 = top_reasons['Jumlah'].max()
                             rank_colors2 = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#facc15']
                             
@@ -961,13 +1275,14 @@ if not df.empty:
                     
             # --- Chart 3: Top 5 Teknisi ---
             with col3:
-                with st.container(border=True):
-                    st.markdown('<div style="color: #cbd5e1; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">TOP 5 TEKNISI DENGAN KENDALA</div>', unsafe_allow_html=True)
+                with st.container():
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div style="color: white; font-size: 1.1rem; font-weight: 900; margin-top: -15px; margin-bottom: 10px;">TOP 5 TEKNISI DENGAN KENDALA</div>', unsafe_allow_html=True)
                     if tim_col:
                         top_tek = kendala_df[tim_col].dropna().astype(str).str.upper().value_counts().nlargest(5).reset_index()
-                        top_tek.columns = ['Teknisi', 'Jumlah']
                         if not top_tek.empty:
-                            html_bars = '<div style="display: flex; flex-direction: column; justify-content: space-evenly; height: 250px; padding: 5px 0;">'
+                            top_tek.columns = ['Teknisi', 'Jumlah']
+                            html_bars = '<div style="display: flex; flex-direction: column; justify-content: space-evenly; height: 300px; padding: 5px 0;">'
                             max_val = top_tek['Jumlah'].max()
                             rank_colors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#facc15']
                             
@@ -992,6 +1307,25 @@ if not df.empty:
                             st.info("No Technician Data")
                     else:
                         st.info("Column Not Found")
+                        
+        import streamlit.components.v1 as components
+        components.html("""
+        <script>
+        setTimeout(function() {
+            const markers = window.parent.document.querySelectorAll('.custom-border-target');
+            markers.forEach(marker => {
+                let parent = marker.closest('[data-testid="stVerticalBlockBorderWrapper"]');
+                if (!parent) parent = marker.closest('[data-testid="stVerticalBlock"]');
+                if (parent) {
+                    parent.style.setProperty('border', '2.5px solid #94a3b8', 'important');
+                    parent.style.setProperty('border-radius', '12px', 'important');
+                    parent.style.setProperty('padding', '15px', 'important');
+                    parent.style.setProperty('background-color', '#0f172a', 'important');
+                }
+            });
+        }, 100);
+        </script>
+        """, height=0, width=0)
         
         st.markdown('<br>', unsafe_allow_html=True)
         
@@ -1003,11 +1337,23 @@ if not df.empty:
               date_create_col = None
               if 'DATE CREATE REAL' in kendala_df.columns:
                   date_create_col = 'DATE CREATE REAL'
+                  
+              date_modified_col = None
+              if 'DATE MODIFIED REAL' in kendala_df.columns:
+                  date_modified_col = 'DATE MODIFIED REAL'
               
               cols_to_show = ['NO']
               if date_create_col:
                   cols_to_show.append(date_create_col)
-              cols_to_show.extend([tim_col, 'INFO ORDER', status_col])
+              if date_modified_col:
+                  cols_to_show.append(date_modified_col)
+                  
+              cols_to_show.append(tim_col)
+              
+              if order_col and order_col in kendala_df.columns:
+                  cols_to_show.append(order_col)
+                  
+              cols_to_show.extend(['INFO ORDER', status_col])
               
               if morning_status_col: cols_to_show.append(morning_status_col)
               
@@ -1018,17 +1364,21 @@ if not df.empty:
               }
               if date_create_col:
                   rename_dict[date_create_col] = 'DATE RE MASUK'
+              if date_modified_col:
+                  rename_dict[date_modified_col] = 'DATE MODIFIED'
+              if order_col and order_col in kendala_df.columns:
+                  rename_dict[order_col] = 'ORDER'
               
               disp_fail = kendala_df[cols_to_show].rename(columns=rename_dict)
               
-              html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; font-family: sans-serif;">'
+              html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; font-family: sans-serif; border: 2.5px solid #94a3b8;">'
               html_table += '<thead><tr style="background-color: #7f1d1d; color: white; text-align: center;">'
               for col in disp_fail.columns:
-                  html_table += f'<th style="border: 1px solid #cbd5e1; padding: 12px 8px;">{col}</th>'
+                  html_table += f'<th style="border: 1.5px solid #64748b; padding: 12px 8px;">{col}</th>'
               html_table += '</tr></thead><tbody>'
               
               for _, row in disp_fail.iterrows():
-                  html_table += '<tr style="background-color: #450a0a; color: #fca5a5; text-align: center;">'
+                  html_table += '<tr style="background-color: #0f172a; color: #cbd5e1; text-align: center;">'
                   for col_name in disp_fail.columns:
                       val = row[col_name]
                       display_val = val if pd.notna(val) and str(val).strip() != "" else "-"
@@ -1036,7 +1386,7 @@ if not df.empty:
                       if col_name == 'STATUS':
                           val_str = str(val).upper().strip()
                           bg_color = 'transparent'
-                          text_color = '#fca5a5'
+                          text_color = '#cbd5e1'
                           if val_str == 'STARTWORK': bg_color, text_color = '#6B7280', 'black'
                           elif val_str == 'CONTWORK': bg_color, text_color = '#2563EB', 'white'
                           elif val_str == 'INSTCOMP': bg_color, text_color = '#3B82F6', 'white'
@@ -1049,8 +1399,18 @@ if not df.empty:
                           
                           if bg_color != 'transparent':
                               display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val_str}</div>'
+                      elif col_name == 'ORDER':
+                          val_str = str(val).upper().strip()
+                          bg_color, text_color = 'transparent', 'white'
+                          if val_str == 'AO TSEL': bg_color, text_color = '#7f1d1d', 'white'
+                          elif val_str == 'PDA TSEL': bg_color, text_color = '#14532d', 'white'
+                          elif val_str == 'INDIBIZ': bg_color, text_color = '#1e3a8a', 'white'
+                          elif val_str == 'ISP VULA': bg_color, text_color = '#4b5563', 'black'
+                          
+                          if bg_color != 'transparent':
+                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
                               
-                      html_table += f'<td style="border: 1px solid #cbd5e1; padding: 10px 8px;">{display_val}</td>'
+                      html_table += f'<td style="border: 1.5px solid #475569; padding: 10px 8px;">{display_val}</td>'
                   html_table += '</tr>'
               html_table += '</tbody></table>'
               
@@ -1066,7 +1426,10 @@ if not df.empty:
             kendala_df = kendala_df[kendala_df[order_col].astype(str).str.upper().str.contains('AO', na=False)]
             
         st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 20px;"><div class="mc-title">📥 TOTAL JUMLAH RE HARI INI (AO TSEL)</div><div class="mc-value">{len(df_re_today)} <span style="font-size:1rem; color:#94a3b8">WO</span></div></div>', unsafe_allow_html=True)
-        st.markdown('<div class="section-title-wrap"><div class="section-title">📈 DISTRIBUSI JAM MASUK RE & PROGRESS</div></div>', unsafe_allow_html=True)
+        main_chart_container = st.container()
+        with main_chart_container:
+            st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+            st.markdown('<div class="section-title-wrap"><div class="section-title">📈 DISTRIBUSI JAM MASUK RE & PROGRESS</div></div>', unsafe_allow_html=True)
         if len(df_re_today) > 0 and 'Jam_RE' in df_re_today.columns:
             jam_df = df_re_today[df_re_today['Jam_RE'] != 'Unknown'].copy()
             if not jam_df.empty:
@@ -1120,7 +1483,7 @@ if not df.empty:
                 chart_df['Text'] = chart_df['Jumlah'].apply(lambda x: str(int(x)) if x > 0 else '')
                 
                 # Splitting layout for chart and summary
-                ch_col1, ch_col2 = st.columns([3, 1])
+                ch_col1, ch_col2 = main_chart_container.columns([3, 1])
                 
                 with ch_col1:
                     fig_jam = px.line(chart_df, x='Jam', y='Jumlah', color='Kategori', text='Text', markers=True,
@@ -1155,6 +1518,8 @@ if not df.empty:
                                          hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
                                          xaxis=dict(fixedrange=True, dtick=2, showgrid=True, gridwidth=1, gridcolor='#334155'),
                                          yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155'))
+                    fig_jam.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_jam.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
                     st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False}, theme=None)
                     
                 with ch_col2:
@@ -1263,6 +1628,11 @@ if not df.empty:
                     cols_to_show.append(order_col)
                     cols_rename[order_col] = 'ORDER'
                     
+                wz_col = find_col(['WORZONE', 'WORKZONE', 'Workzone', 'ZONE', 'Zone'])
+                if wz_col and wz_col in rekap_df.columns:
+                    cols_to_show.append(wz_col)
+                    cols_rename[wz_col] = 'STO'
+                    
                 if 'INFO ORDER' in rekap_df.columns:
                     cols_to_show.append('INFO ORDER')
                     cols_rename['INFO ORDER'] = 'NO WONUM & AO'
@@ -1277,11 +1647,11 @@ if not df.empty:
                     
                 if tim_col and tim_col in rekap_df.columns:
                     cols_to_show.append(tim_col)
-                    cols_rename[tim_col] = 'MORNING TIM'
+                    cols_rename[tim_col] = 'TIM'
                     
                 if morning_status_col and morning_status_col in rekap_df.columns:
                     cols_to_show.append(morning_status_col)
-                    cols_rename[morning_status_col] = 'MORNING STATUS WO'
+                    cols_rename[morning_status_col] = 'STATUS WO'
                 
                 final_df = rekap_df[cols_to_show].copy()
                 final_df = final_df.rename(columns=cols_rename)
@@ -1293,7 +1663,7 @@ if not df.empty:
                     
                 with open(r"C:\Users\User\.gemini\antigravity\scratch\wfm_automation\debug_cols.txt", "w") as f_dbg: f_dbg.write(str(final_df.columns.tolist()))
                 
-                html_table = '<div style="height: 600px; overflow-y: auto; border: 1px solid #1e293b; border-radius: 8px;">'
+                html_table = '<div style="height: 800px; overflow-y: auto; border: 2.5px solid #94a3b8; border-radius: 12px;">'
                 html_table += '<table style="width: 100%; border-collapse: collapse; text-align: center; color: white; font-size: 0.85rem; font-family: sans-serif;">'
                 html_table += '<thead style="position: sticky; top: 0; background-color: #16a34a; z-index: 1;"><tr>'
                 for i, col in enumerate(final_df.columns):
@@ -1313,7 +1683,7 @@ if not df.empty:
                     html_table += f'''
                     <th style="padding: 12px; border-bottom: 2px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">
                         <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
-                            <span style="font-weight: bold; font-size: 0.8rem; color: #ffffff; text-transform: uppercase;">{col}</span>
+                            <span style="font-weight: 900; font-size: 0.85rem; color: #ffffff; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); letter-spacing: 0.5px;">{col}</span>
                             <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 0.65rem; padding: 2px 4px; border-radius: 4px;">▼</div>
                         </div>
                         <div class="custom-filter-menu" id="filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
@@ -1333,7 +1703,7 @@ if not df.empty:
                 html_table += '</tr></thead><tbody id="rekap-tbody">'
                 
                 for _, row in final_df.iterrows():
-                    html_table += '<tr style="border-bottom: 1px solid #1e293b; background-color: #0f172a;">'
+                    html_table += '<tr style="border-bottom: 2px solid #1e293b; background-color: #0f172a;">'
                     for col in final_df.columns:
                         val = row[col]
                         
@@ -1551,9 +1921,20 @@ if not df.empty:
         st.markdown("""
         <style>
         .cp-container { color: #f1f5f9; font-size: 1.25rem; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; background: #4c1d95; padding: 3px 10px; font-weight: bold; color: #ffffff; font-size: 1.05rem; }
-        .manja-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 12px 10px; border-bottom: 1px solid #334155; align-items: center; }
-        .manja-grand { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr; padding: 15px 10px; background: #4c1d95; font-weight: bold; border-top: 2px solid #334155; color: #ffffff; font-size: 1.15rem; }
+        .manja-header { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); background: #4c1d95; font-weight: bold; color: #ffffff; font-size: 15px; align-items: stretch; padding: 0; }
+        .manja-header > div { padding: 9px 10px; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .cp-container .manja-header > div:nth-child(1) { justify-content: center; text-align: center; }
+        
+        .manja-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); border-bottom: 1px solid #334155; align-items: stretch; font-size: 13px; padding: 0; }
+        .manja-row > div { padding: 4px 10px 10px 10px; border-right: 1px solid #334155; display: flex; align-items: center; justify-content: center; overflow: hidden; word-break: break-word; }
+        .manja-row > div:nth-child(1) { justify-content: flex-start; text-align: left; }
+        .manja-row > div:last-child { border-right: none; }
+        
+        .manja-grand { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); background: #4c1d95; font-weight: bold; border-top: 2px solid #334155; color: #ffffff; font-size: 15px; align-items: stretch; padding: 0; }
+        .manja-grand > div { padding: 9px 10px; border-right: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; text-align: center; }
+        .cp-container .manja-grand > div:nth-child(1) { justify-content: center; text-align: center; }
+        .manja-grand > div:last-child { border-right: none; }
+        
         .cp-arrow { display: inline-block; transition: transform 0.2s; margin-right: 5px; }
         details[open] > summary .cp-arrow { transform: rotate(90deg); }
         </style>
@@ -1899,21 +2280,21 @@ if not df.empty:
             for cbo, df_cbo in pivot.groupby(level=0):
                 cbo_sum = df_cbo.sum()
                 html += f'<div class="manja-row" style="background-color: #1e293b; font-weight: bold;">'
-                html += f'<div style="font-weight: bold; color: #fbbf24; font-size: 1.25rem;">{cbo}</div>'
+                html += f'<div style="font-weight: bold; color: #fbbf24;">{cbo}</div>'
                 html += f'<div>{fmt_num(cbo_sum["MANJA H-1"])}</div><div>{fmt_num(cbo_sum["MANJA HI"])}</div><div>{fmt_num(cbo_sum["MANJA H++"])}</div><div>{fmt_num(cbo_sum["NON MANJA"])}</div><div>{fmt_num(cbo_sum["Grand Total"])}</div>'
                 html += f'</div>'
                 
                 for wz, df_wz in df_cbo.groupby(level=1):
                     wz_sum = df_wz.sum()
-                    html += f'<div class="manja-row" style="background-color: #0f172a; border-left: 4px solid #3b82f6;">'
-                    html += f'<div style="padding-left: 20px; font-weight: bold; color: #38bdf8; font-size: 1.15rem;">{wz}</div>'
+                    html += f'<div class="manja-row" style="background-color: #0f172a;">'
+                    html += f'<div style="padding-left: 16px; font-weight: bold; color: #38bdf8; border-left: 4px solid #3b82f6;">{wz}</div>'
                     html += f'<div>{fmt_num(wz_sum["MANJA H-1"])}</div><div>{fmt_num(wz_sum["MANJA HI"])}</div><div>{fmt_num(wz_sum["MANJA H++"])}</div><div>{fmt_num(wz_sum["NON MANJA"])}</div><div>{fmt_num(wz_sum["Grand Total"])}</div>'
                     html += f'</div>'
                     
                     for wonum, df_wonum in df_wz.groupby(level=2):
                         wonum_sum = df_wonum.sum()
-                        html += f'<div class="manja-row" style="border-left: 4px solid #10b981;">'
-                        html += f'<div style="padding-left: 45px; font-size: 1.05rem; color: white; font-weight: bold;">{wonum}</div>'
+                        html += f'<div class="manja-row">'
+                        html += f'<div style="padding-left: 41px; color: white; font-weight: bold; border-left: 4px solid #10b981;">{wonum}</div>'
                         html += f'<div>{fmt_num(wonum_sum["MANJA H-1"])}</div><div>{fmt_num(wonum_sum["MANJA HI"])}</div><div>{fmt_num(wonum_sum["MANJA H++"])}</div><div>{fmt_num(wonum_sum["NON MANJA"])}</div><div>{fmt_num(wonum_sum["Grand Total"])}</div>'
                         html += f'</div>'
                 
@@ -1950,7 +2331,8 @@ if not df.empty:
         
         # Chart 1: Trend Status (Dalam Bulan) - Filter by start_date's month
         with c1:
-            with st.container(border=True):
+            with st.container():
+                st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
                 mask_month = (dt_series.dt.month == start_date.month) & (dt_series.dt.year == start_date.year)
                 df_month = df_charts[mask_month].copy()
                 df_month['Day'] = dt_series[mask_month].dt.day
@@ -1998,7 +2380,8 @@ if not df.empty:
         
         # Chart 2: Trend WO Berdasarkan Date RE (Jam) - Filter by selected period
         with c2:
-            with st.container(border=True):
+            with st.container():
+                st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
                 mask_period = (dt_series.dt.date >= start_date) & (dt_series.dt.date <= end_date)
                 df_period = df_charts[mask_period].copy()
                 df_period['Hour'] = dt_series[mask_period].dt.hour
@@ -2033,13 +2416,32 @@ if not df.empty:
                     height=300
                 )
                 st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+                
+        import streamlit.components.v1 as components
+        components.html("""
+        <script>
+        setTimeout(function() {
+            const markers = window.parent.document.querySelectorAll('.custom-border-target');
+            markers.forEach(marker => {
+                let parent = marker.closest('[data-testid="stVerticalBlockBorderWrapper"]');
+                if (!parent) parent = marker.closest('[data-testid="stVerticalBlock"]');
+                if (parent) {
+                    parent.style.setProperty('border', '2.5px solid #94a3b8', 'important');
+                    parent.style.setProperty('border-radius', '12px', 'important');
+                    parent.style.setProperty('padding', '15px', 'important');
+                    parent.style.setProperty('background-color', '#0f172a', 'important');
+                }
+            });
+        }, 100);
+        </script>
+        """, height=0, width=0)
             
         st.markdown("<br>", unsafe_allow_html=True)
 
         st.markdown("""
         <style>
         .cp-container { color: #f1f5f9; font-size: 0.75rem; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: bold; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; }
+        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: 900; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
         .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 0.75rem; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
         .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
         .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
@@ -2593,22 +2995,37 @@ if not df.empty:
                                     <th style="padding: 10px;">WAKTU</th>
                                     <th style="padding: 10px;">USER</th>
                                     <th style="padding: 10px;">SUMBER</th>
+                                    <th style="padding: 10px;">TIPE</th>
+                                    <th style="padding: 10px;">TARGET DATA</th>
                                 </tr>
                             </thead>
                             <tbody>
                     '''
                     for _, row in hist_df.iterrows():
-                        time_val = row['Time']
-                        user_val = row['User']
-                        source_val = row['Source']
-                        icon = "🤖" if source_val == "TELEGRAM" else "💻"
-                        color = "#34d399" if source_val == "TELEGRAM" else "#fbbf24"
+                        source_style = "color: #fbbf24;" if str(row['Source']).upper() == "DASHBOARD" else "color: #10b981;"
+                        icon_source = "💻" if str(row['Source']).upper() == "DASHBOARD" else "📱"
                         
+                        # Tipe Puller Styling
+                        tipe = str(row.get('Type', 'Manual'))
+                        if tipe.upper() == 'OTOMATIS':
+                            tipe_html = '<span style="background-color: rgba(16,185,129,0.2); color: #10b981; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🤖 OTOMATIS</span>'
+                        else:
+                            tipe_html = '<span style="background-color: rgba(99,102,241,0.2); color: #818cf8; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">👆 MANUAL</span>'
+                            
+                        # Target Data Styling
+                        target = str(row.get('Target', 'ALL'))
+                        if 'WFM' in target.upper():
+                            target_html = f'<span style="background-color: rgba(239,68,68,0.2); color: #ef4444; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🎯 {target}</span>'
+                        else:
+                            target_html = f'<span style="background-color: rgba(245,158,11,0.2); color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🎯 {target}</span>'
+
                         table_html += f'''
                                 <tr style="border-bottom: 1px solid #1e293b;">
-                                    <td style="padding: 12px 10px;">⏰ {time_val}</td>
-                                    <td style="padding: 12px 10px; font-weight: bold; color: white;">👤 {user_val}</td>
-                                    <td style="padding: 12px 10px; color: {color};">{icon} {source_val}</td>
+                                    <td style="padding: 10px; font-weight: bold; color: #f8fafc;">⏰ {row['Time']}</td>
+                                    <td style="padding: 10px; color: #c4b5fd;">👤 {row['User']}</td>
+                                    <td style="padding: 10px; {source_style} font-weight: bold;">{icon_source} {row['Source']}</td>
+                                    <td style="padding: 10px;">{tipe_html}</td>
+                                    <td style="padding: 10px;">{target_html}</td>
                                 </tr>
                         '''
                     table_html += '''
