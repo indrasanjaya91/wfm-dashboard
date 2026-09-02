@@ -51,6 +51,8 @@ def get_auto_puller():
                     
         def start(self):
             if not self.running:
+                import time, random
+                self.next_run_time = time.time() + (29 * 60) + random.randint(30, 59)
                 self.running = True
                 self.thread = threading.Thread(target=self._loop, daemon=True)
                 self.thread.start()
@@ -67,6 +69,61 @@ def get_auto_puller():
     return AutoPuller()
 
 auto_puller = get_auto_puller()
+
+@st.cache_resource
+def get_ibooster_auto_puller():
+    import threading
+    import random
+    import time
+    import subprocess
+    
+    class IboosterAutoPuller:
+        def __init__(self):
+            self.running = False
+            self.thread = None
+            self.next_run_time = None
+            
+        def _loop(self):
+            while self.running:
+                # 02:55:30 to 02:56:30
+                # 2 hours, 55 minutes = 10500 seconds + 30 = 10530
+                # 2 hours, 56 minutes = 10560 seconds + 30 = 10590
+                sleep_time = random.randint(10530, 10590)
+                self.next_run_time = time.time() + sleep_time
+                
+                while self.running and self.next_run_time and time.time() < self.next_run_time:
+                    time.sleep(1)
+                    
+                if not self.running:
+                    self.next_run_time = None
+                    return
+                    
+                try:
+                    subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "IBOOSTER", "Otomatis"], capture_output=True, text=True)
+                except Exception:
+                    pass
+                    
+        def start(self):
+            if not self.running:
+                import time, random
+                self.next_run_time = time.time() + random.randint(10530, 10590)
+                self.running = True
+                self.thread = threading.Thread(target=self._loop, daemon=True)
+                self.thread.start()
+                
+        def stop(self):
+            self.running = False
+            self.thread = None
+            
+        def reset_timer(self):
+            if self.running:
+                sleep_time = random.randint(10530, 10590)
+                self.next_run_time = time.time() + sleep_time
+            
+    return IboosterAutoPuller()
+
+ibooster_auto_puller = get_ibooster_auto_puller()
+
 
 # --- CUSTOM CSS (PREMIUM DARK THEME) ---
 st.markdown("""
@@ -234,11 +291,11 @@ st.markdown("""
     /* MANJA WIDGETS */
     .widget-card { background-color: #0b1121; border-radius: 10px; padding: 15px; border: 3px solid #475569; height: 330px; box-sizing: border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     .widget-title { color: #f8fafc; font-size: 1rem; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
-    .widget-subtitle { color: #3b82f6; font-size: 0.75rem; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+    .widget-subtitle { color: #3b82f6; font-size: 14px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
     
     .hm-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: center; }
     .hm-table th, .hm-table td { border: 1px solid #1e293b; padding: 8px; }
-    .hm-table th { background-color: #0f172a; color: #cbd5e1; font-weight: bold; font-size: 0.75rem; }
+    .hm-table th { background-color: #0f172a; color: #cbd5e1; font-weight: bold; font-size: 14px; }
     .hm-cell-h2 { background-color: #854d0e; color: white; font-weight: bold; font-size: 1.1rem; }
     .hm-cell-h1 { background-color: #7f1d1d; color: white; font-weight: bold; font-size: 1.1rem; }
     .hm-cell-hi { background-color: #b45309; color: white; font-weight: bold; font-size: 1.1rem; }
@@ -429,7 +486,7 @@ if not df.empty:
     with st.sidebar:
         menu = option_menu(
             menu_title=None,
-            options=["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL", "MONITORING SERVER"],
+            options=["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER"],
             icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"],
             default_index=0,
             styles={
@@ -493,20 +550,18 @@ if not df.empty:
                         
             # Pilihan Tarik Otomatis menggunakan Toggle Gulir
             st.sidebar.markdown("---")
-            is_auto = st.sidebar.toggle("🤖 Aktifkan Tarik Otomatis", value=auto_puller.running)
+            is_auto = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (WFM)", value=auto_puller.running)
             
             if is_auto and not auto_puller.running:
                 auto_puller.start()
-                st.rerun()
             elif not is_auto and auto_puller.running:
                 auto_puller.stop()
-                st.rerun()
                 
             if auto_puller.running:
                 if auto_puller.next_run_time:
                     import streamlit.components.v1 as components
                     
-                    countdown_html = f"""
+                    countdown_html = f'''
                     <div id="countdown" style="
                         background-color: rgba(6, 182, 212, 0.1);
                         border-left: 4px solid #06b6d4;
@@ -525,26 +580,73 @@ if not df.empty:
                         setInterval(function() {{
                             var now = new Date().getTime();
                             var distance = targetTime - now;
-                            
                             if (distance < 0) {{
-                                elem.innerHTML = "🚀 Sedang menarik data...";
+                                elem.innerHTML = "⏳ Menarik data WFM...";
                                 return;
                             }}
-                            
-                            var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                            
-                            if (minutes < 10) minutes = "0" + minutes;
-                            if (seconds < 10) seconds = "0" + seconds;
-                            
-                            elem.innerHTML = "⏳ Tarik otomatis dalam: " + minutes + ":" + seconds;
+                            var m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            var s = Math.floor((distance % (1000 * 60)) / 1000);
+                            elem.innerHTML = "⏳ WFM otomatis: " + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
                         }}, 1000);
                     </script>
-                    """
+                    '''
                     with st.sidebar:
                         components.html(countdown_html, height=45)
                 else:
-                    st.sidebar.info("⏳ Robot Otomatis **AKTIF** (Menunggu jadwal...).")
+                    import time
+                    st.sidebar.info("⏳ Menyiapkan jadwal WFM...")
+                    time.sleep(0.5)
+                    st.rerun()
+
+            st.sidebar.markdown("---")
+            is_auto_ibooster = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (IBOOSTER)", value=ibooster_auto_puller.running)
+            
+            if is_auto_ibooster and not ibooster_auto_puller.running:
+                ibooster_auto_puller.start()
+            elif not is_auto_ibooster and ibooster_auto_puller.running:
+                ibooster_auto_puller.stop()
+                
+            if ibooster_auto_puller.running:
+                if ibooster_auto_puller.next_run_time:
+                    import streamlit.components.v1 as components
+                    
+                    countdown_html2 = f'''
+                    <div id="countdown2" style="
+                        background-color: rgba(139, 92, 246, 0.1);
+                        border-left: 4px solid #8b5cf6;
+                        padding: 10px;
+                        border-radius: 5px;
+                        color: #8b5cf6;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        font-size: 13px;
+                        font-weight: 600;
+                    ">
+                        ⏳ Menghitung waktu...
+                    </div>
+                    <script>
+                        var targetTime = {ibooster_auto_puller.next_run_time} * 1000;
+                        var elem = document.getElementById("countdown2");
+                        setInterval(function() {{
+                            var now = new Date().getTime();
+                            var distance = targetTime - now;
+                            if (distance < 0) {{
+                                elem.innerHTML = "⏳ Menarik data IBooster...";
+                                return;
+                            }}
+                            var h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            var m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            var s = Math.floor((distance % (1000 * 60)) / 1000);
+                            elem.innerHTML = "⏳ IBooster otomatis: " + (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                        }}, 1000);
+                    </script>
+                    '''
+                    with st.sidebar:
+                        components.html(countdown_html2, height=45)
+                else:
+                    import time
+                    st.sidebar.info("⏳ Menyiapkan jadwal IBooster...")
+                    time.sleep(0.5)
+                    st.rerun()
                 
             st.sidebar.markdown("---")
             
@@ -631,19 +733,27 @@ if not df.empty:
     # =====================================================================
     if menu == "PS/RE":
         
+        # Helper to make numbers clickable
+        def make_link(val, cat, prod):
+            if val > 0:
+                return f'<a href="javascript:void(0)" class="modal-trigger" data-cat="{cat}" data-prod="{prod}" style="color:white; text-decoration:underline; cursor:pointer;">{val}</a>'
+            return f'<span style="color:white">-</span>'
+            
         # --- 5 GRID CARDS ---
-        def bd_html(brk):
+        def bd_html(brk, cat_name):
             total = sum(brk.values()) if brk else 0
-            def fmt(val):
+            def fmt(prod):
+                val = brk.get(prod, 0)
                 pct = f"({(val/total*100):.0f}%)" if total > 0 else "(0%)"
-                return f'<div class="dc-row-val" style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;"><span>{val}</span><span style="font-size: 0.85rem; color: #94a3b8; width: 52px; text-align: right; font-weight: bold; white-space: nowrap;">{pct}</span></div>'
+                val_html = make_link(val, cat_name, prod) if val > 0 else f'<span>{val}</span>'
+                return f'<div class="dc-row-val" style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;"><span>{val_html}</span><span style="font-size: 0.85rem; color: #94a3b8; width: 52px; text-align: right; font-weight: bold; white-space: nowrap;">{pct}</span></div>'
             
             return f'''
                 <div style="font-size:0.85rem; margin-bottom:8px; visibility:hidden;">&nbsp;</div>
-                <div class="dc-row"><span>AO TSEL</span><span style="color:#475569">:</span>{fmt(brk.get('AO TSEL', 0))}</div>
-                <div class="dc-row"><span>PDA TSEL</span><span style="color:#475569">:</span>{fmt(brk.get('PDA TSEL', 0))}</div>
-                <div class="dc-row"><span>INDIBIZ</span><span style="color:#475569">:</span>{fmt(brk.get('INDIBIZ', 0))}</div>
-                <div class="dc-row"><span>ISP VULA</span><span style="color:#475569">:</span>{fmt(brk.get('ISP VULA', 0))}</div>
+                <div class="dc-row"><span>AO TSEL</span><span style="color:#475569">:</span>{fmt('AO TSEL')}</div>
+                <div class="dc-row"><span>PDA TSEL</span><span style="color:#475569">:</span>{fmt('PDA TSEL')}</div>
+                <div class="dc-row"><span>INDIBIZ</span><span style="color:#475569">:</span>{fmt('INDIBIZ')}</div>
+                <div class="dc-row"><span>ISP VULA</span><span style="color:#475569">:</span>{fmt('ISP VULA')}</div>
             '''
             
         manja_total = len(manja_df)
@@ -655,7 +765,7 @@ if not df.empty:
                 h_min = len(sub[sub[flag_manja_col].astype(str).str.contains("H-", regex=False, na=False)])
                 h_i = len(sub[sub[flag_manja_col].astype(str).str.contains("HI", regex=False, na=False)])
                 h_plus = len(sub[sub[flag_manja_col].astype(str).str.contains("H+", regex=False, na=False)])
-                manja_html += f'<div class="dc-row-manja"><span>{prod}</span><span style="color:white">{h_min if h_min>0 else "-"}</span><span style="color:white">{h_i if h_i>0 else "-"}</span><span style="color:white">{h_plus if h_plus>0 else "-"}</span></div>'
+                manja_html += f'<div class="dc-row-manja"><span>{prod}</span><span>{make_link(h_min, "MANJA H-", prod)}</span><span>{make_link(h_i, "MANJA HI", prod)}</span><span>{make_link(h_plus, "MANJA H+", prod)}</span></div>'
         else:
             manja_html = "<div style='text-align:center; padding-top:20px'>NO DATA</div>"
             
@@ -666,7 +776,7 @@ if not df.empty:
                 sub = kendala_df[kendala_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
                 wfm = len(sub[sub['Status_Upper'] == 'WORKFAIL'])
                 unsc = len(sub[sub['Status_Upper'] == 'CANCLWORK'])
-                kendala_html += f'<div class="dc-row-kendala"><span>{prod}</span><span style="color:white">{wfm if wfm>0 else "-"}</span><span style="color:white">{unsc if unsc>0 else "-"}</span></div>'
+                kendala_html += f'<div class="dc-row-kendala"><span>{prod}</span><span>{make_link(wfm, "KENDALA WFM", prod)}</span><span>{make_link(unsc, "KENDALA UNSC", prod)}</span></div>'
         else:
             kendala_html = "<div style='text-align:center; padding-top:20px'>NO DATA</div>"
             
@@ -681,7 +791,7 @@ if not df.empty:
                     </div>
                     <div class="dc-value">{len(df_re_today)}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_re).strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem;">{ps_re_pct}</span></div></div>
+                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem;">{ps_re_pct}</span></div></div>
             </div>
             <!-- CARD 2 -->
             <div class="d-card c-green">
@@ -692,7 +802,7 @@ if not df.empty:
                     </div>
                     <div class="dc-value">{len(df_ps_today)}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_ps)}</div>
+                <div class="dc-breakdown">{bd_html(brk_ps, "DONE PS")}</div>
             </div>
             <!-- CARD 3 -->
             <div class="d-card c-purple">
@@ -703,7 +813,7 @@ if not df.empty:
                     </div>
                     <div class="dc-value">{len(potensi_df)}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_pot)}</div>
+                <div class="dc-breakdown">{bd_html(brk_pot, "POTENSI PS")}</div>
             </div>
             <!-- CARD 4: WO PROGRESS -->
             <div class="d-card c-cyan">
@@ -714,7 +824,7 @@ if not df.empty:
                     </div>
                     <div class="dc-value">{len(prog_df)}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_prog)}</div>
+                <div class="dc-breakdown">{bd_html(brk_prog, "PROGRESS")}</div>
             </div>
             <!-- CARD 4 -->
             <div class="d-card c-orange">
@@ -740,9 +850,124 @@ if not df.empty:
             </div>
         </div>
         '''
-        st.markdown(grid_html, unsafe_allow_html=True)
+        st.markdown(grid_html.replace('\n', ''), unsafe_allow_html=True)
         
-        # --- MIDDLE SECTION (CHART & TABLE) ---
+        # --- PRE-RENDER ALL MODALS ---
+        c_date = find_col(['DATE CREATE REAL', 'DATE CREATE', 'TANGGAL PS', 'PS', 'Booking Date', 'Date Modified'])
+        c_order = order_col if order_col else ''
+        c_sto = find_col(['WORKZONE', 'WORZONE', 'ZONE'])
+        c_wonum_ao = find_col(['NO WONUM & AO', 'NO WONUM'])
+        c_cust = find_col(['CUSTOMER NAME', 'NAMA PELANGGAN'])
+        c_status = find_col(['STATUS', 'Status'])
+        c_tim = tim_col if tim_col else ''
+        c_stat_wo = morning_status_col if morning_status_col else ''
+        
+        cats = ["RE MASUK HI", "DONE PS", "POTENSI PS", "PROGRESS", "KENDALA WFM", "KENDALA UNSC", "MANJA H-", "MANJA HI", "MANJA H+"]
+        
+        all_modals_html = ""
+        for cat in cats:
+            for prod in PROD_COLS:
+                src_df = pd.DataFrame()
+                if cat == "RE MASUK HI": src_df = df_re_today.copy()
+                elif cat == "DONE PS": src_df = df_ps_today.copy()
+                elif cat == "POTENSI PS": src_df = potensi_df.copy()
+                elif cat == "PROGRESS": src_df = prog_df.copy()
+                elif cat == "KENDALA WFM": src_df = kendala_df[kendala_df['Status_Upper'] == 'WORKFAIL'].copy()
+                elif cat == "KENDALA UNSC": src_df = kendala_df[kendala_df['Status_Upper'] == 'CANCLWORK'].copy()
+                elif cat == "MANJA H-": src_df = manja_df[manja_df[flag_manja_col].astype(str).str.contains("H-", regex=False, na=False)].copy() if flag_manja_col else pd.DataFrame()
+                elif cat == "MANJA HI": src_df = manja_df[manja_df[flag_manja_col].astype(str).str.contains("HI", regex=False, na=False)].copy() if flag_manja_col else pd.DataFrame()
+                elif cat == "MANJA H+": src_df = manja_df[manja_df[flag_manja_col].astype(str).str.contains("H+", regex=False, na=False)].copy() if flag_manja_col else pd.DataFrame()
+                
+                if len(src_df) > 0 and order_col:
+                    if cat.startswith("MANJA") or cat.startswith("KENDALA"):
+                        src_df = src_df[src_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
+                    else:
+                        src_df = src_df[src_df[order_col].astype(str).str.upper() == prod.upper()]
+                        
+                if len(src_df) > 0:
+                    html_table = '<div class="cp-container"><div style="display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 50px 180px 110px 90px minmax(200px, 2fr) minmax(150px, 1fr) 120px minmax(150px, 1fr) 170px; font-size: 14px; text-transform: uppercase;">'
+                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: nowrap;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS WO</span></div></div>'
+                    
+                    for idx, row in enumerate(src_df.to_dict('records'), 1):
+                        def get_val(col_name): return str(row.get(col_name, '-')) if pd.notna(row.get(col_name)) else '-'
+                        html_table += f'''
+                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 50px 180px 110px 90px minmax(200px, 2fr) minmax(150px, 1fr) 120px minmax(150px, 1fr) 170px; background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{idx}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_date)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: bold;">{get_val(c_order)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_sto)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_wonum_ao)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_cust)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 14px;">{get_val(c_status)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_tim)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: nowrap;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_stat_wo)}</span></div>
+                        </div>
+                        '''
+                    html_table += '</div>'
+                    
+                    # Create the modal container
+                    modal_id = f"modal-{cat.replace(' ', '_')}-{prod.replace(' ', '_')}"
+                    all_modals_html += f'''
+                    <div id="{modal_id}" class="detail-modal" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; background:#0f172a; z-index:999999; border: 1px solid #334155; border-radius:12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); flex-direction:column; overflow:hidden;">
+                        <div style="padding:15px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
+                            <h3 style="margin:0; color:white; font-size:1.2rem;">Detail Data: {cat} - {prod}</h3>
+                            <button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 10px;">&times;</button>
+                        </div>
+                        <div style="padding:20px; overflow-y:auto; flex:1;">
+                            {html_table}
+                        </div>
+                    </div>
+                    '''
+        
+        if all_modals_html:
+            st.markdown(all_modals_html.replace('\n', ''), unsafe_allow_html=True)
+            
+        import streamlit.components.v1 as components
+        components.html('''
+        <script>
+        setInterval(function() {
+            const parentDoc = window.parent.document;
+            
+            // Open modal listeners
+            const triggers = parentDoc.querySelectorAll('.modal-trigger');
+            triggers.forEach(t => {
+                if(t.dataset.listener) return;
+                t.dataset.listener = 'true';
+                t.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const cat = this.getAttribute('data-cat');
+                    const prod = this.getAttribute('data-prod');
+                    
+                    const modals = parentDoc.querySelectorAll('.detail-modal');
+                    modals.forEach(m => m.style.display = 'none');
+                    
+                    const targetId = 'modal-' + cat.replace(/ /g, '_') + '-' + prod.replace(/ /g, '_');
+                    const target = parentDoc.getElementById(targetId);
+                    if(target) {
+                        target.style.display = 'flex';
+                    }
+                });
+            });
+            
+            // Close modal listeners
+            const closers = parentDoc.querySelectorAll('.modal-close');
+            closers.forEach(c => {
+                if(c.dataset.listener) return;
+                c.dataset.listener = 'true';
+                c.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const modal = this.closest('.detail-modal');
+                    if(modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+        }, 500);
+        </script>
+        ''', height=0, width=0)
+        
+# --- MIDDLE SECTION (CHART & TABLE) ---
         c_left, c_right = st.columns([1, 2.5])
         
         with c_left:
@@ -769,7 +994,7 @@ if not df.empty:
                             <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 2px;">(DONE PS HARI INI)</div>
                         </div>
                     </div>
-                    <div style="border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; color: #cbd5e1; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                    <div style="border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; color: #cbd5e1; font-size: 14px; display: flex; align-items: center; gap: 6px;">
                         📅 Periode Hari Ini
                     </div>
                 </div>
@@ -816,7 +1041,7 @@ if not df.empty:
                             👥
                         </div>
                         <div>
-                            <div style="color: #cbd5e1; font-size: 0.75rem; margin-bottom: 4px; line-height: 1.2;">Total Done PS<br>hari ini</div>
+                            <div style="color: #cbd5e1; font-size: 14px; margin-bottom: 4px; line-height: 1.2;">Total Done PS<br>hari ini</div>
                             <div style="color: #10b981; font-size: 1.4rem; font-weight: bold;">{total_done_ps}</div>
                         </div>
                     </div>
@@ -826,7 +1051,7 @@ if not df.empty:
                             🛠️
                         </div>
                         <div>
-                            <div style="color: #cbd5e1; font-size: 0.75rem; margin-bottom: 4px; line-height: 1.2;">Total Teknisi<br>Aktif</div>
+                            <div style="color: #cbd5e1; font-size: 14px; margin-bottom: 4px; line-height: 1.2;">Total Teknisi<br>Aktif</div>
                             <div style="color: #3b82f6; font-size: 1.4rem; font-weight: bold;">{total_tek_aktif}</div>
                         </div>
                     </div>
@@ -939,9 +1164,9 @@ if not df.empty:
                     html_table += '<div style="background: rgba(139, 92, 246, 0.2); color:#a855f7; padding: 6px 10px; border-radius: 6px; font-weight:900; font-size:1.1rem;">∑</div>'
                     html_table += 'TOTAL'
                     html_table += '</div></th>'
-                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #38bdf8; font-size: 1.1rem;">{tot_re}</div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total RE</div></th>'
-                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #34d399; font-size: 1.1rem;">{tot_ps}</div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total PS</div></th>'
-                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: white; font-size: 1.1rem;">{tot_pct}</div><div style="font-size: 0.65rem; color: #94a3b8; font-weight: normal; margin-top: 4px;">Rata-rata % PS/RE</div></th>'
+                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #38bdf8; font-size: 1.1rem;">{tot_re}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total RE</div></th>'
+                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #34d399; font-size: 1.1rem;">{tot_ps}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total PS</div></th>'
+                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: white; font-size: 1.1rem;">{tot_pct}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Rata-rata % PS/RE</div></th>'
                     html_table += '</tr></tfoot>'
                     
                     html_table += '</table></div>'
@@ -1037,7 +1262,7 @@ if not df.empty:
             if v > 0:
                 pct = f"{(v/wfm_count*100):.1f}%".replace('.', ',') if wfm_count > 0 else "0,0%"
                 clr = get_color(k)
-                wfm_items.append(f'<div style="color: white; font-size: 0.75rem; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
+                wfm_items.append(f'<div style="color: white; font-size: 14px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
         wfm_breakdown_html = f'<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">{"".join(wfm_items)}</div>'
             
         # Hitung breakdown order untuk CANCLWORK
@@ -1048,7 +1273,7 @@ if not df.empty:
             if v > 0:
                 pct = f"{(v/cancl_count*100):.1f}%".replace('.', ',') if cancl_count > 0 else "0,0%"
                 clr = get_color(k)
-                cancl_items.append(f'<div style="color: white; font-size: 0.75rem; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
+                cancl_items.append(f'<div style="color: white; font-size: 14px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
         cancl_breakdown_html = f'<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">{"".join(cancl_items)}</div>'
         
         # 2. Render Metric Cards
@@ -1294,7 +1519,7 @@ if not df.empty:
                                 width_pct = (val / max_val) * 100 if max_val > 0 else 0
                                 
                                 html_bars += f'<div style="display: flex; align-items: center; width: 100%;">'
-                                html_bars += f'<div style="background-color: #1e293b; color: #94a3b8; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; margin-right: 12px; flex-shrink: 0;">{rank}</div>'
+                                html_bars += f'<div style="background-color: #1e293b; color: #94a3b8; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">{rank}</div>'
                                 html_bars += f'<div style="color: #cbd5e1; width: 140px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.8rem; margin-right: 10px; flex-shrink: 0;" title="{name}">{name}</div>'
                                 html_bars += f'<div style="flex-grow: 1; display: flex; align-items: center; padding-right: 10px;">'
                                 html_bars += f'<div style="background-color: {color}; height: 14px; width: {width_pct}%;"></div>'
@@ -1398,7 +1623,7 @@ if not df.empty:
                           elif val_str == 'CANCLWORK': bg_color, text_color = '#F59E0B', 'black'
                           
                           if bg_color != 'transparent':
-                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val_str}</div>'
+                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val_str}</div>'
                       elif col_name == 'ORDER':
                           val_str = str(val).upper().strip()
                           bg_color, text_color = 'transparent', 'white'
@@ -1408,7 +1633,7 @@ if not df.empty:
                           elif val_str == 'ISP VULA': bg_color, text_color = '#4b5563', 'black'
                           
                           if bg_color != 'transparent':
-                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
+                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val}</div>'
                               
                       html_table += f'<td style="border: 1.5px solid #475569; padding: 10px 8px;">{display_val}</td>'
                   html_table += '</tr>'
@@ -1547,10 +1772,10 @@ if not df.empty:
                         '<div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
                         '<div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 20px;">GRAND TOTAL WO AO TSEL</div>'
                         '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 10px; margin-bottom: 20px;">'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #a855f7; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 0.75rem; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #a855f7; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
                         '</div>'
                         f'<div style="border-top: 1px dashed #334155; padding-top: 20px; margin-top: auto; font-size: 1.05rem; font-weight: bold; color: #94a3b8; text-align: left;">'
                         f'<div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>RE JAM KERJA</span> <span style="color:white;">{tot_jk} ({pct_jk}%)</span></div>'
@@ -1674,7 +1899,7 @@ if not df.empty:
                         import re as regex
                         clean_val = regex.sub('<[^<]+>', '', val)
                         checkboxes_html += f'''
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 0.75rem; padding: 2px 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 14px; padding: 2px 0;">
                             <input type="checkbox" class="filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;">
                             <span class="filter-text-{i}">{clean_val}</span>
                         </label>
@@ -1684,10 +1909,10 @@ if not df.empty:
                     <th style="padding: 12px; border-bottom: 2px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">
                         <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                             <span style="font-weight: 900; font-size: 0.85rem; color: #ffffff; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); letter-spacing: 0.5px;">{col}</span>
-                            <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 0.65rem; padding: 2px 4px; border-radius: 4px;">▼</div>
+                            <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 14px; padding: 2px 4px; border-radius: 4px;">▼</div>
                         </div>
                         <div class="custom-filter-menu" id="filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
-                            <input type="text" class="filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 0.75rem; outline: none;">
+                            <input type="text" class="filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 14px; outline: none;">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.7rem; color: #38bdf8; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px;">
                                 <span class="filter-select-all" data-colindex="{i}" style="cursor: pointer;">Pilih Semua</span>
                                 <span class="filter-clear-all" data-colindex="{i}" style="cursor: pointer;">Bersihkan</span>
@@ -1696,7 +1921,7 @@ if not df.empty:
                                 {checkboxes_html}
                             </div>
                             <div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;">
-                                <button class="filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 0.75rem; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button>
+                                <button class="filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button>
                             </div>
                         </div>
                     </th>'''
@@ -1739,7 +1964,7 @@ if not df.empty:
                                 bg_color = '#F59E0B'
                                 text_color = 'black'
                             
-                            pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
+                            pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val}</div>'
                             html_table += f'<td style="padding: 10px;">{pill}</td>'
                         elif col == 'ORDER':
                             val_str = str(val).upper().strip()
@@ -1750,7 +1975,7 @@ if not df.empty:
                             elif val_str == 'ISP VULA': bg_color, text_color = '#4b5563', 'black'
                             
                             if bg_color != 'transparent':
-                                pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{val}</div>'
+                                pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val}</div>'
                                 html_table += f'<td style="padding: 10px;">{pill}</td>'
                             else:
                                 html_table += f'<td style="padding: 10px;">{val}</td>'
@@ -1990,7 +2215,7 @@ if not df.empty:
                 
                 hm_html += '''
                     </table>
-                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 0.65rem; color: #cbd5e1; font-weight: bold;">
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 14px; color: #cbd5e1; font-weight: bold;">
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h1" style="border-radius: 2px;"></div> MANJA H-1</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-hi" style="border-radius: 2px;"></div> MANJA HI</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h2" style="border-radius: 2px;"></div> MANJA H++</div>
@@ -2028,7 +2253,7 @@ if not df.empty:
                         flags_html += f'''
                         <div class="node-flag" id="{flag_id}">
                             <div class="flag-box {color_class}"></div>
-                            <div style="color: #f8fafc; font-size: 0.75rem; font-weight: bold; font-family: sans-serif;">{flag} ({count})</div>
+                            <div style="color: #f8fafc; font-size: 14px; font-weight: bold; font-family: sans-serif;">{flag} ({count})</div>
                         </div>
                         '''
                         # Draw line from CBO to Flag (Gradient from CBO blue to Flag color)
@@ -2440,12 +2665,12 @@ if not df.empty:
 
         st.markdown("""
         <style>
-        .cp-container { color: #f1f5f9; font-size: 0.75rem; max-height: 800px; }
+        .cp-container { color: #f1f5f9; font-size: 14px; max-height: 800px; }
         .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: 900; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
-        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 0.75rem; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
-        .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
-        .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
-        .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.75rem; display: inline-block; }
+        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 14px; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
+        .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; }
+        .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; }
+        .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; }
         .manja-header > div { border-right: 2px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
         .manja-header > div:last-child { border-right: none; }
         .manja-row > div { border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; }
@@ -2534,7 +2759,7 @@ if not df.empty:
                     bg_color = '#F59E0B'
                     text_color = 'black'
                 
-                status_html = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 0.75rem;">{status}</div>'
+                status_html = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{status}</div>'
                     
                 morning_st = str(row['MORNING STATUS WO']) if 'MORNING STATUS WO' in row and pd.notna(row['MORNING STATUS WO']) else ""
                 if morning_st.lower() == 'nan': morning_st = ""
@@ -2553,7 +2778,7 @@ if not df.empty:
             html += '</div>'
             st.markdown(html, unsafe_allow_html=True)
             
-    elif menu == "TRIAL":
+    elif menu == "TRIAL & FFG 60 HARI":
         st.markdown(f"""
 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
     <div>
@@ -2611,10 +2836,10 @@ if not df.empty:
                 
                 svg_paths = ""
                 html_cards = f"""
-                <div style="position:absolute; left:{col0_x}px; top:10px; width:120px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">TOTAL ALL PS HI</div>
+                <div style="position:absolute; left:{col0_x}px; top:10px; width:150px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">TOTAL ALL PS HI</div>
                 <div style="position:absolute; left:{col1_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">PS BY DATE RE</div>
                 <div style="position:absolute; left:{col2_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">JENIS ORDER</div>
-                <div style="position:absolute; left:{col0_x}px; top:{root_y - 70}px; width:120px; height:140px; background:#0f172a; border:2px solid #475569; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index:10;">
+                <div style="position:absolute; left:{col0_x}px; top:{root_y - 70}px; width:150px; height:140px; background:#0f172a; border:2px solid #475569; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index:10;">
                     <i class="bi bi-file-earmark-text" style="color:#60a5fa; font-size:1.8rem; margin-bottom:8px;"></i>
                     <div style="color:#f8fafc; font-size:1.0rem; font-weight:700; margin-bottom:5px;">TOTAL PS</div>
                     <div style="color:#f8fafc; font-size:2.5rem; font-weight:700; line-height:1; margin-bottom:5px;">{total_wo}</div>
@@ -2755,110 +2980,416 @@ if not df.empty:
         else:
             st.error("Kolom 'CECK BY ORDER' atau 'DETAIL PS KAPAN' tidak ditemukan.")
 
+        # --- TABEL MONITORING FFG ---
+        st.markdown('<hr style="border-color: #334155; margin: 30px 0;">', unsafe_allow_html=True)
+        import os
+        ibooster_sync_time = "Belum Ada Data"
+        ibooster_sync_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "last_ibooster_AO_TSEL.txt")
+        if os.path.exists(ibooster_sync_file):
+            try:
+                with open(ibooster_sync_file, "r") as f:
+                    content = f.read().strip()
+                    parts = content.split(" | VIA ")
+                    if len(parts) > 0:
+                        ibooster_sync_time = parts[0].replace(" WIB", "")
+            except:
+                pass
+                
+        st.markdown(f'''
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+            <h3 style="color: #cbd5e1; font-weight: bold; margin: 0;">MONITORING FFG</h3>
+            <div style="background-color: rgba(249, 115, 22, 0.15); border: 1px solid #ea580c; border-radius: 6px; padding: 4px 12px; color: #fb923c; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                ⏱️ Last Ibooster: {ibooster_sync_time}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        if 'PRIORITAS UNSPEC' in df.columns and 'DURASI FFG' in df.columns and 'HASIL UKUR IBOSSTER' in df.columns:
+            df_ffg = df.copy()
+            
+            # Extract numeric duration
+            df_ffg['Durasi_Num'] = df_ffg['DURASI FFG'].astype(str).str.extract(r'(\d+)')[0]
+            df_ffg['Durasi_Num'] = pd.to_numeric(df_ffg['Durasi_Num'], errors='coerce').fillna(999)
+            
+            # Filter data
+            if status_col in df_ffg.columns:
+                df_ffg = df_ffg[df_ffg[status_col].astype(str).str.upper().str.strip() == 'COMPWORK']
+            if 'CRM Order Type' in df_ffg.columns:
+                df_ffg = df_ffg[df_ffg['CRM Order Type'].astype(str).str.upper().str.strip() == 'CREATE']
+            
+            df_ffg = df_ffg[
+                (df_ffg['PRIORITAS UNSPEC'].astype(str).str.upper().str.contains('PRIO 1|PRIO 2', na=False)) &
+                (df_ffg['Durasi_Num'] <= 60)
+            ].copy()
+            
+            if not df_ffg.empty:
+                # 1. Build a structured Display DataFrame first
+                ffg_data = []
+                for idx, row in enumerate(df_ffg.to_dict('records'), 1):
+                    date_val = str(row.get(date_col, '')) if date_col else ''
+                    bulan_str = '-'
+                    if date_val and str(date_val).lower() != 'nan':
+                        try:
+                            dt_obj = pd.to_datetime(date_val)
+                            months_id = {1:'JANUARI', 2:'FEBRUARI', 3:'MARET', 4:'APRIL', 5:'MEI', 6:'JUNI', 7:'JULI', 8:'AGUSTUS', 9:'SEPTEMBER', 10:'OKTOBER', 11:'NOVEMBER', 12:'DESEMBER'}
+                            bulan_str = months_id.get(dt_obj.month, '-')
+                        except:
+                            pass
+                            
+                    nama_teknisi = str(row.get(tim_col, '-')) if tim_col else '-'
+                    if nama_teknisi.lower() == 'nan': nama_teknisi = '-'
+                    
+                    order_val = str(row.get(order_col, '-')) if order_col else '-'
+                    if order_val.lower() == 'nan': order_val = '-'
+                    
+                    wonum_ao_val = '-'
+                    wonum_num_val = '-'
+                    if 'NO WONUM & AO' in df_ffg.columns:
+                        val = str(row.get('NO WONUM & AO', '-'))
+                        if '-' in val:
+                            parts = val.split('-')
+                            wonum_num_val = parts[0].strip()
+                            wonum_ao_val = parts[1].strip() if len(parts) > 1 else '-'
+                        else:
+                            wonum_num_val = val
+                    if wonum_ao_val.lower() == 'nan': wonum_ao_val = '-'
+                    if wonum_num_val.lower() == 'nan': wonum_num_val = '-'
+                    
+                    hasil_ukur = str(row.get('HASIL UKUR IBOSSTER', '-'))
+                    if hasil_ukur.lower() == 'nan': hasil_ukur = '-'
+                    
+                    prioritas = str(row.get('PRIORITAS UNSPEC', '-'))
+                    if prioritas.lower() == 'nan': prioritas = '-'
+                    
+                    durasi = str(row.get('DURASI FFG', '-')).upper()
+                    if durasi.lower() == 'nan': durasi = '-'
+                    
+                    ffg_data.append({
+                        'NO': idx,
+                        'BULAN UNSPEC': bulan_str,
+                        'NAMA TEKNISI': nama_teknisi,
+                        'ORDER': order_val,
+                        'WONUM (AO)': wonum_ao_val,
+                        'WONUM': wonum_num_val,
+                        'HASIL UKUR': hasil_ukur,
+                        'PRIORITAS': prioritas,
+                        'DURASI FFG': durasi
+                    })
+                    
+                df_display = pd.DataFrame(ffg_data)
+                
+                # 2. Build the HTML Table with Filters
+                html_table = '<div style="width: 100%; min-height: 400px; overflow-x: auto; background-color: #0f172a; border-radius: 8px; border: 1px solid #334155;">'
+                html_table += '<table style="width: 100%; border-collapse: collapse; color: white; font-size: 13px; font-family: sans-serif; text-align: center;">'
+                html_table += '<thead><tr style="background-color: #eab308; color: black; font-weight: bold; border-bottom: 2px solid #ca8a04; font-size: 15px;">'
+                
+                # Build Headers with Filters
+                for i, col in enumerate(df_display.columns):
+                    unique_vals = df_display[col].astype(str).unique()
+                    unique_vals = sorted(unique_vals)
+                    
+                    checkboxes_html = ""
+                    for val in unique_vals:
+                        import re as regex
+                        clean_val = regex.sub('<[^<]+>', '', val)
+                        checkboxes_html += f'<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 14px; padding: 2px 0;"><input type="checkbox" class="ffg-filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;"><span class="ffg-filter-text-{i}">{clean_val}</span></label>'
+                        
+                    html_table += f'<th style="padding: 12px; border: 1px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">'
+                    html_table += f'<div style="display: flex; justify-content: center; align-items: center; gap: 4px;"><span>{col}</span>'
+                    html_table += f'<div class="ffg-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #475569; font-size: 14px; padding: 2px 4px; border-radius: 4px;">&#9660;</div></div>'
+                    
+                    # Filter Menu Dropdown
+                    html_table += f'<div class="ffg-filter-menu" id="ffg-filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); font-weight: normal;">'
+                    html_table += f'<input type="text" class="ffg-filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 14px; outline: none;">'
+                    html_table += f'<div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.7rem; color: #38bdf8; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px;"><span class="ffg-filter-select-all" data-colindex="{i}" style="cursor: pointer;">Pilih Semua</span><span class="ffg-filter-clear-all" data-colindex="{i}" style="cursor: pointer;">Bersihkan</span></div>'
+                    html_table += f'<div class="ffg-filter-options-container" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding-right: 5px;">{checkboxes_html}</div>'
+                    html_table += f'<div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;"><button class="ffg-filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button></div>'
+                    html_table += '</div></th>'
+                    
+                html_table += '</tr></thead><tbody id="ffg-tbody">'
+                
+                # Build Rows
+                for _, row in df_display.iterrows():
+                    html_table += '<tr style="border-bottom: 1px solid #334155; font-size: 13px;">'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NO"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["BULAN UNSPEC"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NAMA TEKNISI"]}</td>'
+                    order_val = str(row["ORDER"]).strip().upper()
+                    if order_val == "AO TSEL":
+                        order_bg = "background-color: #831843; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold; border: 1px solid #be123c;"
+                    elif order_val == "PDA TSEL":
+                        order_bg = "background-color: #14532d; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold; border: 1px solid #166534;"
+                    elif order_val == "INDIBIZ":
+                        order_bg = "background-color: #1e3a8a; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold; border: 1px solid #1d4ed8;"
+                    else:
+                        order_bg = "background-color: #334155; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold;"
+                    
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;"><span style="{order_bg}">{row["ORDER"]}</span></td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; word-break: break-all;">{row["WONUM (AO)"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["WONUM"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; color: #fca5a5; font-weight: bold;">{row["HASIL UKUR"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["PRIORITAS"]}</td>'
+                    html_table += f'<td style="padding: 10px;">{row["DURASI FFG"]}</td>'
+                    html_table += '</tr>'
+                    
+                html_table += '</tbody></table></div>'
+                
+                st.markdown(html_table, unsafe_allow_html=True)
+                
+                # Inject Javascript for FFG Table Filtering
+                js_ffg_filter = '''<script>
+                const parentDoc = window.parent.document;
+                function setupFFGFilters() {
+                    const icons = parentDoc.querySelectorAll('.ffg-filter-icon');
+                    if (icons.length === 0) return;
+                    
+                    icons.forEach(icon => {
+                        if (icon.dataset.listener) return;
+                        icon.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const colIdx = this.getAttribute('data-colindex');
+                            const menu = parentDoc.getElementById('ffg-filter-menu-' + colIdx);
+                            const isHidden = menu.style.display === 'none';
+                            parentDoc.querySelectorAll('.ffg-filter-menu').forEach(m => m.style.display = 'none');
+                            if (isHidden) {
+                                menu.style.display = 'block';
+                            }
+                        });
+                        icon.dataset.listener = 'true';
+                    });
+  
+                    if (!parentDoc.body.dataset.ffgFilterClick) {
+                        parentDoc.body.addEventListener('click', function(e) {
+                            if (!e.target.closest('.ffg-filter-menu') && !e.target.closest('.ffg-filter-icon')) {
+                                parentDoc.querySelectorAll('.ffg-filter-menu').forEach(m => m.style.display = 'none');
+                            }
+                        });
+                        parentDoc.body.dataset.ffgFilterClick = 'true';
+                    }
+  
+                    const searchInputs = parentDoc.querySelectorAll('.ffg-filter-search');
+                    searchInputs.forEach(input => {
+                        if (input.dataset.listener) return;
+                        input.addEventListener('keyup', function() {
+                            const term = this.value.toLowerCase();
+                            const colIdx = this.getAttribute('data-colindex');
+                            const labels = parentDoc.querySelectorAll('.ffg-filter-text-' + colIdx);
+                            labels.forEach(label => {
+                                const text = label.textContent.toLowerCase();
+                                const container = label.parentElement;
+                                if (text.includes(term)) {
+                                    container.style.display = 'flex';
+                                } else {
+                                    container.style.display = 'none';
+                                }
+                            });
+                        });
+                        input.dataset.listener = 'true';
+                    });
+  
+                    const selectAllBtns = parentDoc.querySelectorAll('.ffg-filter-select-all');
+                    selectAllBtns.forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.ffg-filter-cb-' + colIdx).forEach(cb => {
+                                if (cb.parentElement.style.display !== 'none') cb.checked = true;
+                            });
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+  
+                    const clearAllBtns = parentDoc.querySelectorAll('.ffg-filter-clear-all');
+                    clearAllBtns.forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.ffg-filter-cb-' + colIdx).forEach(cb => {
+                                if (cb.parentElement.style.display !== 'none') cb.checked = false;
+                            });
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+  
+                    const applyBtns = parentDoc.querySelectorAll('.ffg-filter-apply-btn');
+                    applyBtns.forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            parentDoc.querySelectorAll('.ffg-filter-menu').forEach(m => m.style.display = 'none');
+                            applyFFGFilters();
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+                }
+  
+                function applyFFGFilters() {
+                    const tbody = parentDoc.getElementById('ffg-tbody');
+                    if (!tbody) return;
+                    const trs = tbody.getElementsByTagName('tr');
+                    
+                    let filters = {};
+                    const filterMenus = parentDoc.querySelectorAll('.ffg-filter-menu');
+                    filterMenus.forEach(menu => {
+                        const colIdx = menu.id.replace('ffg-filter-menu-', '');
+                        const checkboxes = menu.querySelectorAll('.ffg-filter-cb-' + colIdx + ':checked');
+                        const selected = Array.from(checkboxes).map(cb => cb.value.toLowerCase().trim());
+                        filters[colIdx] = selected;
+                    });
+  
+                    let visibleCount = 1;
+                    for (let i = 0; i < trs.length; i++) {
+                        let tr = trs[i];
+                        let show = true;
+                        
+                        for (let colIdx in filters) {
+                            const allowedVals = filters[colIdx];
+                            if (allowedVals.length === 0) {
+                                show = false;
+                                break;
+                            }
+                            
+                            const totalCbs = parentDoc.querySelectorAll('.ffg-filter-cb-' + colIdx).length;
+                            if (allowedVals.length === totalCbs) {
+                                continue;
+                            }
+  
+                            let td = tr.getElementsByTagName('td')[colIdx];
+                            if (td) {
+                                let cellText = (td.textContent || td.innerText).toLowerCase().trim();
+                                if (!allowedVals.includes(cellText)) {
+                                    show = false;
+                                    break;
+                                }
+                            }
+                        }
+                        tr.style.display = show ? "" : "none";
+                        if (show) {
+                            let td0 = tr.getElementsByTagName('td')[0];
+                            if (td0) {
+                                td0.innerHTML = visibleCount;
+                            }
+                            visibleCount++;
+                        }
+                    }
+                }
+  
+                let ffgFilterInterval = setInterval(() => {
+                    if (parentDoc.getElementById('ffg-tbody')) {
+                        setupFFGFilters();
+                        clearInterval(ffgFilterInterval);
+                    }
+                }, 500);
+                </script>'''
+                import streamlit.components.v1 as components
+                components.html(js_ffg_filter, width=0, height=0)
+            else:
+                st.markdown('<div style="padding: 20px; color: #94a3b8; text-align: center; border: 1px solid #334155; border-radius: 8px; background: #0f172a;">Tidak ada data FFG yang memenuhi kriteria (PRIO 1/2 dan &le; 60 hari).</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="padding: 20px; color: #ef4444; text-align: center; border: 1px solid #334155; border-radius: 8px; background: #0f172a;">Kolom HASIL UKUR IBOSSTER, PRIORITAS UNSPEC, atau DURASI FFG tidak ditemukan di sumber data!</div>', unsafe_allow_html=True)
     elif menu == "MONITORING SERVER":
         st.markdown('<div class="section-title-wrap"><div class="section-title">🖥️ SYSTEM MONITORING SERVER</div></div>', unsafe_allow_html=True)
         
         try:
-            # CPU
-            cpu_usage = psutil.cpu_percent(interval=0.5)
-            cpu_cores = psutil.cpu_count(logical=True)
-            cpu_freq = psutil.cpu_freq().current if psutil.cpu_freq() else 0
-            
-            # RAM
-            mem = psutil.virtual_memory()
-            ram_usage = mem.percent
-            ram_used_gb = mem.used / (1024 ** 3)
-            ram_total_gb = mem.total / (1024 ** 3)
-            ram_avail_gb = mem.available / (1024 ** 3)
-            
-            # DISK
-            disk = psutil.disk_usage('/')
-            disk_usage = disk.percent
-            disk_used_gb = disk.used / (1024 ** 3)
-            disk_total_gb = disk.total / (1024 ** 3)
-            disk_free_gb = disk.free / (1024 ** 3)
-            
-            # UPTIME
-            import datetime
-            boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
-            now = datetime.datetime.now()
-            uptime_td = now - boot_time
-            days = uptime_td.days
-            hours, remainder = divmod(uptime_td.seconds, 3600)
-            minutes, _ = divmod(remainder, 60)
-            uptime_str = f"{days}d {hours}h {minutes}m"
-            boot_str = boot_time.strftime("%Y-%m-%d %H:%M")
+          # CPU
+          cpu_usage = psutil.cpu_percent(interval=0.5)
+          cpu_cores = psutil.cpu_count(logical=True)
+          cpu_freq = psutil.cpu_freq().current if psutil.cpu_freq() else 0
+          
+          # RAM
+          mem = psutil.virtual_memory()
+          ram_usage = mem.percent
+          ram_used_gb = mem.used / (1024 ** 3)
+          ram_total_gb = mem.total / (1024 ** 3)
+          ram_avail_gb = mem.available / (1024 ** 3)
+          
+          # DISK
+          disk = psutil.disk_usage('/')
+          disk_usage = disk.percent
+          disk_used_gb = disk.used / (1024 ** 3)
+          disk_total_gb = disk.total / (1024 ** 3)
+          disk_free_gb = disk.free / (1024 ** 3)
+          
+          # UPTIME
+          import datetime
+          boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
+          now = datetime.datetime.now()
+          uptime_td = now - boot_time
+          days = uptime_td.days
+          hours, remainder = divmod(uptime_td.seconds, 3600)
+          minutes, _ = divmod(remainder, 60)
+          uptime_str = f"{days}d {hours}h {minutes}m"
+          boot_str = boot_time.strftime("%Y-%m-%d %H:%M")
         except Exception as e:
-            st.error(f"Error reading system metrics: {e}")
-            cpu_usage = ram_usage = disk_usage = 0
-            cpu_cores = cpu_freq = ram_used_gb = ram_total_gb = ram_avail_gb = 0
-            disk_used_gb = disk_total_gb = disk_free_gb = 0
-            uptime_str = "N/A"
-            boot_str = "N/A"
+          st.error(f"Error reading system metrics: {e}")
+          cpu_usage = ram_usage = disk_usage = 0
+          cpu_cores = cpu_freq = ram_used_gb = ram_total_gb = ram_avail_gb = 0
+          disk_used_gb = disk_total_gb = disk_free_gb = 0
+          uptime_str = "N/A"
+          boot_str = "N/A"
 
         # USE textwrap.dedent HERE SO MARKDOWN DOESNT SEE INDENTS
         html_content = textwrap.dedent(f'''
         <style>
         .mon-grid {{
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 15px;
+          margin-bottom: 20px;
         }}
         .mon-card {{
-            background-color: #0f172a;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-            border: 1px solid #1e293b;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+          background-color: #0f172a;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+          border: 1px solid #1e293b;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
         }}
         .mon-header {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
         }}
         .mon-icon {{
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
         }}
         .mon-title {{
-            font-size: 0.75rem;
-            color: #94a3b8;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            margin: 0;
-            text-transform: uppercase;
+          font-size: 14px;
+          color: #94a3b8;
+          font-weight: bold;
+          letter-spacing: 0.5px;
+          margin: 0;
+          text-transform: uppercase;
         }}
         .mon-val {{
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #f8fafc;
-            margin: 0;
+          font-size: 1.8rem;
+          font-weight: 800;
+          color: #f8fafc;
+          margin: 0;
         }}
         .mon-bar-bg {{
-            height: 6px;
-            background-color: #1e293b;
-            border-radius: 3px;
-            margin: 15px 0 10px 0;
-            overflow: hidden;
+          height: 6px;
+          background-color: #1e293b;
+          border-radius: 3px;
+          margin: 15px 0 10px 0;
+          overflow: hidden;
         }}
         .mon-bar-fg {{
-            height: 100%;
-            border-radius: 3px;
+          height: 100%;
+          border-radius: 3px;
         }}
         .mon-desc {{
-            font-size: 0.7rem;
-            color: #64748b;
-            margin: 0;
+          font-size: 0.7rem;
+          color: #64748b;
+          margin: 0;
         }}
         
         .ic-cpu {{ background-color: rgba(99, 102, 241, 0.15); color: #818cf8; }}
@@ -2876,93 +3407,93 @@ if not df.empty:
         
         /* Ensure responsiveness for small screens */
         @media (max-width: 1200px) {{
-            .mon-grid {{ grid-template-columns: repeat(3, 1fr); }}
+          .mon-grid {{ grid-template-columns: repeat(3, 1fr); }}
         }}
         @media (max-width: 768px) {{
-            .mon-grid {{ grid-template-columns: 1fr; }}
+          .mon-grid {{ grid-template-columns: 1fr; }}
         }}
         </style>
         
         <div class="mon-grid">
-            <!-- CPU -->
-            <div class="mon-card">
-                <div class="mon-header">
-                    <div class="mon-icon ic-cpu">🧠</div>
-                    <div>
-                        <p class="mon-title">CPU USAGE</p>
-                        <p class="mon-val">{cpu_usage}%</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="mon-bar-bg"><div class="mon-bar-fg bg-cpu"></div></div>
-                    <p class="mon-desc">{cpu_cores} Core(s) • Freq: {cpu_freq:.0f} MHz</p>
-                </div>
-            </div>
-            
-            <!-- RAM -->
-            <div class="mon-card">
-                <div class="mon-header">
-                    <div class="mon-icon ic-ram">📝</div>
-                    <div>
-                        <p class="mon-title">RAM</p>
-                        <p class="mon-val">{ram_usage}%</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="mon-bar-bg"><div class="mon-bar-fg bg-ram"></div></div>
-                    <p class="mon-desc">{ram_used_gb:.2f} GB / {ram_total_gb:.2f} GB • Avail: {ram_avail_gb:.2f} GB</p>
-                </div>
-            </div>
-            
-            <!-- DISK -->
-            <div class="mon-card">
-                <div class="mon-header">
-                    <div class="mon-icon ic-disk">💾</div>
-                    <div>
-                        <p class="mon-title">DISK</p>
-                        <p class="mon-val">{disk_usage}%</p>
-                    </div>
-                </div>
-                <div>
-                    <div class="mon-bar-bg"><div class="mon-bar-fg bg-disk"></div></div>
-                    <p class="mon-desc">{disk_used_gb:.2f} GB / {disk_total_gb:.2f} GB • Free: {disk_free_gb:.2f} GB</p>
-                </div>
-            </div>
-            
-            <!-- UPTIME -->
-            <div class="mon-card">
-                <div class="mon-header">
-                    <div class="mon-icon ic-up">⏱️</div>
-                    <div>
-                        <p class="mon-title">UPTIME</p>
-                        <p class="mon-val" style="font-size: 1.4rem; padding-top:4px;">{uptime_str}</p>
-                    </div>
-                </div>
-                <div style="flex-grow:1; display:flex; align-items:flex-end;">
-                    <p class="mon-desc" style="padding-top:15px;">Boot: {boot_str}</p>
-                </div>
-            </div>
-            
-            <!-- SUHU -->
-            <div class="mon-card">
-                <div class="mon-header">
-                    <div class="mon-icon ic-temp">🌡️</div>
-                    <div>
-                        <p class="mon-title">SUHU SERVER</p>
-                        <p class="mon-val">N/A</p>
-                    </div>
-                </div>
-                <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:flex-end;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px; padding-top:10px;">
-                        <span style="font-size:0.75rem; color:#94a3b8;">🟢 CPU (Tctl)</span>
-                        <span style="font-size:0.75rem; color:#34d399; font-weight:bold;">N/A</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <span style="font-size:0.75rem; color:#94a3b8;">🟢 GPU (edge)</span>
-                        <span style="font-size:0.75rem; color:#34d399; font-weight:bold;">N/A</span>
-                    </div>
-                </div>
-            </div>
+          <!-- CPU -->
+          <div class="mon-card">
+              <div class="mon-header">
+                  <div class="mon-icon ic-cpu">🧠</div>
+                  <div>
+                      <p class="mon-title">CPU USAGE</p>
+                      <p class="mon-val">{cpu_usage}%</p>
+                  </div>
+              </div>
+              <div>
+                  <div class="mon-bar-bg"><div class="mon-bar-fg bg-cpu"></div></div>
+                  <p class="mon-desc">{cpu_cores} Core(s) • Freq: {cpu_freq:.0f} MHz</p>
+              </div>
+          </div>
+          
+          <!-- RAM -->
+          <div class="mon-card">
+              <div class="mon-header">
+                  <div class="mon-icon ic-ram">📝</div>
+                  <div>
+                      <p class="mon-title">RAM</p>
+                      <p class="mon-val">{ram_usage}%</p>
+                  </div>
+              </div>
+              <div>
+                  <div class="mon-bar-bg"><div class="mon-bar-fg bg-ram"></div></div>
+                  <p class="mon-desc">{ram_used_gb:.2f} GB / {ram_total_gb:.2f} GB • Avail: {ram_avail_gb:.2f} GB</p>
+              </div>
+          </div>
+          
+          <!-- DISK -->
+          <div class="mon-card">
+              <div class="mon-header">
+                  <div class="mon-icon ic-disk">💾</div>
+                  <div>
+                      <p class="mon-title">DISK</p>
+                      <p class="mon-val">{disk_usage}%</p>
+                  </div>
+              </div>
+              <div>
+                  <div class="mon-bar-bg"><div class="mon-bar-fg bg-disk"></div></div>
+                  <p class="mon-desc">{disk_used_gb:.2f} GB / {disk_total_gb:.2f} GB • Free: {disk_free_gb:.2f} GB</p>
+              </div>
+          </div>
+          
+          <!-- UPTIME -->
+          <div class="mon-card">
+              <div class="mon-header">
+                  <div class="mon-icon ic-up">⏱️</div>
+                  <div>
+                      <p class="mon-title">UPTIME</p>
+                      <p class="mon-val" style="font-size: 1.4rem; padding-top:4px;">{uptime_str}</p>
+                  </div>
+              </div>
+              <div style="flex-grow:1; display:flex; align-items:flex-end;">
+                  <p class="mon-desc" style="padding-top:15px;">Boot: {boot_str}</p>
+              </div>
+          </div>
+          
+          <!-- SUHU -->
+          <div class="mon-card">
+              <div class="mon-header">
+                  <div class="mon-icon ic-temp">🌡️</div>
+                  <div>
+                      <p class="mon-title">SUHU SERVER</p>
+                      <p class="mon-val">N/A</p>
+                  </div>
+              </div>
+              <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:flex-end;">
+                  <div style="display:flex; justify-content:space-between; margin-bottom:5px; padding-top:10px;">
+                      <span style="font-size:0.75rem; color:#94a3b8;">🟢 CPU (Tctl)</span>
+                      <span style="font-size:0.75rem; color:#34d399; font-weight:bold;">N/A</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between;">
+                      <span style="font-size:0.75rem; color:#94a3b8;">🟢 GPU (edge)</span>
+                      <span style="font-size:0.75rem; color:#34d399; font-weight:bold;">N/A</span>
+                  </div>
+              </div>
+          </div>
         </div>
         ''')
         
@@ -2977,69 +3508,69 @@ if not df.empty:
         
         history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sync_history.csv")
         if os.path.exists(history_file):
-            try:
-                hist_df = pd.read_csv(history_file)
-                today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-                # Filter hari ini
-                hist_df = hist_df[hist_df['Date'] == today_str]
-                total_tarik = len(hist_df)
-                
-                if total_tarik > 0:
-                    # Render tabel elegan dengan markdown
-                    table_html = f'''
-                    <div style="background-color: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
-                        <p style="color: #38bdf8; font-weight: bold; font-size: 1.1rem; margin-bottom: 15px;">TOTAL TRANSAKSI HARI INI: <span style="background-color: #38bdf8; color: #0f172a; padding: 3px 10px; border-radius: 20px; font-size: 1rem;">{total_tarik} Kali</span></p>
-                        <table style="width: 100%; border-collapse: collapse; color: #cbd5e1; font-size: 0.9rem;">
-                            <thead>
-                                <tr style="border-bottom: 2px solid #1e293b; text-align: left; color: #94a3b8;">
-                                    <th style="padding: 10px;">WAKTU</th>
-                                    <th style="padding: 10px;">USER</th>
-                                    <th style="padding: 10px;">SUMBER</th>
-                                    <th style="padding: 10px;">TIPE</th>
-                                    <th style="padding: 10px;">TARGET DATA</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    '''
-                    for _, row in hist_df.iterrows():
-                        source_style = "color: #fbbf24;" if str(row['Source']).upper() == "DASHBOARD" else "color: #10b981;"
-                        icon_source = "💻" if str(row['Source']).upper() == "DASHBOARD" else "📱"
-                        
-                        # Tipe Puller Styling
-                        tipe = str(row.get('Type', 'Manual'))
-                        if tipe.upper() == 'OTOMATIS':
-                            tipe_html = '<span style="background-color: rgba(16,185,129,0.2); color: #10b981; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🤖 OTOMATIS</span>'
-                        else:
-                            tipe_html = '<span style="background-color: rgba(99,102,241,0.2); color: #818cf8; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">👆 MANUAL</span>'
-                            
-                        # Target Data Styling
-                        target = str(row.get('Target', 'ALL'))
-                        if 'WFM' in target.upper():
-                            target_html = f'<span style="background-color: rgba(239,68,68,0.2); color: #ef4444; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🎯 {target}</span>'
-                        else:
-                            target_html = f'<span style="background-color: rgba(245,158,11,0.2); color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🎯 {target}</span>'
+          try:
+              hist_df = pd.read_csv(history_file)
+              today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+              # Filter hari ini
+              hist_df = hist_df[hist_df['Date'] == today_str]
+              total_tarik = len(hist_df)
+              
+              if total_tarik > 0:
+                  # Render tabel elegan dengan markdown
+                  table_html = f'''
+                  <div style="background-color: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);">
+                      <p style="color: #38bdf8; font-weight: bold; font-size: 1.1rem; margin-bottom: 15px;">TOTAL TRANSAKSI HARI INI: <span style="background-color: #38bdf8; color: #0f172a; padding: 3px 10px; border-radius: 20px; font-size: 1rem;">{total_tarik} Kali</span></p>
+                      <table style="width: 100%; border-collapse: collapse; color: #cbd5e1; font-size: 0.9rem;">
+                          <thead>
+                              <tr style="border-bottom: 2px solid #1e293b; text-align: left; color: #94a3b8;">
+                                  <th style="padding: 10px;">WAKTU</th>
+                                  <th style="padding: 10px;">USER</th>
+                                  <th style="padding: 10px;">SUMBER</th>
+                                  <th style="padding: 10px;">TIPE</th>
+                                  <th style="padding: 10px;">TARGET DATA</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                  '''
+                  for _, row in hist_df.iterrows():
+                      source_style = "color: #fbbf24;" if str(row['Source']).upper() == "DASHBOARD" else "color: #10b981;"
+                      icon_source = "💻" if str(row['Source']).upper() == "DASHBOARD" else "📱"
+                      
+                      # Tipe Puller Styling
+                      tipe = str(row.get('Type', 'Manual'))
+                      if tipe.upper() == 'OTOMATIS':
+                          tipe_html = '<span style="background-color: rgba(16,185,129,0.2); color: #10b981; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🤖 OTOMATIS</span>'
+                      else:
+                          tipe_html = '<span style="background-color: rgba(99,102,241,0.2); color: #818cf8; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">👆 MANUAL</span>'
+                          
+                      # Target Data Styling
+                      target = str(row.get('Target', 'ALL'))
+                      if 'WFM' in target.upper():
+                          target_html = f'<span style="background-color: rgba(239,68,68,0.2); color: #ef4444; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🎯 {target}</span>'
+                      else:
+                          target_html = f'<span style="background-color: rgba(245,158,11,0.2); color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;">🎯 {target}</span>'
 
-                        table_html += f'''
-                                <tr style="border-bottom: 1px solid #1e293b;">
-                                    <td style="padding: 10px; font-weight: bold; color: #f8fafc;">⏰ {row['Time']}</td>
-                                    <td style="padding: 10px; color: #c4b5fd;">👤 {row['User']}</td>
-                                    <td style="padding: 10px; {source_style} font-weight: bold;">{icon_source} {row['Source']}</td>
-                                    <td style="padding: 10px;">{tipe_html}</td>
-                                    <td style="padding: 10px;">{target_html}</td>
-                                </tr>
-                        '''
-                    table_html += '''
-                            </tbody>
-                        </table>
-                    </div>
-                    '''
-                    import re
-                    table_html = re.sub(r'^\s+', '', table_html, flags=re.MULTILINE).replace('\n', '')
-                    st.markdown(table_html, unsafe_allow_html=True)
-                else:
-                    st.info("Belum ada transaksi penarikan data yang terekam hari ini.")
-            except Exception as e:
-                st.error(f"Gagal membaca riwayat: {e}")
+                      table_html += f'''
+                              <tr style="border-bottom: 1px solid #1e293b;">
+                                  <td style="padding: 10px; font-weight: bold; color: #f8fafc;">⏰ {row['Time']}</td>
+                                  <td style="padding: 10px; color: #c4b5fd;">👤 {row['User']}</td>
+                                  <td style="padding: 10px; {source_style} font-weight: bold;">{icon_source} {row['Source']}</td>
+                                  <td style="padding: 10px;">{tipe_html}</td>
+                                  <td style="padding: 10px;">{target_html}</td>
+                              </tr>
+                      '''
+                  table_html += '''
+                          </tbody>
+                      </table>
+                  </div>
+                  '''
+                  import re
+                  table_html = re.sub(r'^\s+', '', table_html, flags=re.MULTILINE).replace('\n', '')
+                  st.markdown(table_html, unsafe_allow_html=True)
+              else:
+                  st.info("Belum ada transaksi penarikan data yang terekam hari ini.")
+          except Exception as e:
+              st.error(f"Gagal membaca riwayat: {e}")
         else:
-            st.info("Belum ada histori penarikan data (file log belum terbentuk). Lakukan penarikan data minimal 1 kali.")
+          st.info("Belum ada histori penarikan data (file log belum terbentuk). Lakukan penarikan data minimal 1 kali.")
 
