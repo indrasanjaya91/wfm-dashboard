@@ -701,7 +701,7 @@ if not df.empty:
         }
 
     # --- DATA & METRICS ---
-    df_re_today = df[(df['Parsed_Date_RE'] >= start_date) & (df['Parsed_Date_RE'] <= end_date) & (~df['Status_Upper'].str.contains('COMPLETE', na=False))].copy()
+    df_re_today = df[(df['Parsed_Date_RE'] >= start_date) & (df['Parsed_Date_RE'] <= end_date) & (~df['Status_Upper'].str.contains('COMPLETE', na=False)) & (~df['Status_Upper'].str.contains('WAPPR', na=False))].copy()
     brk_re = get_breakdown(df_re_today)
     
     df_ps_today = df[(df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date) & (df['Status_Upper'].str.contains('COMPWORK', na=False))].copy()
@@ -885,22 +885,39 @@ if not df.empty:
                         src_df = src_df[src_df[order_col].astype(str).str.upper() == prod.upper()]
                         
                 if len(src_df) > 0:
-                    html_table = '<div class="cp-container"><div style="display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 50px 180px 110px 90px minmax(200px, 2fr) minmax(150px, 1fr) 120px minmax(150px, 1fr) 170px; font-size: 14px; text-transform: uppercase;">'
-                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: nowrap;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS WO</span></div></div>'
+                    html_table = '<div class="cp-container"><div style="display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); font-size: 14px; text-transform: uppercase;">'
+                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS WO</span></div></div>'
                     
                     for idx, row in enumerate(src_df.to_dict('records'), 1):
                         def get_val(col_name): return str(row.get(col_name, '-')) if pd.notna(row.get(col_name)) else '-'
+                        
+                        status_val_raw = get_val(c_status).upper()
+                        if status_val_raw == 'COMPWORK':
+                            status_bg = "background-color: #14532d; color: white; border: 1px solid #166534;"
+                        elif status_val_raw == 'STARTWORK':
+                            status_bg = "background-color: #1e3a8a; color: white; border: 1px solid #1d4ed8;"
+                        elif status_val_raw == 'INPRG':
+                            status_bg = "background-color: #713f12; color: white; border: 1px solid #854d0e;"
+                        elif status_val_raw in ['WORKFAIL', 'CANCLWORK']:
+                            status_bg = "background-color: #7f1d1d; color: white; border: 1px solid #991b1b;"
+                        elif status_val_raw == 'WAPPR':
+                            status_bg = "background-color: #334155; color: white; border: 1px solid #475569;"
+                        elif status_val_raw == 'VALSTART':
+                            status_bg = "background-color: #7c3aed; color: white; border: 1px solid #8b5cf6;"
+                        else:
+                            status_bg = "background-color: rgba(255,255,255,0.1); color: white;"
+                            
                         html_table += f'''
-                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 50px 180px 110px 90px minmax(200px, 2fr) minmax(150px, 1fr) 120px minmax(150px, 1fr) 170px; background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{idx}</span></div>
                             <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_date)}</span></div>
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: bold;">{get_val(c_order)}</span></div>
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_sto)}</span></div>
                             <div style="padding: 10px; font-size: 14px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_wonum_ao)}</span></div>
-                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_cust)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 14px;">{get_val(c_status)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_cust)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; {status_bg} padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: bold;">{get_val(c_status)}</span></div>
                             <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_tim)}</span></div>
-                            <div style="padding: 10px; font-size: 14px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: nowrap;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_stat_wo)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_stat_wo)}</span></div>
                         </div>
                         '''
                     html_table += '</div>'
@@ -908,7 +925,7 @@ if not df.empty:
                     # Create the modal container
                     modal_id = f"modal-{cat.replace(' ', '_')}-{prod.replace(' ', '_')}"
                     all_modals_html += f'''
-                    <div id="{modal_id}" class="detail-modal" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; background:#0f172a; z-index:999999; border: 1px solid #334155; border-radius:12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); flex-direction:column; overflow:hidden;">
+                    <div id="{modal_id}" class="detail-modal" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; background:#0f172a; z-index:999999; border: 2.5px solid #eab308; border-radius:12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); flex-direction:column; overflow:hidden;">
                         <div style="padding:15px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
                             <h3 style="margin:0; color:white; font-size:1.2rem;">Detail Data: {cat} - {prod}</h3>
                             <button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 10px;">&times;</button>
@@ -1080,7 +1097,7 @@ if not df.empty:
                 ao_mask = df[order_col].astype(str).str.upper().isin(['AO TSEL', 'AO'])
                 
                 # RE excludes COMPLETE status (same as RE MASUK HI)
-                no_complete_mask = ~df['Status_Upper'].str.contains('COMPLETE', na=False)
+                no_complete_mask = ~df['Status_Upper'].str.contains('COMPLETE', na=False) & ~df['Status_Upper'].str.contains('WAPPR', na=False)
                 
                 df_re_month = df[re_mask & ao_mask & no_complete_mask]
                 df_ps_month = df[ps_mask & ao_mask & (df['Status_Upper'].str.contains('COMPWORK', na=False))]
@@ -1225,6 +1242,125 @@ if not df.empty:
             html += '</div>'
             
             st.markdown(html, unsafe_allow_html=True)
+            
+        # --- TABEL PS & KENDALA LENGKAP ---
+        st.markdown('<div class="section-title-wrap" style="margin-top: 40px;"><div class="section-title"> <b>REKAP PS & JENIS KENDALA</b></div></div>', unsafe_allow_html=True)
+        st.markdown("<p style='font-size:0.85rem; color:#94a3b8; margin-top:-10px; margin-bottom:15px;'>Detail seluruh pesanan yang sudah Closing (PS) maupun Kendala (Teknis & Pelanggan), dikelompokkan berdasarkan teknisi dan jenis order.</p>", unsafe_allow_html=True)
+
+        df_combined = pd.concat([df_ps_today, kendala_df]) if len(df_ps_today) > 0 or len(kendala_df) > 0 else pd.DataFrame()
+
+        if len(df_combined) > 0 and tim_col and order_col:
+            def map_category(row):
+                status = str(row.get('Status_Upper', '')).strip()
+                order = str(row.get(order_col, '')).strip().upper()
+                if 'COMPWORK' in status:
+                    if 'AO' in order and 'TSEL' in order: return 'AO TSEL'
+                    if order == 'AO': return 'AO TSEL'
+                    if 'PDA' in order: return 'PDA TSEL'
+                    if 'INDIBIZ' in order: return 'INDIBIZ'
+                    if 'VULA' in order or 'ISP' in order: return 'ISP VULA'
+                    return 'AO TSEL'
+                elif status in ['WORKFAIL', 'CANCLWORK']:
+                    m_status = str(row.get(morning_status_col, '')).strip().upper() if morning_status_col else ''
+                    if m_status in ['BATAL', 'GANTI PAKET', 'KENDALA IZIN', 'PENDING', 'RUMAH KOSONG']:
+                        return 'KENDALA PELANGGAN'
+                    else:
+                        return 'KENDALA TEKNIS'
+                return None
+                
+            df_combined['TAB_CAT'] = df_combined.apply(map_category, axis=1)
+            df_combined = df_combined.dropna(subset=['TAB_CAT'])
+            
+            tims = sorted(df_combined[tim_col].dropna().unique())
+            
+            html2 = '''
+            <style>
+            .cp2-header { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; background-color: #172554; font-size: 0.80rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
+            .cp2-header > div { padding: 10px 5px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+            .cp2-header > div:last-child { border-right: none; }
+            .cp2-body-grid { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; font-size: 0.8rem; color: white; }
+            .cp2-grand { background-color: #172554; display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; padding: 12px 15px; font-weight: bold; color: white; border-top: 2px solid #3b82f6; text-align: center; position: sticky; bottom: -1px; z-index: 10; font-size: 0.85rem; }
+            </style>
+            <div class="cp-container">
+                <div class="cp2-header">
+                    <div style="grid-row: span 2; justify-content: center; text-align: center;">NO.</div>
+                    <div style="grid-row: span 2; justify-content: center; text-align: center;">MORNING TIM</div>
+                    <div style="grid-row: span 2; justify-content: center; text-align: center;">NO. WONUM & AO</div>
+                    <div style="grid-column: span 4; background-color: rgba(16, 185, 129, 0.2); color: #34d399;">PS (OK)</div>
+                    <div style="grid-column: span 2; background-color: rgba(239, 68, 68, 0.2); color: #f87171;">JENIS KENDALA</div>
+                    <div style="grid-row: span 2;">GRAND TOTAL</div>
+                    
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">AO TSEL</div>
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">PDA TSEL</div>
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">INDIBIZ</div>
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">ISP VULA</div>
+                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none;">TEKNIS</div>
+                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none; border-right: 1px solid #64748b;">PELANGGAN</div>
+                </div>
+                <div class="cp2-body-grid">
+            '''
+            
+            col_names = ['AO TSEL', 'PDA TSEL', 'INDIBIZ', 'ISP VULA', 'KENDALA TEKNIS', 'KENDALA PELANGGAN']
+            grand_totals = {c: 0 for c in col_names}
+            
+            no = 1
+            for tim in tims:
+                tim_data = df_combined[df_combined[tim_col] == tim]
+                wonums = tim_data['INFO ORDER'].unique()
+                row_span = len(wonums)
+                if row_span == 0: continue
+                
+                tech_total_orders = len(tim_data)
+                col1 = f'{tim} <span class="cp-badge" style="background-color: #3b82f6; color: white;">{tech_total_orders} WO</span>'
+                
+                border_thick = "border-top: 2px solid #cbd5e1;"
+                
+                html2 += f'<div class="cp-cell" style="grid-row: span {row_span}; {border_thick} justify-content: center; font-weight: bold;">{no}</div>'
+                html2 += f'<div class="cp-cell-left" style="grid-row: span {row_span}; {border_thick}">{col1}</div>'
+                
+                for i, wonum in enumerate(wonums):
+                    wonum_data = tim_data[tim_data['INFO ORDER'] == wonum]
+                    counts = wonum_data['TAB_CAT'].value_counts()
+                    
+                    row_border = border_thick if i == 0 else ""
+                    
+                    html2 += f'<div class="cp-cell-left" style="{row_border}">{wonum}</div>'
+                    
+                    row_tot = 0
+                    for c in col_names:
+                        c_val = counts.get(c, 0)
+                        if c_val > 0:
+                            row_tot += c_val
+                            html2 += f'<div class="cp-cell" style="{row_border}">{c_val}</div>'
+                        else:
+                            html2 += f'<div class="cp-cell" style="{row_border}"></div>'
+                    
+                    html2 += f'<div class="cp-cell" style="font-weight:bold; {row_border}">{row_tot}</div>'
+                
+                for c in col_names:
+                    grand_totals[c] += (tim_data['TAB_CAT'] == c).sum()
+                no += 1
+                    
+            html2 += '</div>'
+            
+            # FOOTER
+            html2 += f'''
+            <div class="cp2-grand">
+                <div style="grid-column: span 3; text-align:center; justify-content: center; display: flex; align-items: center;">GRAND TOTAL KESELURUHAN</div>
+                <div>{grand_totals["AO TSEL"]}</div>
+                <div>{grand_totals["PDA TSEL"]}</div>
+                <div>{grand_totals["INDIBIZ"]}</div>
+                <div>{grand_totals["ISP VULA"]}</div>
+                <div>{grand_totals["KENDALA TEKNIS"]}</div>
+                <div>{grand_totals["KENDALA PELANGGAN"]}</div>
+                <div>{sum(grand_totals.values())}</div>
+            </div>
+            </div>
+            '''
+            
+            import re
+            html2_clean = re.sub(r'^\s+', '', html2, flags=re.MULTILINE)
+            st.markdown(html2_clean, unsafe_allow_html=True)
             
     # =====================================================================
     # HALAMAN LAINNYA
@@ -1766,7 +1902,9 @@ if not df.empty:
                     pct_jk = f"{(tot_jk/tot_re)*100:.1f}".rstrip('0').rstrip('.') if tot_re > 0 else "0"
                     pct_djk = f"{(tot_djk/tot_re)*100:.1f}".rstrip('0').rstrip('.') if tot_re > 0 else "0"
                     
-                    ps_re_pct = f"{(tot_ps/tot_re)*100:.2f}" if tot_re > 0 else "0.00"
+                    ps_re_val = (tot_ps/tot_re)*100 if tot_re > 0 else 0
+                    ps_re_pct = f"{ps_re_val:.2f}"
+                    ps_re_color = "#22c55e" if ps_re_val >= 85.0 else "#ef4444"
                     
                     html_str = (
                         '<div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
@@ -1775,7 +1913,7 @@ if not df.empty:
                         f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
                         f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
                         f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #a855f7; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: {ps_re_color}; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
                         '</div>'
                         f'<div style="border-top: 1px dashed #334155; padding-top: 20px; margin-top: auto; font-size: 1.05rem; font-weight: bold; color: #94a3b8; text-align: left;">'
                         f'<div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>RE JAM KERJA</span> <span style="color:white;">{tot_jk} ({pct_jk}%)</span></div>'
@@ -2537,6 +2675,125 @@ if not df.empty:
             html += '</div>'
             
             st.markdown(html, unsafe_allow_html=True)
+            
+        # --- TABEL PS & KENDALA LENGKAP ---
+        st.markdown('<div class="section-title-wrap" style="margin-top: 40px;"><div class="section-title"> <b>REKAP PS & JENIS KENDALA</b></div></div>', unsafe_allow_html=True)
+        st.markdown("<p style='font-size:0.85rem; color:#94a3b8; margin-top:-10px; margin-bottom:15px;'>Detail seluruh pesanan yang sudah Closing (PS) maupun Kendala (Teknis & Pelanggan), dikelompokkan berdasarkan teknisi dan jenis order.</p>", unsafe_allow_html=True)
+
+        df_combined = pd.concat([df_ps_today, kendala_df]) if len(df_ps_today) > 0 or len(kendala_df) > 0 else pd.DataFrame()
+
+        if len(df_combined) > 0 and tim_col and order_col:
+            def map_category(row):
+                status = str(row.get('Status_Upper', '')).strip()
+                order = str(row.get(order_col, '')).strip().upper()
+                if 'COMPWORK' in status:
+                    if 'AO' in order and 'TSEL' in order: return 'AO TSEL'
+                    if order == 'AO': return 'AO TSEL'
+                    if 'PDA' in order: return 'PDA TSEL'
+                    if 'INDIBIZ' in order: return 'INDIBIZ'
+                    if 'VULA' in order or 'ISP' in order: return 'ISP VULA'
+                    return 'AO TSEL'
+                elif status in ['WORKFAIL', 'CANCLWORK']:
+                    m_status = str(row.get(morning_status_col, '')).strip().upper() if morning_status_col else ''
+                    if m_status in ['BATAL', 'GANTI PAKET', 'KENDALA IZIN', 'PENDING', 'RUMAH KOSONG']:
+                        return 'KENDALA PELANGGAN'
+                    else:
+                        return 'KENDALA TEKNIS'
+                return None
+                
+            df_combined['TAB_CAT'] = df_combined.apply(map_category, axis=1)
+            df_combined = df_combined.dropna(subset=['TAB_CAT'])
+            
+            tims = sorted(df_combined[tim_col].dropna().unique())
+            
+            html2 = '''
+            <style>
+            .cp2-header { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; background-color: #172554; font-size: 0.80rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
+            .cp2-header > div { padding: 10px 5px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+            .cp2-header > div:last-child { border-right: none; }
+            .cp2-body-grid { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; font-size: 0.8rem; color: white; }
+            .cp2-grand { background-color: #172554; display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; padding: 12px 15px; font-weight: bold; color: white; border-top: 2px solid #3b82f6; text-align: center; position: sticky; bottom: -1px; z-index: 10; font-size: 0.85rem; }
+            </style>
+            <div class="cp-container">
+                <div class="cp2-header">
+                    <div style="grid-row: span 2; justify-content: center; text-align: center;">NO.</div>
+                    <div style="grid-row: span 2; justify-content: center; text-align: center;">MORNING TIM</div>
+                    <div style="grid-row: span 2; justify-content: center; text-align: center;">NO. WONUM & AO</div>
+                    <div style="grid-column: span 4; background-color: rgba(16, 185, 129, 0.2); color: #34d399;">PS (OK)</div>
+                    <div style="grid-column: span 2; background-color: rgba(239, 68, 68, 0.2); color: #f87171;">JENIS KENDALA</div>
+                    <div style="grid-row: span 2;">GRAND TOTAL</div>
+                    
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">AO TSEL</div>
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">PDA TSEL</div>
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">INDIBIZ</div>
+                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">ISP VULA</div>
+                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none;">TEKNIS</div>
+                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none; border-right: 1px solid #64748b;">PELANGGAN</div>
+                </div>
+                <div class="cp2-body-grid">
+            '''
+            
+            col_names = ['AO TSEL', 'PDA TSEL', 'INDIBIZ', 'ISP VULA', 'KENDALA TEKNIS', 'KENDALA PELANGGAN']
+            grand_totals = {c: 0 for c in col_names}
+            
+            no = 1
+            for tim in tims:
+                tim_data = df_combined[df_combined[tim_col] == tim]
+                wonums = tim_data['INFO ORDER'].unique()
+                row_span = len(wonums)
+                if row_span == 0: continue
+                
+                tech_total_orders = len(tim_data)
+                col1 = f'{tim} <span class="cp-badge" style="background-color: #3b82f6; color: white;">{tech_total_orders} WO</span>'
+                
+                border_thick = "border-top: 2px solid #cbd5e1;"
+                
+                html2 += f'<div class="cp-cell" style="grid-row: span {row_span}; {border_thick} justify-content: center; font-weight: bold;">{no}</div>'
+                html2 += f'<div class="cp-cell-left" style="grid-row: span {row_span}; {border_thick}">{col1}</div>'
+                
+                for i, wonum in enumerate(wonums):
+                    wonum_data = tim_data[tim_data['INFO ORDER'] == wonum]
+                    counts = wonum_data['TAB_CAT'].value_counts()
+                    
+                    row_border = border_thick if i == 0 else ""
+                    
+                    html2 += f'<div class="cp-cell-left" style="{row_border}">{wonum}</div>'
+                    
+                    row_tot = 0
+                    for c in col_names:
+                        c_val = counts.get(c, 0)
+                        if c_val > 0:
+                            row_tot += c_val
+                            html2 += f'<div class="cp-cell" style="{row_border}">{c_val}</div>'
+                        else:
+                            html2 += f'<div class="cp-cell" style="{row_border}"></div>'
+                    
+                    html2 += f'<div class="cp-cell" style="font-weight:bold; {row_border}">{row_tot}</div>'
+                
+                for c in col_names:
+                    grand_totals[c] += (tim_data['TAB_CAT'] == c).sum()
+                no += 1
+                    
+            html2 += '</div>'
+            
+            # FOOTER
+            html2 += f'''
+            <div class="cp2-grand">
+                <div style="grid-column: span 3; text-align:center; justify-content: center; display: flex; align-items: center;">GRAND TOTAL KESELURUHAN</div>
+                <div>{grand_totals["AO TSEL"]}</div>
+                <div>{grand_totals["PDA TSEL"]}</div>
+                <div>{grand_totals["INDIBIZ"]}</div>
+                <div>{grand_totals["ISP VULA"]}</div>
+                <div>{grand_totals["KENDALA TEKNIS"]}</div>
+                <div>{grand_totals["KENDALA PELANGGAN"]}</div>
+                <div>{sum(grand_totals.values())}</div>
+            </div>
+            </div>
+            '''
+            
+            import re
+            html2_clean = re.sub(r'^\s+', '', html2, flags=re.MULTILINE)
+            st.markdown(html2_clean, unsafe_allow_html=True)
 
     elif menu == "WO ODS PERIODE":
 
@@ -3028,11 +3285,13 @@ if not df.empty:
                 for idx, row in enumerate(df_ffg.to_dict('records'), 1):
                     date_val = str(row.get(date_col, '')) if date_col else ''
                     bulan_str = '-'
+                    month_idx = 99
                     if date_val and str(date_val).lower() != 'nan':
                         try:
                             dt_obj = pd.to_datetime(date_val)
                             months_id = {1:'JANUARI', 2:'FEBRUARI', 3:'MARET', 4:'APRIL', 5:'MEI', 6:'JUNI', 7:'JULI', 8:'AGUSTUS', 9:'SEPTEMBER', 10:'OKTOBER', 11:'NOVEMBER', 12:'DESEMBER'}
                             bulan_str = months_id.get(dt_obj.month, '-')
+                            month_idx = dt_obj.month
                         except:
                             pass
                             
@@ -3053,7 +3312,9 @@ if not df.empty:
                         else:
                             wonum_num_val = val
                     if wonum_ao_val.lower() == 'nan': wonum_ao_val = '-'
-                    if wonum_num_val.lower() == 'nan': wonum_num_val = '-'
+                    
+                    no_inet = str(row.get('Service No.', '-'))
+                    if no_inet.lower() == 'nan' or not no_inet.strip(): no_inet = '-'
                     
                     hasil_ukur = str(row.get('HASIL UKUR IBOSSTER', '-'))
                     if hasil_ukur.lower() == 'nan': hasil_ukur = '-'
@@ -3070,13 +3331,19 @@ if not df.empty:
                         'NAMA TEKNISI': nama_teknisi,
                         'ORDER': order_val,
                         'WONUM (AO)': wonum_ao_val,
-                        'WONUM': wonum_num_val,
+                        'NO INET': no_inet,
                         'HASIL UKUR': hasil_ukur,
                         'PRIORITAS': prioritas,
-                        'DURASI FFG': durasi
+                        'DURASI FFG': durasi,
+                        'Month_Index': month_idx
                     })
                     
                 df_display = pd.DataFrame(ffg_data)
+                
+                if not df_display.empty:
+                    df_display = df_display.sort_values(by=['Month_Index', 'PRIORITAS'], ascending=[True, True])
+                    df_display = df_display.drop(columns=['Month_Index'])
+                    df_display['NO'] = range(1, len(df_display) + 1)
                 
                 # 2. Build the HTML Table with Filters
                 html_table = '<div style="width: 100%; min-height: 400px; overflow-x: auto; background-color: #0f172a; border-radius: 8px; border: 1px solid #334155;">'
@@ -3126,7 +3393,7 @@ if not df.empty:
                     
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;"><span style="{order_bg}">{row["ORDER"]}</span></td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; word-break: break-all;">{row["WONUM (AO)"]}</td>'
-                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["WONUM"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NO INET"]}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; color: #fca5a5; font-weight: bold;">{row["HASIL UKUR"]}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["PRIORITAS"]}</td>'
                     html_table += f'<td style="padding: 10px;">{row["DURASI FFG"]}</td>'
