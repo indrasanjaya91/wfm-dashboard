@@ -31,8 +31,8 @@ def get_auto_puller():
             
         def _loop(self):
             while self.running:
-                # Tidur bervariasi antara 29:30 hingga 29:59 detik untuk menghindari deteksi anti-bot
-                sleep_time = (29 * 60) + random.randint(30, 59)
+                # Tidur bervariasi antara 20:00 hingga 21:00 menit untuk menghindari deteksi anti-bot
+                sleep_time = random.randint(1200, 1260)
                 self.next_run_time = time.time() + sleep_time
                 
                 # Tidur dalam interval 1 detik agar bisa dihentikan kapan saja secara instan, dan mendukung reset waktu
@@ -63,7 +63,7 @@ def get_auto_puller():
             
         def reset_timer(self):
             if self.running:
-                sleep_time = (29 * 60) + random.randint(30, 59)
+                sleep_time = random.randint(1200, 1260)
                 self.next_run_time = time.time() + sleep_time
             
     return AutoPuller()
@@ -88,7 +88,7 @@ def get_ibooster_auto_puller():
                 # 02:55:30 to 02:56:30
                 # 2 hours, 55 minutes = 10500 seconds + 30 = 10530
                 # 2 hours, 56 minutes = 10560 seconds + 30 = 10590
-                sleep_time = random.randint(10530, 10590)
+                sleep_time = random.randint(8700, 9000)
                 self.next_run_time = time.time() + sleep_time
                 
                 while self.running and self.next_run_time and time.time() < self.next_run_time:
@@ -117,7 +117,7 @@ def get_ibooster_auto_puller():
             
         def reset_timer(self):
             if self.running:
-                sleep_time = random.randint(10530, 10590)
+                sleep_time = random.randint(8700, 9000)
                 self.next_run_time = time.time() + sleep_time
             
     return IboosterAutoPuller()
@@ -151,30 +151,34 @@ st.markdown("""
     .dash-title { font-size: 1.8rem; font-weight: 800; color: #f8fafc; margin: 0; letter-spacing: 1px; text-transform: uppercase; }
     .dash-subtitle { font-size: 0.9rem; color: #94a3b8; margin: 0; }
     .header-right { display: flex; align-items: center; gap: 20px; }
-    .update-time { font-size: 0.85rem; color: #94a3b8; text-align: right; line-height: 1.2; }
+    .update-time { font-size: 1.05rem; color: #94a3b8; text-align: right; line-height: 1.2; }
     .export-btn { background-color: #1e293b; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; color: white; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 
-    /* 6 Grid Cards */
-    .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 20px; }
+    /* 6 Grid Cards (Changed to 4 columns) */
+    .grid-6 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
     .d-card { background-color: #0f172a; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border: 2.5px solid #334155; }
     .c-blue { border-top: 4px solid #3b82f6; }
     .c-green { border-top: 4px solid #10b981; }
     .c-purple { border-top: 4px solid #8b5cf6; }
+    .c-indigo { border-top: 4px solid #6366f1; }
     .c-cyan { border-top: 4px solid #06b6d4; }
+    .c-slate { border-top: 4px solid #94a3b8; }
     .c-orange { border-top: 4px solid #f59e0b; }
     .c-teal { border-top: 4px solid #0d9488; }
     
     .dc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 15px; }
-    .dc-header-left { display: flex; align-items: flex-start; gap: 12px; }
+    .dc-header-left { display: flex; align-items: center; gap: 12px; }
     .dc-icon { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
     .ic-blue { background-color: rgba(59,130,246,0.2); color: #3b82f6; }
     .ic-green { background-color: rgba(16,185,129,0.2); color: #10b981; }
-    .ic-purple { background-color: rgba(139,92,246,0.2); color: #8b5cf6; }
-    .ic-cyan { background-color: rgba(6,182,212,0.2); color: #06b6d4; }
+    .ic-purple { background-color: rgba(139,92,246,0.15); color: #8b5cf6; }
+    .ic-indigo { background-color: rgba(99,102,241,0.15); color: #6366f1; }
+    .ic-cyan { background-color: rgba(6,182,212,0.15); color: #06b6d4; }
+    .ic-slate { background-color: rgba(148,163,184,0.15); color: #94a3b8; }
     .ic-orange { background-color: rgba(245,158,11,0.2); color: #f59e0b; }
     .ic-teal { background-color: rgba(13,148,136,0.2); color: #0d9488; }
     
-    .dc-title { font-size: 0.95rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; margin: 0; margin-top: 4px; }
+    .dc-title { font-size: 1.3rem; font-weight: 700; color: white; text-transform: uppercase; margin: 0; line-height: 1.2; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5); }
     
     /* Custom Toggle Switch (ON/OFF) */
     [data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:nth-child(2) {
@@ -237,16 +241,18 @@ st.markdown("""
     /* Custom Pivot */
     .dc-value { font-size: 2.7rem; font-weight: 800; color: white; line-height: 1; text-align: right; margin-top: 2px; }
     
-    .dc-breakdown { font-size: 0.85rem; color: #94a3b8; margin-top: 10px; }
+    .dc-breakdown { font-size: 1.05rem; color: #94a3b8; margin-top: 10px; }
     .dc-row { display: grid; grid-template-columns: 4.8rem 15px 1fr; align-items: center; margin-bottom: 5px; }
     .dc-row-val { font-weight: bold; color: white; text-align: right; }
     .dc-row > span:first-child { color: white; font-weight: bold; text-align: left; }
     .dc-row > span:nth-child(2) { text-align: center; }
     .dc-row > span:last-child, .dc-row > div:last-child { text-align: right; }
-    .dc-row-manja { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; text-align: center; margin-bottom: 5px; }
-    .dc-row-manja span:first-child { text-align: left; color: white; font-weight: bold; }
-    .dc-row-kendala { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; text-align: center; margin-bottom: 5px; }
-    .dc-row-kendala span:first-child { text-align: left; color: white; font-weight: bold; }
+    .dc-row-manja { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; text-align: center; margin-bottom: 5px; font-weight: bold; }
+    .dc-row-manja span:first-child { text-align: left; color: white; }
+    .dc-row-kendala { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; text-align: center; margin-bottom: 5px; font-weight: bold; }
+    .dc-row-kendala span:first-child { text-align: left; color: white; }
+    
+    .header-badge-text { font-size: 0.95rem; font-weight: 800; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5); }
 
     /* Section Titles */
     .section-title-wrap { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
@@ -257,7 +263,7 @@ st.markdown("""
     
     /* Custom Pivot */
     .cp-container { background-color: #0f172a; border-radius: 8px; border: 1px solid #1e293b; overflow-y: auto; overflow-x: hidden; max-height: 800px; }
-    .cp-header { display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 1fr 1fr 1fr; background-color: #172554; font-size: 0.85rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
+    .cp-header { display: grid; grid-template-columns: 2fr 3fr 1fr 1fr 1fr 1fr 1fr; background-color: #172554; font-size: 1.05rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
     .cp-header > div { padding: 12px 15px; border-right: 1px solid #64748b; display: flex; align-items: center; justify-content: center; }
     .cp-header > div:last-child { border-right: none; }
     .cp-header div:nth-child(1), .cp-header div:nth-child(2) { justify-content: flex-start; text-align: left; }
@@ -275,7 +281,7 @@ st.markdown("""
     details[open] summary .cp-arrow { transform: rotate(90deg); }
     details summary { list-style: none; }
     details summary::-webkit-details-marker { display: none; }
-    .cp-grand { background-color: #172554; display: grid; grid-template-columns: 5fr 1fr 1fr 1fr 1fr 1fr; text-align: center; font-weight: bold; color: white; font-size: 0.85rem; border-top: 2px solid #3b82f6; position: sticky; bottom: 0; z-index: 10; }
+    .cp-grand { background-color: #172554; display: grid; grid-template-columns: 5fr 1fr 1fr 1fr 1fr 1fr; text-align: center; font-weight: bold; color: white; font-size: 1.05rem; border-top: 2px solid #3b82f6; position: sticky; bottom: 0; z-index: 10; }
     .cp-grand > div { padding: 12px 15px; border-right: 1px solid #64748b; display: flex; align-items: center; justify-content: center; }
     .cp-grand > div:last-child { border-right: none; }
     
@@ -720,8 +726,16 @@ if not df.empty:
     prog_df = df[(df[morning_status_col].astype(str).str.strip().str.upper() == 'SEDANG DIKERJAKAN') & (df['Status_Upper'] == 'STARTWORK')].copy() if morning_status_col else pd.DataFrame()
     brk_prog = get_breakdown(prog_df)
     
+    pending_df = df[df[morning_status_col].astype(str).str.strip().str.upper() == 'PENDING'].copy() if morning_status_col else pd.DataFrame()
+    brk_pending = get_breakdown(pending_df)
+    
     kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & (df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date)].copy()
     brk_ken = get_breakdown(kendala_df)
+    
+    validasi_df = df[
+        ((df['Status_Upper'] == 'WAPPR') & (df['Parsed_Date_RE'] >= start_date) & (df['Parsed_Date_RE'] <= end_date)) |
+        ((df['Status_Upper'] == 'COMPLETE') & (df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date))
+    ].copy()
     
     startwork_df = df[df['Status_Upper'] == "STARTWORK"].copy()
     
@@ -736,7 +750,8 @@ if not df.empty:
         # Helper to make numbers clickable
         def make_link(val, cat, prod):
             if val > 0:
-                return f'<a href="javascript:void(0)" class="modal-trigger" data-cat="{cat}" data-prod="{prod}" style="color:white; text-decoration:underline; cursor:pointer;">{val}</a>'
+                underline = "none" if prod == "ALL" else "underline"
+                return f'<a href="javascript:void(0)" class="modal-trigger" data-cat="{cat}" data-prod="{prod}" style="color:white; text-decoration:{underline}; cursor:pointer;">{val}</a>'
             return f'<span style="color:white">-</span>'
             
         # --- 5 GRID CARDS ---
@@ -746,7 +761,7 @@ if not df.empty:
                 val = brk.get(prod, 0)
                 pct = f"({(val/total*100):.0f}%)" if total > 0 else "(0%)"
                 val_html = make_link(val, cat_name, prod) if val > 0 else f'<span>{val}</span>'
-                return f'<div class="dc-row-val" style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;"><span>{val_html}</span><span style="font-size: 0.85rem; color: #94a3b8; width: 52px; text-align: right; font-weight: bold; white-space: nowrap;">{pct}</span></div>'
+                return f'<div class="dc-row-val" style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;"><span>{val_html}</span><span style="font-size: 1.05rem; color: #94a3b8; width: 52px; text-align: right; font-weight: bold; white-space: nowrap;">{pct}</span></div>'
             
             return f'''
                 <div style="font-size:0.85rem; margin-bottom:8px; visibility:hidden;">&nbsp;</div>
@@ -759,7 +774,7 @@ if not df.empty:
         manja_total = len(manja_df)
         manja_html = ""
         if flag_manja_col and order_col:
-            manja_html += '<div class="dc-row-manja" style="color:white; font-weight:bold; font-size:0.85rem; margin-bottom:8px;"><span></span><span>H-</span><span>HI</span><span>H+</span></div>'
+            manja_html += '<div class="dc-row-manja" style="color:white; font-weight:bold; font-size:0.85rem; margin-bottom:8px;"><span></span><span class="header-badge-text">H-</span><span class="header-badge-text">HI</span><span class="header-badge-text">H+</span></div>'
             for prod in PROD_COLS:
                 sub = manja_df[manja_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
                 h_min = len(sub[sub[flag_manja_col].astype(str).str.contains("H-", regex=False, na=False)])
@@ -771,7 +786,7 @@ if not df.empty:
             
         kendala_html = ""
         if order_col:
-            kendala_html += '<div class="dc-row-kendala" style="color:white; font-size:0.85rem; font-weight:bold; margin-bottom:8px;"><span></span><span>WFM</span><span>UNSC</span></div>'
+            kendala_html += '<div class="dc-row-kendala" style="color:white; font-size:0.85rem; font-weight:bold; margin-bottom:8px;"><span></span><span class="header-badge-text">WFM</span><span class="header-badge-text">UNSC</span></div>'
             for prod in PROD_COLS:
                 sub = kendala_df[kendala_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
                 wfm = len(sub[sub['Status_Upper'] == 'WORKFAIL'])
@@ -780,73 +795,109 @@ if not df.empty:
         else:
             kendala_html = "<div style='text-align:center; padding-top:20px'>NO DATA</div>"
             
+        validasi_html = ""
+        if order_col:
+            validasi_html += '<div class="dc-row-kendala" style="color:white; font-size:0.85rem; font-weight:bold; margin-bottom:8px;"><span></span><span class="header-badge-text">WAPPR</span><span class="header-badge-text">COMPLETE</span></div>'
+            for prod in PROD_COLS:
+                sub = validasi_df[validasi_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
+                wfm = len(sub[sub['Status_Upper'] == 'WAPPR'])
+                unsc = len(sub[sub['Status_Upper'] == 'COMPLETE'])
+                validasi_html += f'<div class="dc-row-kendala"><span>{prod}</span><span>{make_link(wfm, "WO VALIDASI WFM", prod)}</span><span>{make_link(unsc, "WO VALIDASI UNSC", prod)}</span></div>'
+        else:
+            validasi_html = "<div style='text-align:center; padding-top:20px'>NO DATA</div>"
+            
         grid_html = f'''
         <div class="grid-6">
-            <!-- CARD 1 -->
+            <!-- BARIS 1 -->
+            <!-- CARD 1: RE MASUK -->
             <div class="d-card c-blue">
                 <div class="dc-header">
                     <div class="dc-header-left">
                         <div class="dc-icon ic-blue">📥</div>
-                        <div class="dc-title">RE MASUK HI</div>
+                        <div class="dc-title">RE MASUK</div>
                     </div>
-                    <div class="dc-value">{len(df_re_today)}</div>
+                    <div class="dc-value">{make_link(len(df_re_today), "RE MASUK HI", "ALL")}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem;">{ps_re_pct}</span></div></div>
+                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem; text-shadow: 1px 1px 3px #ff0000, -1px -1px 2px rgba(255,0,0,0.8);"><span style="color:white; font-weight:bold; font-size:1.15rem; margin-right:12px;">{re_hi_ao}/{ps_hi_ao}</span>{ps_re_pct}</span></div></div>
             </div>
-            <!-- CARD 2 -->
-            <div class="d-card c-green">
+            <!-- CARD 2: WO VALIDASI -->
+            <div class="d-card c-indigo">
                 <div class="dc-header">
                     <div class="dc-header-left">
-                        <div class="dc-icon ic-green">✅</div>
-                        <div class="dc-title">DONE PS</div>
+                        <div class="dc-icon ic-indigo">🔍</div>
+                        <div class="dc-title">WO VALIDASI</div>
                     </div>
-                    <div class="dc-value">{len(df_ps_today)}</div>
+                    <div class="dc-value">{make_link(len(validasi_df), "WO VALIDASI", "ALL")}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_ps, "DONE PS")}</div>
+                <div class="dc-breakdown">{validasi_html}</div>
             </div>
-            <!-- CARD 3 -->
-            <div class="d-card c-purple">
-                <div class="dc-header">
-                    <div class="dc-header-left">
-                        <div class="dc-icon ic-purple">🎯</div>
-                        <div class="dc-title">POTENSI PS</div>
-                    </div>
-                    <div class="dc-value">{len(potensi_df)}</div>
-                </div>
-                <div class="dc-breakdown">{bd_html(brk_pot, "POTENSI PS")}</div>
-            </div>
-            <!-- CARD 4: WO PROGRESS -->
-            <div class="d-card c-cyan">
-                <div class="dc-header">
-                    <div class="dc-header-left">
-                        <div class="dc-icon ic-cyan">⚙️</div>
-                        <div class="dc-title">PROGRESS</div>
-                    </div>
-                    <div class="dc-value">{len(prog_df)}</div>
-                </div>
-                <div class="dc-breakdown">{bd_html(brk_prog, "PROGRESS")}</div>
-            </div>
-            <!-- CARD 4 -->
-            <div class="d-card c-orange">
-                <div class="dc-header">
-                    <div class="dc-header-left">
-                        <div class="dc-icon ic-orange">⚠️</div>
-                        <div class="dc-title">KENDALA HI</div>
-                    </div>
-                    <div class="dc-value">{len(kendala_df)}</div>
-                </div>
-                <div class="dc-breakdown">{kendala_html}</div>
-            </div>
-            <!-- CARD 5 -->
+            <!-- CARD 3: MANJA -->
             <div class="d-card c-teal">
                 <div class="dc-header">
                     <div class="dc-header-left">
                         <div class="dc-icon ic-teal">👤</div>
                         <div class="dc-title">MANJA</div>
                     </div>
-                    <div class="dc-value">{manja_total}</div>
+                    <div class="dc-value">{make_link(manja_total, "MANJA", "ALL")}</div>
                 </div>
                 <div class="dc-breakdown">{manja_html}</div>
+            </div>
+            <!-- CARD 4: KENDALA HI -->
+            <div class="d-card c-orange">
+                <div class="dc-header">
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-orange">⚠️</div>
+                        <div class="dc-title">KENDALA HI</div>
+                    </div>
+                    <div class="dc-value">{make_link(len(kendala_df), "KENDALA HI", "ALL")}</div>
+                </div>
+                <div class="dc-breakdown">{kendala_html}</div>
+            </div>
+
+            <!-- BARIS 2 -->
+            <!-- CARD 4: DONE PS -->
+            <div class="d-card c-green">
+                <div class="dc-header">
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-green">✅</div>
+                        <div class="dc-title">DONE PS</div>
+                    </div>
+                    <div class="dc-value">{make_link(len(df_ps_today), "DONE PS", "ALL")}</div>
+                </div>
+                <div class="dc-breakdown">{bd_html(brk_ps, "DONE PS")}</div>
+            </div>
+            <!-- CARD 5: POTENSI PS -->
+            <div class="d-card c-purple">
+                <div class="dc-header">
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-purple">🎯</div>
+                        <div class="dc-title">POTENSI PS</div>
+                    </div>
+                    <div class="dc-value">{make_link(len(potensi_df), "POTENSI PS", "ALL")}</div>
+                </div>
+                <div class="dc-breakdown">{bd_html(brk_pot, "POTENSI PS")}</div>
+            </div>
+            <!-- CARD 7: PROGRESS -->
+            <div class="d-card c-cyan">
+                <div class="dc-header">
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-cyan">⚙️</div>
+                        <div class="dc-title">PROGRESS</div>
+                    </div>
+                    <div class="dc-value">{make_link(len(prog_df), "PROGRESS", "ALL")}</div>
+                </div>
+                <div class="dc-breakdown">{bd_html(brk_prog, "PROGRESS")}</div>
+            </div>
+            <!-- CARD 8: PENDING -->
+            <div class="d-card c-slate">
+                <div class="dc-header">
+                    <div class="dc-header-left">
+                        <div class="dc-icon ic-slate">⏳</div>
+                        <div class="dc-title">PENDING</div>
+                    </div>
+                    <div class="dc-value">{make_link(len(pending_df), "PENDING", "ALL")}</div>
+                </div>
+                <div class="dc-breakdown">{bd_html(brk_pending, "PENDING")}</div>
             </div>
         </div>
         '''
@@ -862,11 +913,11 @@ if not df.empty:
         c_tim = tim_col if tim_col else ''
         c_stat_wo = morning_status_col if morning_status_col else ''
         
-        cats = ["RE MASUK HI", "DONE PS", "POTENSI PS", "PROGRESS", "KENDALA WFM", "KENDALA UNSC", "MANJA H-", "MANJA HI", "MANJA H+"]
+        cats = ["RE MASUK HI", "DONE PS", "POTENSI PS", "PROGRESS", "KENDALA WFM", "KENDALA UNSC", "KENDALA HI", "MANJA H-", "MANJA HI", "MANJA H+", "MANJA", "WO VALIDASI WFM", "WO VALIDASI UNSC", "WO VALIDASI", "PENDING"]
         
         all_modals_html = ""
         for cat in cats:
-            for prod in PROD_COLS:
+            for prod in PROD_COLS + ["ALL"]:
                 src_df = pd.DataFrame()
                 if cat == "RE MASUK HI": src_df = df_re_today.copy()
                 elif cat == "DONE PS": src_df = df_ps_today.copy()
@@ -874,19 +925,26 @@ if not df.empty:
                 elif cat == "PROGRESS": src_df = prog_df.copy()
                 elif cat == "KENDALA WFM": src_df = kendala_df[kendala_df['Status_Upper'] == 'WORKFAIL'].copy()
                 elif cat == "KENDALA UNSC": src_df = kendala_df[kendala_df['Status_Upper'] == 'CANCLWORK'].copy()
+                elif cat == "KENDALA HI": src_df = kendala_df.copy()
                 elif cat == "MANJA H-": src_df = manja_df[manja_df[flag_manja_col].astype(str).str.contains("H-", regex=False, na=False)].copy() if flag_manja_col else pd.DataFrame()
                 elif cat == "MANJA HI": src_df = manja_df[manja_df[flag_manja_col].astype(str).str.contains("HI", regex=False, na=False)].copy() if flag_manja_col else pd.DataFrame()
                 elif cat == "MANJA H+": src_df = manja_df[manja_df[flag_manja_col].astype(str).str.contains("H+", regex=False, na=False)].copy() if flag_manja_col else pd.DataFrame()
+                elif cat == "MANJA": src_df = manja_df.copy()
+                elif cat == "WO VALIDASI WFM": src_df = validasi_df[validasi_df['Status_Upper'] == 'WAPPR'].copy()
+                elif cat == "WO VALIDASI UNSC": src_df = validasi_df[validasi_df['Status_Upper'] == 'COMPLETE'].copy()
+                elif cat == "WO VALIDASI": src_df = validasi_df.copy()
+                elif cat == "PENDING": src_df = pending_df.copy()
                 
                 if len(src_df) > 0 and order_col:
-                    if cat.startswith("MANJA") or cat.startswith("KENDALA"):
-                        src_df = src_df[src_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
-                    else:
-                        src_df = src_df[src_df[order_col].astype(str).str.upper() == prod.upper()]
+                    if prod != "ALL":
+                        if cat.startswith("MANJA") or cat.startswith("KENDALA"):
+                            src_df = src_df[src_df[order_col].astype(str).str.upper().str.contains(prod.split()[0], na=False)]
+                        else:
+                            src_df = src_df[src_df[order_col].astype(str).str.upper() == prod.upper()]
                         
                 if len(src_df) > 0:
-                    html_table = '<div class="cp-container"><div style="display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); font-size: 14px; text-transform: uppercase;">'
-                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff;">STATUS WO</span></div></div>'
+                    html_table = '<div class="cp-container"><div style="display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); font-size: 12px; text-transform: uppercase;">'
+                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">STATUS WO</span></div></div>'
                     
                     for idx, row in enumerate(src_df.to_dict('records'), 1):
                         def get_val(col_name): return str(row.get(col_name, '-')) if pd.notna(row.get(col_name)) else '-'
@@ -908,16 +966,16 @@ if not df.empty:
                             status_bg = "background-color: rgba(255,255,255,0.1); color: white;"
                             
                         html_table += f'''
-                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 12px; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{idx}</span></div>
-                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_date)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: bold;">{get_val(c_order)}</span></div>
+                            <div style="padding: 10px; font-size: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_date)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">{get_val(c_order)}</span></div>
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_sto)}</span></div>
-                            <div style="padding: 10px; font-size: 14px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_wonum_ao)}</span></div>
-                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_cust)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; {status_bg} padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: bold;">{get_val(c_status)}</span></div>
-                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_tim)}</span></div>
-                            <div style="padding: 10px; font-size: 14px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_stat_wo)}</span></div>
+                            <div style="padding: 10px; font-size: 12px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_wonum_ao)}</span></div>
+                            <div style="padding: 10px; font-size: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_cust)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; {status_bg} padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">{get_val(c_status)}</span></div>
+                            <div style="padding: 10px; font-size: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_tim)}</span></div>
+                            <div style="padding: 10px; font-size: 12px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_stat_wo)}</span></div>
                         </div>
                         '''
                     html_table += '</div>'
@@ -1011,7 +1069,7 @@ if not df.empty:
                             <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 2px;">(DONE PS HARI INI)</div>
                         </div>
                     </div>
-                    <div style="border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; color: #cbd5e1; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <div style="border: 1px solid #334155; padding: 4px 10px; border-radius: 6px; color: #cbd5e1; font-size: 12px; display: flex; align-items: center; gap: 6px;">
                         📅 Periode Hari Ini
                     </div>
                 </div>
@@ -1032,7 +1090,7 @@ if not df.empty:
                             {rank}
                         </div>
                         <div style="flex-grow: 1;">
-                            <div style="color: #cbd5e1; font-size: 0.85rem; font-weight: 700; margin-bottom: 6px;">{str(name).upper()}</div>
+                            <div style="color: #cbd5e1; font-size: 1.05rem; font-weight: 700; margin-bottom: 6px;">{str(name).upper()}</div>
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="flex-grow: 1; height: 18px; background-color: #1e293b; border-radius: 4px; overflow: hidden;">
                                     <div style="width: {bar_width}%; height: 100%; background: linear-gradient(90deg, #059669, #10b981); border-radius: 4px;"></div>
@@ -1058,7 +1116,7 @@ if not df.empty:
                             👥
                         </div>
                         <div>
-                            <div style="color: #cbd5e1; font-size: 14px; margin-bottom: 4px; line-height: 1.2;">Total Done PS<br>hari ini</div>
+                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px; line-height: 1.2;">Total Done PS<br>hari ini</div>
                             <div style="color: #10b981; font-size: 1.4rem; font-weight: bold;">{total_done_ps}</div>
                         </div>
                     </div>
@@ -1068,7 +1126,7 @@ if not df.empty:
                             🛠️
                         </div>
                         <div>
-                            <div style="color: #cbd5e1; font-size: 14px; margin-bottom: 4px; line-height: 1.2;">Total Teknisi<br>Aktif</div>
+                            <div style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px; line-height: 1.2;">Total Teknisi<br>Aktif</div>
                             <div style="color: #3b82f6; font-size: 1.4rem; font-weight: bold;">{total_tek_aktif}</div>
                         </div>
                     </div>
@@ -1152,7 +1210,7 @@ if not df.empty:
                         ('📊 % PS/RE', '#a855f7')
                     ]
                     for title, color in headers:
-                        html_table += f'<th style="padding: 15px 12px; border-bottom: 2px solid #334155; color: {color}; font-size: 0.95rem; text-align: center;">{title}</th>'
+                        html_table += f'<th style="padding: 15px 12px; border-bottom: 2px solid #334155; color: {color}; font-size: 1.1rem; text-align: center;">{title}</th>'
                     html_table += '</tr></thead><tbody>'
                     
                     for _, row in summary.iterrows():
@@ -1160,12 +1218,12 @@ if not df.empty:
                         pct_color = "#34d399" if pct_val >= 85.0 else "#ef4444"
                         
                         html_table += '<tr style="border-bottom: 1px solid #1e293b;">'
-                        html_table += f'<td style="padding: 12px 10px; font-weight: bold; color: white; font-size: 0.85rem; text-align: center;">{row["TANGGAL"]}</td>'
-                        html_table += f'<td style="padding: 12px 10px; color: #38bdf8; font-weight: bold; font-size: 0.9rem; text-align: center;">{row["RE"]}</td>'
-                        html_table += f'<td style="padding: 12px 10px; color: #34d399; font-weight: bold; font-size: 0.9rem; text-align: center;">{row["PS"]}</td>'
-                        html_table += f'<td style="padding: 12px 10px; font-weight: bold; color: {pct_color}; font-size: 0.85rem; text-align: center;">'
+                        html_table += f'<td style="padding: 12px 10px; font-weight: bold; color: white; font-size: 1.1rem; text-align: center;">{row["TANGGAL"]}</td>'
+                        html_table += f'<td style="padding: 12px 10px; color: #38bdf8; font-weight: bold; font-size: 1.1rem; text-align: center;">{row["RE"]}</td>'
+                        html_table += f'<td style="padding: 12px 10px; color: #34d399; font-weight: bold; font-size: 1.1rem; text-align: center;">{row["PS"]}</td>'
+                        html_table += f'<td style="padding: 12px 10px; font-weight: bold; color: {pct_color}; font-size: 1.1rem; text-align: center;">'
                         html_table += f'<div style="display:flex; align-items:center; justify-content:center; gap:10px;">'
-                        html_table += f'<span style="width: 60px; text-align:right;">{row["% PS/RE"]}</span>'
+                        html_table += f'<span style="width: 80px; text-align:right; white-space: nowrap;">{row["% PS/RE"]}</span>'
                         html_table += f'<div style="width: 60px; height: 6px; background: #1e293b; border-radius: 4px; overflow: hidden;">'
                         html_table += f'<div style="width: {min(pct_val, 100)}%; height: 100%; background: {pct_color};"></div>'
                         html_table += f'</div></div></td>'
@@ -1176,14 +1234,14 @@ if not df.empty:
                     # Sticky Footer for Totals
                     html_table += '<tfoot style="background-color: #1e293b; position: sticky; bottom: -1px; z-index: 2;">'
                     html_table += '<tr>'
-                    html_table += '<th style="padding: 12px; text-align: center; color: white; font-size: 0.95rem; border-top: 2px solid #334155;">'
+                    html_table += '<th style="padding: 12px; text-align: center; color: white; font-size: 1.1rem; border-top: 2px solid #334155;">'
                     html_table += '<div style="display:flex; align-items:center; justify-content:center; gap:10px;">'
-                    html_table += '<div style="background: rgba(139, 92, 246, 0.2); color:#a855f7; padding: 6px 10px; border-radius: 6px; font-weight:900; font-size:1.1rem;">∑</div>'
+                    html_table += '<div style="background: rgba(139, 92, 246, 0.2); color:#a855f7; padding: 6px 10px; border-radius: 6px; font-weight:900; font-size:1.2rem;">∑</div>'
                     html_table += 'TOTAL'
                     html_table += '</div></th>'
-                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #38bdf8; font-size: 1.1rem;">{tot_re}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total RE</div></th>'
-                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #34d399; font-size: 1.1rem;">{tot_ps}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total PS</div></th>'
-                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: white; font-size: 1.1rem;">{tot_pct}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Rata-rata % PS/RE</div></th>'
+                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #38bdf8; font-size: 1.3rem;">{tot_re}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total RE</div></th>'
+                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: #34d399; font-size: 1.3rem;">{tot_ps}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Total PS</div></th>'
+                    html_table += f'<th style="padding: 12px; text-align: center; border-top: 2px solid #334155;"><div style="color: white; font-size: 1.3rem;">{tot_pct}</div><div style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-top: 4px;">Rata-rata % PS/RE</div></th>'
                     html_table += '</tr></tfoot>'
                     
                     html_table += '</table></div>'
@@ -1275,27 +1333,27 @@ if not df.empty:
             
             html2 = '''
             <style>
-            .cp2-header { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; background-color: #172554; font-size: 0.80rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
+            .cp2-header { display: grid; grid-template-columns: 50px 3.0fr 3.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1.0fr 1.0fr 0.8fr; background-color: #172554; font-size: 0.95rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
             .cp2-header > div { padding: 10px 5px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
             .cp2-header > div:last-child { border-right: none; }
-            .cp2-body-grid { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; font-size: 0.8rem; color: white; }
-            .cp2-grand { background-color: #172554; display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; padding: 12px 15px; font-weight: bold; color: white; border-top: 2px solid #3b82f6; text-align: center; position: sticky; bottom: -1px; z-index: 10; font-size: 0.85rem; }
+            .cp2-body-grid { display: grid; grid-template-columns: 50px 3.0fr 3.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1.0fr 1.0fr 0.8fr; font-size: 0.8rem; color: white; }
+            .cp2-grand { background-color: #172554; display: grid; grid-template-columns: 50px 3.0fr 3.8fr 0.8fr 0.8fr 0.8fr 0.8fr 1.0fr 1.0fr 0.8fr; padding: 12px 15px; font-weight: bold; color: white; border-top: 2px solid #3b82f6; text-align: center; position: sticky; bottom: -1px; z-index: 10; font-size: 1.05rem; }
             </style>
             <div class="cp-container">
                 <div class="cp2-header">
                     <div style="grid-row: span 2; justify-content: center; text-align: center;">NO.</div>
                     <div style="grid-row: span 2; justify-content: center; text-align: center;">MORNING TIM</div>
                     <div style="grid-row: span 2; justify-content: center; text-align: center;">NO. WONUM & AO</div>
-                    <div style="grid-column: span 4; background-color: rgba(16, 185, 129, 0.2); color: #34d399;">PS (OK)</div>
-                    <div style="grid-column: span 2; background-color: rgba(239, 68, 68, 0.2); color: #f87171;">JENIS KENDALA</div>
+                    <div style="grid-column: span 4; background-color: #15803d; color: white;">PS (OK)</div>
+                    <div style="grid-column: span 2; background-color: #b91c1c; color: white;">JENIS KENDALA</div>
                     <div style="grid-row: span 2;">GRAND TOTAL</div>
                     
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">AO TSEL</div>
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">PDA TSEL</div>
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">INDIBIZ</div>
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">ISP VULA</div>
-                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none;">TEKNIS</div>
-                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none; border-right: 1px solid #64748b;">PELANGGAN</div>
+                    <div style="background-color: #15803d; color: white; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.4);">AO TSEL</div>
+                    <div style="background-color: #15803d; color: white; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.4);">PDA TSEL</div>
+                    <div style="background-color: #15803d; color: white; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.4);">INDIBIZ</div>
+                    <div style="background-color: #15803d; color: white; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.4);">ISP VULA</div>
+                    <div style="background-color: #b91c1c; color: white; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.4);">TEKNIS</div>
+                    <div style="background-color: #b91c1c; color: white; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.4);">PELANGGAN</div>
                 </div>
                 <div class="cp2-body-grid">
             '''
@@ -1311,12 +1369,20 @@ if not df.empty:
                 if row_span == 0: continue
                 
                 tech_total_orders = len(tim_data)
-                col1 = f'{tim} <span class="cp-badge" style="background-color: #3b82f6; color: white;">{tech_total_orders} WO</span>'
+                total_ps = tim_data['TAB_CAT'].isin(['AO TSEL', 'PDA TSEL', 'INDIBIZ', 'ISP VULA']).sum()
+                total_ken = tim_data['TAB_CAT'].isin(['KENDALA TEKNIS', 'KENDALA PELANGGAN']).sum()
+                
+                shadow = "text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);"
+                badges = f'<span class="cp-badge" style="background-color: #3b82f6; color: white; {shadow}">{tech_total_orders} WO</span>'
+                badges += f'<span class="cp-badge" style="background-color: #15803d; color: white; {shadow}">{total_ps} PS</span>'
+                badges += f'<span class="cp-badge" style="background-color: #b91c1c; color: white; {shadow}">{total_ken} KEN</span>'
+                
+                col1 = f'<div style="display: flex; align-items: center; justify-content: flex-start; gap: 4px; flex-wrap: wrap;">{tim} {badges}</div>'
                 
                 border_thick = "border-top: 2px solid #cbd5e1;"
                 
-                html2 += f'<div class="cp-cell" style="grid-row: span {row_span}; {border_thick} justify-content: center; font-weight: bold;">{no}</div>'
-                html2 += f'<div class="cp-cell-left" style="grid-row: span {row_span}; {border_thick}">{col1}</div>'
+                html2 += f'<div class="cp-cell" style="grid-row: span {row_span}; {border_thick} justify-content: center; font-weight: bold; font-size: 0.95rem;">{no}</div>'
+                html2 += f'<div class="cp-cell-left" style="grid-row: span {row_span}; {border_thick} font-weight: bold; font-size: 0.95rem;">{col1}</div>'
                 
                 for i, wonum in enumerate(wonums):
                     wonum_data = tim_data[tim_data['INFO ORDER'] == wonum]
@@ -1324,7 +1390,7 @@ if not df.empty:
                     
                     row_border = border_thick if i == 0 else ""
                     
-                    html2 += f'<div class="cp-cell-left" style="{row_border}">{wonum}</div>'
+                    html2 += f'<div class="cp-cell" style="{row_border} font-weight: bold; font-size: 0.95rem;">{wonum}</div>'
                     
                     row_tot = 0
                     for c in col_names:
@@ -1345,15 +1411,16 @@ if not df.empty:
             
             # FOOTER
             html2 += f'''
-            <div class="cp2-grand">
-                <div style="grid-column: span 3; text-align:center; justify-content: center; display: flex; align-items: center;">GRAND TOTAL KESELURUHAN</div>
-                <div>{grand_totals["AO TSEL"]}</div>
-                <div>{grand_totals["PDA TSEL"]}</div>
-                <div>{grand_totals["INDIBIZ"]}</div>
-                <div>{grand_totals["ISP VULA"]}</div>
-                <div>{grand_totals["KENDALA TEKNIS"]}</div>
-                <div>{grand_totals["KENDALA PELANGGAN"]}</div>
-                <div>{sum(grand_totals.values())}</div>
+            <div class="cp2-grand" style="padding: 0;">
+                <div style="grid-column: span 3; text-align:center; justify-content: center; display: flex; align-items: center; padding: 12px 15px;">GRAND TOTAL</div>
+                <div style="background-color: #15803d; padding: 12px 15px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.4);">{grand_totals["AO TSEL"]}</div>
+                <div style="background-color: #15803d; padding: 12px 15px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.4);">{grand_totals["PDA TSEL"]}</div>
+                <div style="background-color: #15803d; padding: 12px 15px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.4);">{grand_totals["INDIBIZ"]}</div>
+                <div style="background-color: #15803d; padding: 12px 15px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.4);">{grand_totals["ISP VULA"]}</div>
+                <div style="background-color: #b91c1c; padding: 12px 15px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.4);">{grand_totals["KENDALA TEKNIS"]}</div>
+                <div style="background-color: #b91c1c; padding: 12px 15px; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.4);">{grand_totals["KENDALA PELANGGAN"]}</div>
+                <div style="padding: 12px 15px; display: flex; align-items: center; justify-content: center;">{sum(grand_totals.values())}</div>
+            </div>
             </div>
             </div>
             '''
@@ -1398,7 +1465,7 @@ if not df.empty:
             if v > 0:
                 pct = f"{(v/wfm_count*100):.1f}%".replace('.', ',') if wfm_count > 0 else "0,0%"
                 clr = get_color(k)
-                wfm_items.append(f'<div style="color: white; font-size: 14px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
+                wfm_items.append(f'<div style="color: white; font-size: 12px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
         wfm_breakdown_html = f'<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">{"".join(wfm_items)}</div>'
             
         # Hitung breakdown order untuk CANCLWORK
@@ -1409,7 +1476,7 @@ if not df.empty:
             if v > 0:
                 pct = f"{(v/cancl_count*100):.1f}%".replace('.', ',') if cancl_count > 0 else "0,0%"
                 clr = get_color(k)
-                cancl_items.append(f'<div style="color: white; font-size: 14px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
+                cancl_items.append(f'<div style="color: white; font-size: 12px; display: flex; align-items: center; justify-content: flex-start; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {clr}; border-radius: 50%;"></div><div style="white-space: nowrap;">{k} <span style="margin-left: 4px;">{v} ({pct})</span></div></div>')
         cancl_breakdown_html = f'<div style="display: flex; flex-direction: column; gap: 6px; justify-content: center;">{"".join(cancl_items)}</div>'
         
         # 2. Render Metric Cards
@@ -1655,7 +1722,7 @@ if not df.empty:
                                 width_pct = (val / max_val) * 100 if max_val > 0 else 0
                                 
                                 html_bars += f'<div style="display: flex; align-items: center; width: 100%;">'
-                                html_bars += f'<div style="background-color: #1e293b; color: #94a3b8; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">{rank}</div>'
+                                html_bars += f'<div style="background-color: #1e293b; color: #94a3b8; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">{rank}</div>'
                                 html_bars += f'<div style="color: #cbd5e1; width: 140px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.8rem; margin-right: 10px; flex-shrink: 0;" title="{name}">{name}</div>'
                                 html_bars += f'<div style="flex-grow: 1; display: flex; align-items: center; padding-right: 10px;">'
                                 html_bars += f'<div style="background-color: {color}; height: 14px; width: {width_pct}%;"></div>'
@@ -1732,7 +1799,7 @@ if not df.empty:
               
               disp_fail = kendala_df[cols_to_show].rename(columns=rename_dict)
               
-              html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; font-family: sans-serif; border: 2.5px solid #94a3b8;">'
+              html_table = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 1.05rem; font-family: sans-serif; border: 2.5px solid #94a3b8;">'
               html_table += '<thead><tr style="background-color: #7f1d1d; color: white; text-align: center;">'
               for col in disp_fail.columns:
                   html_table += f'<th style="border: 1.5px solid #64748b; padding: 12px 8px;">{col}</th>'
@@ -1759,7 +1826,7 @@ if not df.empty:
                           elif val_str == 'CANCLWORK': bg_color, text_color = '#F59E0B', 'black'
                           
                           if bg_color != 'transparent':
-                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val_str}</div>'
+                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{val_str}</div>'
                       elif col_name == 'ORDER':
                           val_str = str(val).upper().strip()
                           bg_color, text_color = 'transparent', 'white'
@@ -1769,7 +1836,7 @@ if not df.empty:
                           elif val_str == 'ISP VULA': bg_color, text_color = '#4b5563', 'black'
                           
                           if bg_color != 'transparent':
-                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val}</div>'
+                              display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{val}</div>'
                               
                       html_table += f'<td style="border: 1.5px solid #475569; padding: 10px 8px;">{display_val}</td>'
                   html_table += '</tr>'
@@ -1910,10 +1977,10 @@ if not df.empty:
                         '<div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
                         '<div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 20px;">GRAND TOTAL WO AO TSEL</div>'
                         '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 10px; margin-bottom: 20px;">'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
-                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: {ps_re_color}; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 14px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_re}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">RE Masuk</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_ps}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Done PS</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: {ps_re_color}; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
                         '</div>'
                         f'<div style="border-top: 1px dashed #334155; padding-top: 20px; margin-top: auto; font-size: 1.05rem; font-weight: bold; color: #94a3b8; text-align: left;">'
                         f'<div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>RE JAM KERJA</span> <span style="color:white;">{tot_jk} ({pct_jk}%)</span></div>'
@@ -1966,6 +2033,344 @@ if not df.empty:
                 st.info("Format jam tidak valid.")
         else:
             st.info("Belum ada RE masuk hari ini.")
+            
+        def get_stats(df_data, jam_col):
+            if df_data.empty or jam_col not in df_data.columns: return 0, "-", 0, "-"
+            df_valid = df_data[df_data[jam_col].astype(str).str.contains(r'^\d{2}', regex=True, na=False)].copy()
+            if df_valid.empty: return 0, "-", 0, "-"
+            hours = pd.to_numeric(df_valid[jam_col].astype(str).str[:2], errors='coerce').dropna().astype(int)
+            if hours.empty: return 0, "-", 0, "-"
+            total = len(hours)
+            min_h, max_h = hours.min(), hours.max()
+            span = (max_h - min_h) + 1
+            rata2 = total / span if span > 0 else 0
+            val_counts = hours.value_counts()
+            peak_h = val_counts.idxmax()
+            peak_val = val_counts.max()
+            rentang = f"{min_h:02d}:00 - {max_h:02d}:00 ({span} jam)"
+            puncak = f"{peak_h:02d}:00 &rarr; {peak_val} WO"
+            return total, rentang, rata2, puncak
+            
+        jam_df_ao = df_re_today[df_re_today['Jam_RE'] != 'Unknown'].copy()
+        re_jk_ao = jam_df_ao[jam_df_ao['JAM KERJA'].astype(str).str.upper() == 'JAM KERJA']
+        re_djk_ao = jam_df_ao[jam_df_ao['JAM KERJA'].astype(str).str.upper() != 'JAM KERJA']
+        
+        ps_df_ao = df_ps_today.copy()
+        if 'Jam_Update' in ps_df_ao.columns:
+            ps_df_ao['Hour'] = pd.to_numeric(ps_df_ao['Jam_Update'].astype(str).str[:2], errors='coerce')
+        else:
+            ps_df_ao['Hour'] = 0
+        ps_jk_ao = ps_df_ao[ps_df_ao['Hour'] < 17]
+        ps_djk_ao = ps_df_ao[ps_df_ao['Hour'] >= 17]
+        
+        t_re_jk, r_re_jk, rata_re_jk, p_re_jk = get_stats(re_jk_ao, 'Jam_RE')
+        t_re_djk, r_re_djk, rata_re_djk, p_re_djk = get_stats(re_djk_ao, 'Jam_RE')
+        t_ps_jk, r_ps_jk, rata_ps_jk, p_ps_jk = get_stats(ps_jk_ao, 'Jam_Update')
+        t_ps_djk, r_ps_djk, rata_ps_djk, p_ps_djk = get_stats(ps_djk_ao, 'Jam_Update')
+        
+        total_re = t_re_jk + t_re_djk
+        total_ps = t_ps_jk + t_ps_djk
+        pct_re_jk = int((t_re_jk / total_re * 100) if total_re > 0 else 0)
+        pct_re_djk = int((t_re_djk / total_re * 100) if total_re > 0 else 0)
+        pct_ps_jk = int((t_ps_jk / total_ps * 100) if total_ps > 0 else 0)
+        pct_ps_djk = int((t_ps_djk / total_ps * 100) if total_ps > 0 else 0)
+        
+        insight_re_text = f"Rata-rata RE masuk mencapai {rata_re_jk:.2f} WO/jam pada jam kerja, dan {rata_re_djk:.2f} WO/jam di luar jam kerja."
+        insight_re_title = "Arus RE lebih tinggi pada jam kerja" if rata_re_jk >= rata_re_djk else "Arus RE lebih tinggi di luar jam kerja"
+        insight_re_color = "#3b82f6" if rata_re_jk >= rata_re_djk else "#8b5cf6"
+        
+        insight_ps_text = f"Rata-rata PS mencapai {rata_ps_djk:.2f} WO/jam di luar jam kerja, dibandingkan {rata_ps_jk:.2f} WO/jam pada jam kerja."
+        insight_ps_title = "Penyelesaian PS lebih tinggi di luar jam kerja" if rata_ps_djk >= rata_ps_jk else "Penyelesaian PS lebih optimal pada jam kerja"
+        insight_ps_color = "#22c55e" if rata_ps_jk >= rata_ps_djk else "#f59e0b"
+        
+        analisa_header_html = f'''
+        <style>
+        .anl-wrapper {{ background-color: #0f172a; padding: 25px; border-radius: 15px; border: 1px solid #1e293b; margin-top: 20px; }}
+        .anl-top {{ display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; }}
+        .anl-title-box {{ display: flex; flex-direction: column; }}
+        .anl-title {{ font-size: 1.6rem; font-weight: 800; color: white; display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }}
+        .anl-subtitle {{ color: #cbd5e1; font-size: 0.95rem; }}
+        .anl-period {{ display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 15px; border-radius: 8px; color: #94a3b8; font-size: 0.85rem; border: 1px solid #334155; }}
+        .anl-cards {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }}
+        .anl-card {{ border-radius: 12px; padding: 15px; display: flex; flex-direction: column; position: relative; overflow: hidden; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }}
+        .anl-c-blue {{ background: linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.02) 100%); border-top: 3.5px solid #3b82f6; }}
+        .anl-c-purp {{ background: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(139,92,246,0.02) 100%); border-top: 3.5px solid #8b5cf6; }}
+        .anl-c-gren {{ background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.02) 100%); border-top: 3.5px solid #22c55e; }}
+        .anl-c-orng {{ background: linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(245,158,11,0.02) 100%); border-top: 3.5px solid #f59e0b; }}
+        .anl-c-icon {{ display: flex; align-items: center; gap: 10px; margin-bottom: 12px; z-index: 2; }}
+        .anl-c-circle {{ width: 35px; height: 35px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; font-size: 1.1rem; }}
+        .anl-c-blue .anl-c-circle {{ background-color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.5); }}
+        .anl-c-purp .anl-c-circle {{ background-color: #8b5cf6; box-shadow: 0 0 10px rgba(139,92,246,0.5); }}
+        .anl-c-gren .anl-c-circle {{ background-color: #22c55e; box-shadow: 0 0 10px rgba(34,197,94,0.5); }}
+        .anl-c-orng .anl-c-circle {{ background-color: #f59e0b; box-shadow: 0 0 10px rgba(245,158,11,0.5); }}
+        .anl-c-title {{ color: white; font-weight: bold; font-size: 0.95rem; line-height: 1.2; }}
+        .anl-c-body {{ display: flex; justify-content: space-between; align-items: flex-end; z-index: 2; }}
+        .anl-c-mainval {{ font-size: 2.2rem; font-weight: 900; color: #38bdf8; line-height: 1; }}
+        .anl-c-purp .anl-c-mainval {{ color: #c084fc; }}
+        .anl-c-gren .anl-c-mainval {{ color: #4ade80; }}
+        .anl-c-orng .anl-c-mainval {{ color: #fbbf24; }}
+        .anl-c-subval {{ font-size: 0.8rem; color: #94a3b8; font-weight: bold; }}
+        .anl-c-right {{ text-align: right; }}
+        .anl-c-r-title {{ font-size: 0.75rem; color: #cbd5e1; }}
+        .anl-c-r-val {{ font-size: 1.1rem; color: white; font-weight: bold; line-height:1.2; }}
+        .anl-c-r-sub {{ font-size: 0.7rem; color: #94a3b8; }}
+        </style>
+        <div class="anl-wrapper" style="margin-bottom: 20px;">
+            <div class="anl-top">
+                <div class="anl-title-box">
+                    <div class="anl-title"><span style="color:#38bdf8;">&#128202;</span> Analisa Distribusi Jam Masuk RE & Progress PS (AO TSEL)</div>
+                    <div class="anl-subtitle">Perbandingan rata-rata aktivitas pada jam kerja dan di luar jam kerja</div>
+                </div>
+                <div class="anl-period">
+                    <span style="font-size:1.1rem; color:#60a5fa;">&#128197;</span>
+                    <div>
+                        <div style="font-size:0.7rem; font-weight:bold; color:white;">Periode Analisa</div>
+                        Jam Kerja 07:00 - 15:00 <span style="margin:0 5px; color:#475569;">|</span> Di Luar Jam Kerja 18:00 - 22:00
+                    </div>
+                </div>
+            </div>
+            
+            <div class="anl-cards">
+                <div class="anl-card anl-c-blue">
+                    <div class="anl-c-icon"><div class="anl-c-circle">&#128100;</div><div class="anl-c-title">Rata-rata RE Masuk<br><span style="font-weight:normal; font-size:0.8rem; color:#cbd5e1;">(Jam Kerja)</span></div></div>
+                    <div class="anl-c-body">
+                        <div><div class="anl-c-mainval">{rata_re_jk:.2f}</div><div class="anl-c-subval">WO / jam</div></div>
+                        <div class="anl-c-right"><div class="anl-c-r-title">Total RE</div><div class="anl-c-r-val">{t_re_jk} <span style="font-size:0.7rem;">WO</span></div><div class="anl-c-r-sub">({pct_re_jk}% dari harian)</div></div>
+                    </div>
+                </div>
+                <div class="anl-card anl-c-purp">
+                    <div class="anl-c-icon"><div class="anl-c-circle">&#128100;</div><div class="anl-c-title">Rata-rata RE Masuk<br><span style="font-weight:normal; font-size:0.8rem; color:#cbd5e1;">(Di Luar Jam Kerja)</span></div></div>
+                    <div class="anl-c-body">
+                        <div><div class="anl-c-mainval">{rata_re_djk:.2f}</div><div class="anl-c-subval">WO / jam</div></div>
+                        <div class="anl-c-right"><div class="anl-c-r-title">Total RE</div><div class="anl-c-r-val">{t_re_djk} <span style="font-size:0.7rem;">WO</span></div><div class="anl-c-r-sub">({pct_re_djk}% dari harian)</div></div>
+                    </div>
+                </div>
+                <div class="anl-card anl-c-gren">
+                    <div class="anl-c-icon"><div class="anl-c-circle">&#10004;</div><div class="anl-c-title">Rata-rata PS<br><span style="font-weight:normal; font-size:0.8rem; color:#cbd5e1;">(Jam Kerja)</span></div></div>
+                    <div class="anl-c-body">
+                        <div><div class="anl-c-mainval">{rata_ps_jk:.2f}</div><div class="anl-c-subval">WO / jam</div></div>
+                        <div class="anl-c-right"><div class="anl-c-r-title">Total PS</div><div class="anl-c-r-val">{t_ps_jk} <span style="font-size:0.7rem;">WO</span></div><div class="anl-c-r-sub">({pct_ps_jk}% dari total)</div></div>
+                    </div>
+                </div>
+                <div class="anl-card anl-c-orng">
+                    <div class="anl-c-icon"><div class="anl-c-circle">&#10004;</div><div class="anl-c-title">Rata-rata PS<br><span style="font-weight:normal; font-size:0.8rem; color:#cbd5e1;">(Di Luar Jam Kerja)</span></div></div>
+                    <div class="anl-c-body">
+                        <div><div class="anl-c-mainval">{rata_ps_djk:.2f}</div><div class="anl-c-subval">WO / jam</div></div>
+                        <div class="anl-c-right"><div class="anl-c-r-title">Total PS</div><div class="anl-c-r-val">{t_ps_djk} <span style="font-size:0.7rem;">WO</span></div><div class="anl-c-r-sub">({pct_ps_djk}% dari total)</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        '''
+        st.markdown('\n'.join(line.strip() for line in analisa_header_html.split('\n')), unsafe_allow_html=True)
+        
+        col_chart, col_side = st.columns([65, 35])
+        
+        with col_chart:
+            ao_frames = []
+            
+            # Extract hourly bin for RE
+            if not re_jk_ao.empty:
+                re_jk_ao['Jam'] = re_jk_ao['Jam_RE'].astype(str).str[:2] + ":00"
+                rjk = pd.merge(all_hours, re_jk_ao.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                rjk['Kategori'] = 'RE Masuk (Kerja)'
+                ao_frames.append(rjk)
+            if not re_djk_ao.empty:
+                re_djk_ao['Jam'] = re_djk_ao['Jam_RE'].astype(str).str[:2] + ":00"
+                rdjk = pd.merge(all_hours, re_djk_ao.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                rdjk['Kategori'] = 'RE Masuk (Luar Kerja)'
+                ao_frames.append(rdjk)
+            
+            jam_ps_ao = ps_df_ao[ps_df_ao['Jam_Update'] != 'Unknown'].copy()
+            if not jam_ps_ao.empty:
+                jam_ps_ao['Jam'] = jam_ps_ao['Jam_Update'].astype(str).str[:2] + ":00"
+                psjk = jam_ps_ao[jam_ps_ao['Hour'] < 17]
+                psdjk = jam_ps_ao[jam_ps_ao['Hour'] >= 17]
+                
+                if not psjk.empty:
+                    p1 = pd.merge(all_hours, psjk.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                    p1['Kategori'] = 'Done PS (Kerja)'
+                    ao_frames.append(p1)
+                if not psdjk.empty:
+                    p2 = pd.merge(all_hours, psdjk.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                    p2['Kategori'] = 'Done PS (Luar Kerja)'
+                    ao_frames.append(p2)
+                
+            if ao_frames:
+                ao_chart_df = pd.concat(ao_frames, ignore_index=True)
+                ao_chart_df['Text'] = ao_chart_df['Jumlah'].apply(lambda x: str(int(x)) if x > 0 else '')
+                
+                fig_ao = px.line(ao_chart_df, x='Jam', y='Jumlah', color='Kategori', text='Text', markers=True,
+                                color_discrete_map={
+                                    'RE Masuk (Kerja)': '#3b82f6', 
+                                    'RE Masuk (Luar Kerja)': '#8b5cf6', 
+                                    'Done PS (Kerja)': '#22c55e', 
+                                    'Done PS (Luar Kerja)': '#f59e0b'
+                                })
+                fig_ao.update_traces(line=dict(width=3, shape='spline'), textposition='top center', 
+                                    textfont=dict(size=11, color='white', weight='bold'), 
+                                    marker=dict(size=8, line=dict(width=2, color='white')))
+                for i, trace in enumerate(fig_ao.data):
+                    trace.fill = 'tozeroy'
+                    if trace.name == 'RE Masuk (Kerja)': trace.fillcolor = 'rgba(59, 130, 246, 0.12)'
+                    elif trace.name == 'RE Masuk (Luar Kerja)': trace.fillcolor = 'rgba(139, 92, 246, 0.12)'
+                    elif trace.name == 'Done PS (Kerja)': trace.fillcolor = 'rgba(34, 197, 94, 0.12)'
+                    elif trace.name == 'Done PS (Luar Kerja)': trace.fillcolor = 'rgba(245, 158, 11, 0.12)'
+
+                fig_ao.update_layout(
+                    plot_bgcolor='#0f172a', paper_bgcolor='#0f172a',
+                    margin=dict(l=40, r=40, t=20, b=40),
+                    xaxis=dict(title="Waktu (Jam)", color='#cbd5e1', showgrid=True, gridcolor='#1e293b', dtick=1),
+                    yaxis=dict(title="Jumlah WO", color='#cbd5e1', showgrid=True, gridcolor='#1e293b'),
+                    legend=dict(title="", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#cbd5e1", size=11)),
+                    height=490
+                )
+                st.plotly_chart(fig_ao, use_container_width=True, config={'displayModeBar': False})
+            else:
+                st.info("Data tidak tersedia untuk grafik.")
+
+        with col_side:
+            side_html = f'''
+            <style>
+            .side-panel {{ background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; padding: 15px; height: 100%; display: flex; flex-direction: column; gap: 12px; }}
+            .sp-section {{ border: 1px solid #1e293b; border-radius: 8px; padding: 12px; background-color: #020617; }}
+            .sp-title {{ font-size: 0.9rem; color: white; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed #334155; padding-bottom: 8px; }}
+            .sp-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }}
+            .sp-box {{ background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px 5px; }}
+            .sp-box-title {{ font-size: 0.8rem; color: #cbd5e1; font-weight: bold; margin-bottom: 5px; }}
+            .sp-box-val {{ font-size: 1.4rem; font-weight: 900; color: white; }}
+            .sp-box-val span {{ font-size: 0.75rem; color: #3b82f6; font-weight: bold; }}
+            .sp-box-sub {{ font-size: 0.65rem; color: #94a3b8; margin-top: 3px; }}
+            .sp-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.85rem; }}
+            .sp-row-label {{ color: white; display: flex; align-items: center; gap: 6px; font-weight: bold; }}
+            .sp-row-val {{ color: #cbd5e1; font-weight: bold; }}
+            .sp-row-val span {{ font-size: 0.7rem; font-weight: normal; margin-left: 2px; }}
+            .insight-item {{ margin-bottom: 10px; font-size: 0.75rem; color: #cbd5e1; line-height: 1.4; position: relative; padding-left: 15px; }}
+            .insight-item::before {{ content: "●"; position: absolute; left: 0; color: #3b82f6; font-size: 0.8rem; line-height: 1; top: 1px; }}
+            .insight-item strong {{ color: white; font-size: 0.8rem; display: block; margin-bottom: 2px; }}
+            .insight-item:nth-child(2)::before {{ color: #22c55e; }}
+            .insight-item:nth-child(3)::before {{ color: #f59e0b; }}
+            </style>
+            <div class="side-panel">
+                <div class="sp-section">
+                    <div class="sp-title"><span style="color:#3b82f6;">&#128196;</span> Ringkasan Total</div>
+                    <div class="sp-grid">
+                        <div class="sp-box">
+                            <div class="sp-box-title">RE Masuk</div>
+                            <div class="sp-box-val">{total_re} <span>WO</span></div>
+                            <div class="sp-box-sub">({pct_re_jk}% Kerja | {pct_re_djk}% Luar)</div>
+                        </div>
+                        <div class="sp-box">
+                            <div class="sp-box-title">PS / Done</div>
+                            <div class="sp-box-val">{total_ps} <span>WO</span></div>
+                            <div class="sp-box-sub">({pct_ps_jk}% Kerja | {pct_ps_djk}% Luar)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sp-section">
+                    <div class="sp-title"><span style="color:#3b82f6;">&#128202;</span> Perbandingan Rata-rata <span style="font-size:0.7rem; color:#64748b; font-weight:normal;">(WO/jam)</span></div>
+                    <div class="sp-row">
+                        <div class="sp-row-label"><div class="badge-no b-blue" style="width:16px; height:16px; font-size:0.5rem; margin-right:3px;">&#128100;</div> RE Masuk</div>
+                        <div class="sp-row-val">{rata_re_jk:.2f} <span>(Kerja)</span> <span style="color:#475569; margin:0 3px;">|</span> {rata_re_djk:.2f} <span>(Luar)</span></div>
+                    </div>
+                    <div class="sp-row" style="margin-bottom:0;">
+                        <div class="sp-row-label"><div class="badge-no b-green" style="width:16px; height:16px; font-size:0.5rem; margin-right:3px;">&#10004;</div> PS / Done</div>
+                        <div class="sp-row-val">{rata_ps_jk:.2f} <span>(Kerja)</span> <span style="color:#475569; margin:0 3px;">|</span> {rata_ps_djk:.2f} <span>(Luar)</span></div>
+                    </div>
+                </div>
+                
+                <div class="sp-section" style="flex-grow: 1; border: none; background: transparent; padding: 0;">
+                    <div class="sp-title" style="border:none; margin-bottom:5px;"><span style="color:#3b82f6;">&#128161;</span> Insight Utama</div>
+                    <div class="insight-item">
+                        <strong style="color: {insight_re_color};">{insight_re_title}</strong>
+                        {insight_re_text}
+                    </div>
+                    <div class="insight-item">
+                        <strong style="color: {insight_ps_color};">{insight_ps_title}</strong>
+                        {insight_ps_text}
+                    </div>
+                    <div class="insight-item">
+                        <strong style="color: #f59e0b;">Pola Puncak Aktivitas WO</strong>
+                        Puncak RE terjadi pada {p_re_jk[:5]} dan {p_re_djk[:5]}. Eksekusi PS memuncak pada {p_ps_jk[:5]}.
+                    </div>
+                </div>
+            </div>
+            '''
+            st.markdown('\n'.join(line.strip() for line in side_html.split('\n')), unsafe_allow_html=True)
+
+        analisa_table_html = f'''
+        <style>
+        .anl-bot-wrap {{ background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b; padding: 20px; margin-top: 10px; margin-bottom: 25px; }}
+        .analisa-header {{ display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #334155; padding-bottom: 12px; margin-bottom: 15px; }}
+        .analisa-header span {{ font-size: 1.25rem; font-weight: bold; color: white; }}
+        .analisa-table {{ width: 100%; border-collapse: collapse; text-align: center; color: white; font-size: 0.9rem; }}
+        .analisa-table th {{ background-color: transparent; border-bottom: 1.5px solid #3b82f6; padding: 12px; font-weight: bold; color: #cbd5e1; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; }}
+        .analisa-table td {{ padding: 12px; border-bottom: 1px solid #1e293b; vertical-align: middle; }}
+        .analisa-table tr:hover {{ background-color: rgba(255,255,255,0.02); }}
+        .analisa-table tr:last-child td {{ border-bottom: none; }}
+        .badge-no {{ display: inline-flex; justify-content: center; align-items: center; width: 22px; height: 22px; border-radius: 50%; color: white; font-weight: bold; font-size: 0.75rem; }}
+        .b-blue {{ background-color: #3b82f6; }}
+        .b-purple {{ background-color: #8b5cf6; }}
+        .b-green {{ background-color: #22c55e; }}
+        .b-orange {{ background-color: #f59e0b; }}
+        .val-rata {{ color: #0ea5e9; font-weight: bold; font-size: 1.05rem; }}
+        .val-rata span {{ font-size: 0.7rem; color: #94a3b8; font-weight: normal; margin-left: 2px; }}
+        </style>
+        <div class="anl-bot-wrap">
+            <div class="analisa-header">
+                <span style="font-size:1.5rem;">&#128196;</span><span>Tabel Analisa Detail</span>
+            </div>
+            <table class="analisa-table">
+                <tr>
+                    <th style="width:5%;">No</th>
+                    <th style="text-align:left; width:25%;">Indikator</th>
+                    <th style="width:15%;">Periode</th>
+                    <th style="width:10%;">Total WO</th>
+                    <th style="width:20%;">Rentang Waktu</th>
+                    <th style="width:15%;">Rata-rata</th>
+                    <th style="width:10%;">Puncak Aktivitas</th>
+                </tr>
+                <tr>
+                    <td><div class="badge-no b-blue">1</div></td>
+                    <td style="text-align:left; font-weight:bold;">RE Masuk &ndash; Jam Kerja</td>
+                    <td style="color:#60a5fa; font-weight:bold;">Jam Kerja</td>
+                    <td style="font-weight:bold; font-size:1rem;">{t_re_jk}</td>
+                    <td>{r_re_jk}</td>
+                    <td class="val-rata">{rata_re_jk:.2f} <span>WO/jam</span></td>
+                    <td>{p_re_jk}</td>
+                </tr>
+                <tr>
+                    <td><div class="badge-no b-purple">2</div></td>
+                    <td style="text-align:left; font-weight:bold;">RE Masuk &ndash; Di Luar Jam Kerja</td>
+                    <td style="color:#a78bfa; font-weight:bold;">Di Luar Jam Kerja</td>
+                    <td style="font-weight:bold; font-size:1rem;">{t_re_djk}</td>
+                    <td>{r_re_djk}</td>
+                    <td class="val-rata">{rata_re_djk:.2f} <span>WO/jam</span></td>
+                    <td>{p_re_djk}</td>
+                </tr>
+                <tr>
+                    <td><div class="badge-no b-green">3</div></td>
+                    <td style="text-align:left; font-weight:bold;">PS &ndash; Jam Kerja</td>
+                    <td style="color:#4ade80; font-weight:bold;">Jam Kerja</td>
+                    <td style="font-weight:bold; font-size:1rem;">{t_ps_jk}</td>
+                    <td>{r_ps_jk}</td>
+                    <td class="val-rata">{rata_ps_jk:.2f} <span>WO/jam</span></td>
+                    <td>{p_ps_jk}</td>
+                </tr>
+                <tr>
+                    <td><div class="badge-no b-orange">4</div></td>
+                    <td style="text-align:left; font-weight:bold;">PS &ndash; Di Luar Jam Kerja</td>
+                    <td style="color:#fbbf24; font-weight:bold;">Di Luar Jam Kerja</td>
+                    <td style="font-weight:bold; font-size:1rem;">{t_ps_djk}</td>
+                    <td>{r_ps_djk}</td>
+                    <td class="val-rata">{rata_ps_djk:.2f} <span>WO/jam</span></td>
+                    <td>{p_ps_djk}</td>
+                </tr>
+            </table>
+        </div>
+        '''
+        st.markdown('\n'.join(line.strip() for line in analisa_table_html.split('\n')), unsafe_allow_html=True)
             
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-title-wrap"><div class="section-title">📑 Rekap RE Masuk Harian</div></div>', unsafe_allow_html=True)
@@ -2037,7 +2442,7 @@ if not df.empty:
                         import re as regex
                         clean_val = regex.sub('<[^<]+>', '', val)
                         checkboxes_html += f'''
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 14px; padding: 2px 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 12px; padding: 2px 0;">
                             <input type="checkbox" class="filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;">
                             <span class="filter-text-{i}">{clean_val}</span>
                         </label>
@@ -2047,10 +2452,10 @@ if not df.empty:
                     <th style="padding: 12px; border-bottom: 2px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">
                         <div style="display: flex; justify-content: center; align-items: center; gap: 4px;">
                             <span style="font-weight: 900; font-size: 0.85rem; color: #ffffff; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); letter-spacing: 0.5px;">{col}</span>
-                            <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 14px; padding: 2px 4px; border-radius: 4px;">▼</div>
+                            <div class="custom-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #38bdf8; font-size: 12px; padding: 2px 4px; border-radius: 4px;">▼</div>
                         </div>
                         <div class="custom-filter-menu" id="filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);">
-                            <input type="text" class="filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 14px; outline: none;">
+                            <input type="text" class="filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 12px; outline: none;">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.7rem; color: #38bdf8; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px;">
                                 <span class="filter-select-all" data-colindex="{i}" style="cursor: pointer;">Pilih Semua</span>
                                 <span class="filter-clear-all" data-colindex="{i}" style="cursor: pointer;">Bersihkan</span>
@@ -2059,7 +2464,7 @@ if not df.empty:
                                 {checkboxes_html}
                             </div>
                             <div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;">
-                                <button class="filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button>
+                                <button class="filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button>
                             </div>
                         </div>
                     </th>'''
@@ -2102,7 +2507,7 @@ if not df.empty:
                                 bg_color = '#F59E0B'
                                 text_color = 'black'
                             
-                            pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val}</div>'
+                            pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{val}</div>'
                             html_table += f'<td style="padding: 10px;">{pill}</td>'
                         elif col == 'ORDER':
                             val_str = str(val).upper().strip()
@@ -2113,7 +2518,7 @@ if not df.empty:
                             elif val_str == 'ISP VULA': bg_color, text_color = '#4b5563', 'black'
                             
                             if bg_color != 'transparent':
-                                pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{val}</div>'
+                                pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{val}</div>'
                                 html_table += f'<td style="padding: 10px;">{pill}</td>'
                             else:
                                 html_table += f'<td style="padding: 10px;">{val}</td>'
@@ -2353,7 +2758,7 @@ if not df.empty:
                 
                 hm_html += '''
                     </table>
-                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 14px; color: #cbd5e1; font-weight: bold;">
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px; font-size: 12px; color: #cbd5e1; font-weight: bold;">
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h1" style="border-radius: 2px;"></div> MANJA H-1</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-hi" style="border-radius: 2px;"></div> MANJA HI</div>
                         <div style="display: flex; align-items: center; gap: 4px;"><div class="sc-dot-h2" style="border-radius: 2px;"></div> MANJA H++</div>
@@ -2391,7 +2796,7 @@ if not df.empty:
                         flags_html += f'''
                         <div class="node-flag" id="{flag_id}">
                             <div class="flag-box {color_class}"></div>
-                            <div style="color: #f8fafc; font-size: 14px; font-weight: bold; font-family: sans-serif;">{flag} ({count})</div>
+                            <div style="color: #f8fafc; font-size: 12px; font-weight: bold; font-family: sans-serif;">{flag} ({count})</div>
                         </div>
                         '''
                         # Draw line from CBO to Flag (Gradient from CBO blue to Flag color)
@@ -2421,7 +2826,7 @@ if not df.empty:
                     .svg-layer {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }}
                     .col-left {{ width: 28%; z-index: 2; display: flex; justify-content: flex-start; }}
                     .col-right {{ width: 72%; z-index: 2; display: flex; flex-direction: column; justify-content: space-around; height: 100%; padding-left: 25px; }}
-                    .node {{ background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px 8px; color: #f8fafc; font-size: 0.85rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 3; position: relative; }}
+                    .node {{ background: #0f172a; border: 1px solid #3b82f6; border-radius: 8px; padding: 12px 8px; color: #f8fafc; font-size: 1.05rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 3; position: relative; }}
                     .node-total {{ color: #60a5fa; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }}
                     .cbo-row {{ display: flex; justify-content: space-between; align-items: center; width: 100%; }}
                     .flags-container {{ display: flex; flex-direction: column; gap: 6px; align-items: flex-start; z-index: 3; position: relative; }}
@@ -2553,22 +2958,22 @@ if not df.empty:
                             <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
                                 <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #ef4444; box-shadow: 0 0 5px #ef4444;"></div>
                                 <div style="width: 85px;">MANJA H-1</div>
-                                <div style="color: white; font-weight: bold;">{count_h1} &nbsp;&nbsp; ({int(round(pct_h1))}%)</div>
+                                <div style="display: flex; gap: 8px; color: white; font-weight: bold;"><div style="width: 20px; text-align: right;">{count_h1}</div><div style="width: 50px; text-align: right;">({int(round(pct_h1))}%)</div></div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
                                 <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #f97316; box-shadow: 0 0 5px #f97316;"></div>
                                 <div style="width: 85px;">MANJA HI</div>
-                                <div style="color: white; font-weight: bold;">{count_hi} &nbsp;&nbsp; ({int(round(pct_hi))}%)</div>
+                                <div style="display: flex; gap: 8px; color: white; font-weight: bold;"><div style="width: 20px; text-align: right;">{count_hi}</div><div style="width: 50px; text-align: right;">({int(round(pct_hi))}%)</div></div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
                                 <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #eab308; box-shadow: 0 0 5px #eab308;"></div>
                                 <div style="width: 85px;">MANJA H++</div>
-                                <div style="color: white; font-weight: bold;">{count_h2} &nbsp;&nbsp; ({int(round(pct_h2))}%)</div>
+                                <div style="display: flex; gap: 8px; color: white; font-weight: bold;"><div style="width: 20px; text-align: right;">{count_h2}</div><div style="width: 50px; text-align: right;">({int(round(pct_h2))}%)</div></div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 10px; color: #f8fafc; font-weight: bold; font-size: 0.9rem;">
                                 <div style="width: 14px; height: 14px; border-radius: 50%; background-color: #22c55e; box-shadow: 0 0 5px #22c55e;"></div>
                                 <div style="width: 85px;">NON MANJA</div>
-                                <div style="color: white; font-weight: bold;">{count_non} &nbsp;&nbsp; ({int(round(pct_non))}%)</div>
+                                <div style="display: flex; gap: 8px; color: white; font-weight: bold;"><div style="width: 20px; text-align: right;">{count_non}</div><div style="width: 50px; text-align: right;">({int(round(pct_non))}%)</div></div>
                             </div>
                         </div>
                     </div>
@@ -2591,8 +2996,10 @@ if not df.empty:
                     t_class = "sc-title pda" if "PDA" in str(cbo).upper() else "sc-title"
                     
                     sc_html += f'<div class="sc-box">'
-                    sc_html += f'<div class="{t_class}">{cbo}</div>'
-                    sc_html += f'<div class="sc-total">{total_cbo} <span>WO</span></div>'
+                    sc_html += f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #1e293b; padding-bottom: 10px;">'
+                    sc_html += f'<div class="{t_class}" style="margin-bottom: 0;">{cbo}</div>'
+                    sc_html += f'<div class="sc-total" style="margin-bottom: 0; font-size: 1.8rem;">{total_cbo} <span>WO</span></div>'
+                    sc_html += f'</div>'
                     
                     cbo_data = hm_agg[hm_agg['CECK BY ORDER'] == cbo]
                     for j, flag in enumerate(flags):
@@ -2600,7 +3007,7 @@ if not df.empty:
                         pct = int(round((count / total_cbo * 100) if total_cbo > 0 else 0))
                         sc_html += f'<div class="sc-item">'
                         sc_html += f'<div class="sc-item-left"><div class="{dots[j]}"></div> {flag}</div>'
-                        sc_html += f'<div style="color: white; font-weight: bold;">{count} &nbsp;&nbsp; ({pct}%)</div>'
+                        sc_html += f'<div style="display: flex; gap: 8px; color: white; font-weight: bold;"><div style="width: 20px; text-align: right;">{count}</div><div style="width: 50px; text-align: right;">({pct}%)</div></div>'
                         sc_html += f'</div>'
                     
                     sc_html += '</div>'
@@ -2675,125 +3082,6 @@ if not df.empty:
             html += '</div>'
             
             st.markdown(html, unsafe_allow_html=True)
-            
-        # --- TABEL PS & KENDALA LENGKAP ---
-        st.markdown('<div class="section-title-wrap" style="margin-top: 40px;"><div class="section-title"> <b>REKAP PS & JENIS KENDALA</b></div></div>', unsafe_allow_html=True)
-        st.markdown("<p style='font-size:0.85rem; color:#94a3b8; margin-top:-10px; margin-bottom:15px;'>Detail seluruh pesanan yang sudah Closing (PS) maupun Kendala (Teknis & Pelanggan), dikelompokkan berdasarkan teknisi dan jenis order.</p>", unsafe_allow_html=True)
-
-        df_combined = pd.concat([df_ps_today, kendala_df]) if len(df_ps_today) > 0 or len(kendala_df) > 0 else pd.DataFrame()
-
-        if len(df_combined) > 0 and tim_col and order_col:
-            def map_category(row):
-                status = str(row.get('Status_Upper', '')).strip()
-                order = str(row.get(order_col, '')).strip().upper()
-                if 'COMPWORK' in status:
-                    if 'AO' in order and 'TSEL' in order: return 'AO TSEL'
-                    if order == 'AO': return 'AO TSEL'
-                    if 'PDA' in order: return 'PDA TSEL'
-                    if 'INDIBIZ' in order: return 'INDIBIZ'
-                    if 'VULA' in order or 'ISP' in order: return 'ISP VULA'
-                    return 'AO TSEL'
-                elif status in ['WORKFAIL', 'CANCLWORK']:
-                    m_status = str(row.get(morning_status_col, '')).strip().upper() if morning_status_col else ''
-                    if m_status in ['BATAL', 'GANTI PAKET', 'KENDALA IZIN', 'PENDING', 'RUMAH KOSONG']:
-                        return 'KENDALA PELANGGAN'
-                    else:
-                        return 'KENDALA TEKNIS'
-                return None
-                
-            df_combined['TAB_CAT'] = df_combined.apply(map_category, axis=1)
-            df_combined = df_combined.dropna(subset=['TAB_CAT'])
-            
-            tims = sorted(df_combined[tim_col].dropna().unique())
-            
-            html2 = '''
-            <style>
-            .cp2-header { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; background-color: #172554; font-size: 0.80rem; font-weight: 700; color: white; text-transform: uppercase; border-bottom: 2px solid #3b82f6; text-align: center; position: sticky; top: 0; z-index: 10; }
-            .cp2-header > div { padding: 10px 5px; border-right: 1px solid #64748b; border-bottom: 1px solid #64748b; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
-            .cp2-header > div:last-child { border-right: none; }
-            .cp2-body-grid { display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; font-size: 0.8rem; color: white; }
-            .cp2-grand { background-color: #172554; display: grid; grid-template-columns: 50px 1.5fr 3.5fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 1fr; padding: 12px 15px; font-weight: bold; color: white; border-top: 2px solid #3b82f6; text-align: center; position: sticky; bottom: -1px; z-index: 10; font-size: 0.85rem; }
-            </style>
-            <div class="cp-container">
-                <div class="cp2-header">
-                    <div style="grid-row: span 2; justify-content: center; text-align: center;">NO.</div>
-                    <div style="grid-row: span 2; justify-content: center; text-align: center;">MORNING TIM</div>
-                    <div style="grid-row: span 2; justify-content: center; text-align: center;">NO. WONUM & AO</div>
-                    <div style="grid-column: span 4; background-color: rgba(16, 185, 129, 0.2); color: #34d399;">PS (OK)</div>
-                    <div style="grid-column: span 2; background-color: rgba(239, 68, 68, 0.2); color: #f87171;">JENIS KENDALA</div>
-                    <div style="grid-row: span 2;">GRAND TOTAL</div>
-                    
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">AO TSEL</div>
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">PDA TSEL</div>
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">INDIBIZ</div>
-                    <div style="background-color: rgba(16, 185, 129, 0.1); border-bottom: none;">ISP VULA</div>
-                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none;">TEKNIS</div>
-                    <div style="background-color: rgba(239, 68, 68, 0.1); border-bottom: none; border-right: 1px solid #64748b;">PELANGGAN</div>
-                </div>
-                <div class="cp2-body-grid">
-            '''
-            
-            col_names = ['AO TSEL', 'PDA TSEL', 'INDIBIZ', 'ISP VULA', 'KENDALA TEKNIS', 'KENDALA PELANGGAN']
-            grand_totals = {c: 0 for c in col_names}
-            
-            no = 1
-            for tim in tims:
-                tim_data = df_combined[df_combined[tim_col] == tim]
-                wonums = tim_data['INFO ORDER'].unique()
-                row_span = len(wonums)
-                if row_span == 0: continue
-                
-                tech_total_orders = len(tim_data)
-                col1 = f'{tim} <span class="cp-badge" style="background-color: #3b82f6; color: white;">{tech_total_orders} WO</span>'
-                
-                border_thick = "border-top: 2px solid #cbd5e1;"
-                
-                html2 += f'<div class="cp-cell" style="grid-row: span {row_span}; {border_thick} justify-content: center; font-weight: bold;">{no}</div>'
-                html2 += f'<div class="cp-cell-left" style="grid-row: span {row_span}; {border_thick}">{col1}</div>'
-                
-                for i, wonum in enumerate(wonums):
-                    wonum_data = tim_data[tim_data['INFO ORDER'] == wonum]
-                    counts = wonum_data['TAB_CAT'].value_counts()
-                    
-                    row_border = border_thick if i == 0 else ""
-                    
-                    html2 += f'<div class="cp-cell-left" style="{row_border}">{wonum}</div>'
-                    
-                    row_tot = 0
-                    for c in col_names:
-                        c_val = counts.get(c, 0)
-                        if c_val > 0:
-                            row_tot += c_val
-                            html2 += f'<div class="cp-cell" style="{row_border}">{c_val}</div>'
-                        else:
-                            html2 += f'<div class="cp-cell" style="{row_border}"></div>'
-                    
-                    html2 += f'<div class="cp-cell" style="font-weight:bold; {row_border}">{row_tot}</div>'
-                
-                for c in col_names:
-                    grand_totals[c] += (tim_data['TAB_CAT'] == c).sum()
-                no += 1
-                    
-            html2 += '</div>'
-            
-            # FOOTER
-            html2 += f'''
-            <div class="cp2-grand">
-                <div style="grid-column: span 3; text-align:center; justify-content: center; display: flex; align-items: center;">GRAND TOTAL KESELURUHAN</div>
-                <div>{grand_totals["AO TSEL"]}</div>
-                <div>{grand_totals["PDA TSEL"]}</div>
-                <div>{grand_totals["INDIBIZ"]}</div>
-                <div>{grand_totals["ISP VULA"]}</div>
-                <div>{grand_totals["KENDALA TEKNIS"]}</div>
-                <div>{grand_totals["KENDALA PELANGGAN"]}</div>
-                <div>{sum(grand_totals.values())}</div>
-            </div>
-            </div>
-            '''
-            
-            import re
-            html2_clean = re.sub(r'^\s+', '', html2, flags=re.MULTILINE)
-            st.markdown(html2_clean, unsafe_allow_html=True)
 
     elif menu == "WO ODS PERIODE":
 
@@ -2922,12 +3210,12 @@ if not df.empty:
 
         st.markdown("""
         <style>
-        .cp-container { color: #f1f5f9; font-size: 14px; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: 900; color: #020617; font-size: 0.85rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
-        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 14px; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
-        .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; }
-        .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; }
-        .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 14px; display: inline-block; }
+        .cp-container { color: #f1f5f9; font-size: 12px; max-height: 800px; }
+        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: 900; color: #020617; font-size: 1.05rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
+        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 12px; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
+        .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; display: inline-block; }
+        .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; display: inline-block; }
+        .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; display: inline-block; }
         .manja-header > div { border-right: 2px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
         .manja-header > div:last-child { border-right: none; }
         .manja-row > div { border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; }
@@ -3016,7 +3304,7 @@ if not df.empty:
                     bg_color = '#F59E0B'
                     text_color = 'black'
                 
-                status_html = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 14px;">{status}</div>'
+                status_html = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{status}</div>'
                     
                 morning_st = str(row['MORNING STATUS WO']) if 'MORNING STATUS WO' in row and pd.notna(row['MORNING STATUS WO']) else ""
                 if morning_st.lower() == 'nan': morning_st = ""
@@ -3255,7 +3543,7 @@ if not df.empty:
         st.markdown(f'''
         <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
             <h3 style="color: #cbd5e1; font-weight: bold; margin: 0;">MONITORING FFG</h3>
-            <div style="background-color: rgba(249, 115, 22, 0.15); border: 1px solid #ea580c; border-radius: 6px; padding: 4px 12px; color: #fb923c; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            <div style="background-color: rgba(249, 115, 22, 0.15); border: 1px solid #ea580c; border-radius: 6px; padding: 4px 12px; color: #fb923c; font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
                 ⏱️ Last Ibooster: {ibooster_sync_time}
             </div>
         </div>
@@ -3314,6 +3602,7 @@ if not df.empty:
                     if wonum_ao_val.lower() == 'nan': wonum_ao_val = '-'
                     
                     no_inet = str(row.get('Service No.', '-'))
+                    if no_inet.endswith('.0'): no_inet = no_inet[:-2]
                     if no_inet.lower() == 'nan' or not no_inet.strip(): no_inet = '-'
                     
                     hasil_ukur = str(row.get('HASIL UKUR IBOSSTER', '-'))
@@ -3327,7 +3616,7 @@ if not df.empty:
                     
                     ffg_data.append({
                         'NO': idx,
-                        'BULAN UNSPEC': bulan_str,
+                        'BULAN PS': bulan_str,
                         'NAMA TEKNISI': nama_teknisi,
                         'ORDER': order_val,
                         'WONUM (AO)': wonum_ao_val,
@@ -3359,18 +3648,18 @@ if not df.empty:
                     for val in unique_vals:
                         import re as regex
                         clean_val = regex.sub('<[^<]+>', '', val)
-                        checkboxes_html += f'<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 14px; padding: 2px 0;"><input type="checkbox" class="ffg-filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;"><span class="ffg-filter-text-{i}">{clean_val}</span></label>'
+                        checkboxes_html += f'<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 12px; padding: 2px 0;"><input type="checkbox" class="ffg-filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;"><span class="ffg-filter-text-{i}">{clean_val}</span></label>'
                         
                     html_table += f'<th style="padding: 12px; border: 1px solid #334155; vertical-align: middle; text-align: center; white-space: nowrap; position: relative;">'
                     html_table += f'<div style="display: flex; justify-content: center; align-items: center; gap: 4px;"><span>{col}</span>'
-                    html_table += f'<div class="ffg-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #475569; font-size: 14px; padding: 2px 4px; border-radius: 4px;">&#9660;</div></div>'
+                    html_table += f'<div class="ffg-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #475569; font-size: 12px; padding: 2px 4px; border-radius: 4px;">&#9660;</div></div>'
                     
                     # Filter Menu Dropdown
                     html_table += f'<div class="ffg-filter-menu" id="ffg-filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); font-weight: normal;">'
-                    html_table += f'<input type="text" class="ffg-filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 14px; outline: none;">'
+                    html_table += f'<input type="text" class="ffg-filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 12px; outline: none;">'
                     html_table += f'<div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.7rem; color: #38bdf8; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px;"><span class="ffg-filter-select-all" data-colindex="{i}" style="cursor: pointer;">Pilih Semua</span><span class="ffg-filter-clear-all" data-colindex="{i}" style="cursor: pointer;">Bersihkan</span></div>'
                     html_table += f'<div class="ffg-filter-options-container" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding-right: 5px;">{checkboxes_html}</div>'
-                    html_table += f'<div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;"><button class="ffg-filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button></div>'
+                    html_table += f'<div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;"><button class="ffg-filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button></div>'
                     html_table += '</div></th>'
                     
                 html_table += '</tr></thead><tbody id="ffg-tbody">'
@@ -3379,7 +3668,7 @@ if not df.empty:
                 for _, row in df_display.iterrows():
                     html_table += '<tr style="border-bottom: 1px solid #334155; font-size: 13px;">'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NO"]}</td>'
-                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["BULAN UNSPEC"]}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["BULAN PS"]}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NAMA TEKNISI"]}</td>'
                     order_val = str(row["ORDER"]).strip().upper()
                     if order_val == "AO TSEL":
