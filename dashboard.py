@@ -943,8 +943,10 @@ if not df.empty:
                             src_df = src_df[src_df[order_col].astype(str).str.upper() == prod.upper()]
                         
                 if len(src_df) > 0:
-                    html_table = '<div class="cp-container"><div style="display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); font-size: 12px; text-transform: uppercase;">'
-                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 14px; letter-spacing: 0.5px; color: #ffffff;">STATUS WO</span></div></div>'
+                    if c_date and c_date in src_df.columns:
+                        src_df = src_df.sort_values(by=c_date, ascending=False)
+                    html_table = '<div style="width: 100%; display: flex; flex-direction: column;"><div style="position: sticky; top: 0; z-index: 10; display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); font-size: 12px; text-transform: uppercase;">'
+                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STATUS WO</span></div></div>'
                     
                     for idx, row in enumerate(src_df.to_dict('records'), 1):
                         def get_val(col_name): return str(row.get(col_name, '-')) if pd.notna(row.get(col_name)) else '-'
@@ -966,16 +968,16 @@ if not df.empty:
                             status_bg = "background-color: rgba(255,255,255,0.1); color: white;"
                             
                         html_table += f'''
-                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 12px; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.5fr) minmax(150px, 1.2fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.8fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{idx}</span></div>
-                            <div style="padding: 10px; font-size: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_date)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">{get_val(c_order)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_sto)}</span></div>
-                            <div style="padding: 10px; font-size: 12px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_wonum_ao)}</span></div>
-                            <div style="padding: 10px; font-size: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_cust)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; {status_bg} padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">{get_val(c_status)}</span></div>
-                            <div style="padding: 10px; font-size: 12px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_tim)}</span></div>
-                            <div style="padding: 10px; font-size: 12px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block;">{get_val(c_stat_wo)}</span></div>
+                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{idx}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_date)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: bold;">{get_val(c_order)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_sto)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_wonum_ao)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_cust).upper()}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; {status_bg} padding: 4px 12px; border-radius: 12px; font-size: 14px; font-weight: bold;">{get_val(c_status)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_tim)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_stat_wo)}</span></div>
                         </div>
                         '''
                     html_table += '</div>'
@@ -988,7 +990,7 @@ if not df.empty:
                             <h3 style="margin:0; color:white; font-size:1.2rem;">Detail Data: {cat} - {prod}</h3>
                             <button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 10px;">&times;</button>
                         </div>
-                        <div style="padding:20px; overflow-y:auto; flex:1;">
+                        <div style="padding:0; overflow-y:auto; flex:1;">
                             {html_table}
                         </div>
                     </div>
@@ -3381,9 +3383,9 @@ if not df.empty:
                 
                 svg_paths = ""
                 html_cards = f"""
-                <div style="position:absolute; left:{col0_x}px; top:10px; width:150px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">TOTAL ALL PS HI</div>
-                <div style="position:absolute; left:{col1_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">PS BY DATE RE</div>
-                <div style="position:absolute; left:{col2_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#cbd5e1; font-size:0.85rem; font-weight:700;">JENIS ORDER</div>
+                <div style="position:absolute; left:{col0_x}px; top:10px; width:150px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#ffffff; font-size:1.0rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">TOTAL ALL PS HI</div>
+                <div style="position:absolute; left:{col1_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#ffffff; font-size:1.0rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">PS BY DATE RE</div>
+                <div style="position:absolute; left:{col2_x}px; top:10px; width:160px; text-align:center; background:#1e293b; padding:8px 0; border-radius:6px; border:2px solid #475569; color:#ffffff; font-size:1.0rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">JENIS ORDER</div>
                 <div style="position:absolute; left:{col0_x}px; top:{root_y - 70}px; width:150px; height:140px; background:#0f172a; border:2px solid #475569; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index:10;">
                     <i class="bi bi-file-earmark-text" style="color:#60a5fa; font-size:1.8rem; margin-bottom:8px;"></i>
                     <div style="color:#f8fafc; font-size:1.0rem; font-weight:700; margin-bottom:5px;">TOTAL PS</div>
@@ -3412,9 +3414,9 @@ if not df.empty:
                     if '²' in k: col = '#2563eb'
                     html_cards += f"""
                     <div style="position:absolute; left:{col1_x}px; top:{y - 40}px; width:160px; height:80px; background:#0f172a; border:2px solid #475569; border-left: 4px solid {col}; border-radius:8px; display:flex; flex-direction:column; justify-content:center; padding-left:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index:10;">
-                        <div style="color:#cbd5e1; font-size:0.95rem; font-weight:700; margin-bottom:3px;">{k}</div>
+                        <div style="color:#ffffff; font-size:1.1rem; font-weight:700; margin-bottom:3px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{k}</div>
                         <div style="display:flex; align-items:baseline; gap:5px;">
-                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#94a3b8; font-size:0.7rem; font-weight:700;">WO</div><div style="color:{col}; font-size:0.75rem; font-weight:700; margin-left:3px;">({pct:.0f}%)</div>
+                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#ffffff; font-size:0.85rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">WO</div><div style="color:{col}; font-size:0.9rem; font-weight:700; margin-left:3px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">({pct:.0f}%)</div>
                         </div>
                     </div>
                     """
@@ -3441,12 +3443,71 @@ if not df.empty:
                     col = color_map.get(k, '#ef4444')
                     html_cards += f"""
                     <div style="position:absolute; left:{col2_x}px; top:{y - 40}px; width:160px; height:80px; background:#0f172a; border:2px solid #475569; border-left: 4px solid {col}; border-radius:8px; display:flex; flex-direction:column; justify-content:center; padding-left:15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index:10;">
-                        <div style="color:#cbd5e1; font-size:0.95rem; font-weight:700; margin-bottom:3px;">{k}</div>
+                        <div style="color:#ffffff; font-size:1.1rem; font-weight:700; margin-bottom:3px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{k}</div>
                         <div style="display:flex; align-items:baseline; gap:5px;">
-                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#94a3b8; font-size:0.7rem; font-weight:700;">WO</div><div style="color:{col}; font-size:0.75rem; font-weight:700; margin-left:3px;">({pct:.0f}%)</div>
+                            <div style="color:#f8fafc; font-size:1.2rem; font-weight:700;">{val}</div><div style="color:#ffffff; font-size:0.85rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">WO</div><div style="color:{col}; font-size:0.9rem; font-weight:700; margin-left:3px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">({pct:.0f}%)</div>
                         </div>
                     </div>
                     """
+                
+                # --- INJECT PS TABLE (RIGHT SIDE) ---
+                table_html = """
+                <div style="position:absolute; left: 840px; right: 20px; top: 20px; bottom: 20px; background:#0f172a; border:2.5px solid #eab308; border-radius:8px; overflow-y:auto; overflow-x:auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);">
+                    <table style="width:100%; border-collapse:collapse; color:white; font-size:11px; text-align:center; white-space:nowrap; font-family:sans-serif;">
+                        <thead style="position:sticky; top:0; background:#eab308; color:black; font-weight:bold; border-bottom:2px solid #ca8a04; z-index:10;">
+                            <tr>
+                                <th style="padding:8px; border-right:1px solid #ca8a04;">NO</th>
+                                <th style="padding:8px; border-right:1px solid #ca8a04;">DATE RE</th>
+                                <th style="padding:8px; border-right:1px solid #ca8a04;">ORDER</th>
+                                <th style="padding:8px; border-right:1px solid #ca8a04;">NO AO</th>
+                                <th style="padding:8px;">PS BY DATE RE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                """
+                
+                # Retrieve columns dynamically
+                date_col = next((c for c in ['DATE CREATE REAL', 'Date Created', 'DATE CREATED', 'TANGGAL DATE CREATE'] if c in df_sankey.columns), None)
+                wonum_col = next((c for c in ['INFO ORDER', 'NO WONUM & AO'] if c in df_sankey.columns), None)
+                
+                # Sort dataframe for the table
+                df_table = df_sankey.copy()
+                sort_order = {'PS HI': 0, 'PS H-': 1, 'PS H -': 1, 'PS H-²': 2, 'PS H -²': 2}
+                df_table['sort_idx'] = df_table['PS_Kapan'].map(sort_order).fillna(99)
+                df_table = df_table.sort_values(by=['sort_idx', date_col] if date_col else ['sort_idx'])
+                
+                for idx, row in enumerate(df_table.to_dict('records'), 1):
+                    d_re = str(row.get(date_col, '')) if date_col else ''
+                    if d_re.lower() == 'nan': d_re = ''
+                    if '.' in d_re: d_re = d_re.split('.')[0]
+                    
+                    wonum_val = str(row.get(wonum_col, '')) if wonum_col else ''
+                    no_ao = wonum_val
+                    if '-' in wonum_val:
+                        parts = wonum_val.split('-')
+                        no_ao = parts[1].strip() if len(parts) > 1 else wonum_val.strip()
+                    if no_ao.lower() == 'nan': no_ao = ''
+                        
+                    order_val = row.get('Order_Type', '')
+                    ps_kapan = row.get('PS_Kapan', '')
+                    
+                    bg_row = '#1e293b' if idx % 2 == 0 else '#0f172a'
+                    
+                    table_html += f"""
+                        <tr style="border-bottom:1px solid #334155; background:{bg_row};">
+                            <td style="padding:8px; border-right:1px solid #334155;">{idx}</td>
+                            <td style="padding:8px; border-right:1px solid #334155;">{d_re}</td>
+                            <td style="padding:8px; border-right:1px solid #334155; font-weight:bold; color:#cbd5e1;">{order_val}</td>
+                            <td style="padding:8px; border-right:1px solid #334155;">{no_ao}</td>
+                            <td style="padding:8px; font-weight:bold; color:#eab308;">{ps_kapan}</td>
+                        </tr>
+                    """
+                
+                table_html += """
+                        </tbody>
+                    </table>
+                </div>
+                """
                 
                 final_html = f"""
                 <div style="position:relative; width:100%; height:{height}px; background:#0b1120; border-radius:12px; border:2px solid #475569; overflow:hidden; margin-bottom:20px;">
@@ -3454,6 +3515,7 @@ if not df.empty:
                         {svg_paths}
                     </svg>
                     {html_cards}
+                    {table_html}
                 </div>
                 """
                 
@@ -3466,24 +3528,24 @@ if not df.empty:
                     <div style="display:flex; flex-direction:column; align-items:center; padding:0 15px;">
                         <div style="display:flex; align-items:center; gap:5px; margin-bottom:10px;">
                             <div style="width:10px; height:10px; border-radius:50%; background:{col};"></div>
-                            <div style="color:#cbd5e1; font-size:0.7rem; font-weight:700;">{k}</div>
+                            <div style="color:#ffffff; font-size:0.85rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{k}</div>
                         </div>
-                        <div style="color:#f8fafc; font-size:1.5rem; font-weight:700; line-height:1;">{v}</div>
-                        <div style="color:#64748b; font-size:0.7rem; margin-bottom:10px;">WO</div>
-                        <div style="color:{col}; font-size:0.9rem; font-weight:700;">{pct:.0f}%</div>
+                        <div style="color:#f8fafc; font-size:1.7rem; font-weight:700; line-height:1; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{v}</div>
+                        <div style="color:#ffffff; font-size:0.85rem; margin-bottom:10px; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">WO</div>
+                        <div style="color:{col}; font-size:1.05rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{pct:.0f}%</div>
                     </div>
                     """
                     
                 card2_inner = ""
-                for k,v in list(l2_counts.items())[:2]: 
+                for k,v in l2_counts.items(): 
                     pct = (v / total_wo * 100) if total_wo > 0 else 0
                     col = color_map.get(k, '#ef4444')
                     card2_inner += f"""
                     <div style="display:flex; flex-direction:column; align-items:center; padding:0 15px;">
-                        <div style="color:#cbd5e1; font-size:0.7rem; font-weight:700; margin-bottom:10px;">{k}</div>
-                        <div style="color:#f8fafc; font-size:1.5rem; font-weight:700; line-height:1;">{v}</div>
-                        <div style="color:#64748b; font-size:0.7rem; margin-bottom:10px;">WO</div>
-                        <div style="color:#10b981; font-size:0.9rem; font-weight:700;">{pct:.0f}%</div>
+                        <div style="color:#ffffff; font-size:0.85rem; font-weight:700; margin-bottom:10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{k}</div>
+                        <div style="color:#f8fafc; font-size:1.7rem; font-weight:700; line-height:1; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{v}</div>
+                        <div style="color:#ffffff; font-size:0.85rem; margin-bottom:10px; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">WO</div>
+                        <div style="color:#10b981; font-size:1.05rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">{pct:.0f}%</div>
                     </div>
                     """
                 
@@ -3504,9 +3566,9 @@ if not df.empty:
                             <div style="display:flex; flex-direction:column;">
                                 <div style="display:flex; align-items:baseline; gap:5px;">
                                     <span style="color:#f8fafc; font-size:2rem; font-weight:700; line-height:1;">{total_wo}</span>
-                                    <span style="color:#64748b; font-size:0.8rem; font-weight:700;">WO</span>
+                                    <span style="color:#ffffff; font-size:0.95rem; font-weight:700; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">WO</span>
                                 </div>
-                                <div style="color:#10b981; font-size:1.1rem; font-weight:700; margin-top:5px;">100%</div>
+                                <div style="color:#10b981; font-size:1.25rem; font-weight:700; margin-top:5px; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.6);">100%</div>
                             </div>
                         </div>
                     </div>
