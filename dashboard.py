@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 import pandas as pd
 import numpy as np
 import psutil
@@ -143,7 +143,7 @@ def get_insera_auto_puller():
         def _loop(self):
             while self.running:
                 # Durasi penarikan sama seperti WFM & ADING (1200-1260 detik / ~20-21 menit)
-                sleep_time = random.randint(1200, 1260)
+                sleep_time = random.randint(870, 900)
                 self.next_run_time = time.time() + sleep_time
                 
                 while self.running and self.next_run_time and time.time() < self.next_run_time:
@@ -165,7 +165,7 @@ def get_insera_auto_puller():
         def start(self):
             if not self.running:
                 import time, random
-                self.next_run_time = time.time() + random.randint(1200, 1260)
+                self.next_run_time = time.time() + random.randint(870, 900)
                 self.running = True
                 self.thread = threading.Thread(target=self._loop, daemon=True)
                 self.thread.start()
@@ -176,7 +176,7 @@ def get_insera_auto_puller():
             
         def reset_timer(self):
             if self.running:
-                sleep_time = random.randint(1200, 1260)
+                sleep_time = random.randint(870, 900)
                 self.next_run_time = time.time() + sleep_time
             
     return InseraAutoPuller()
@@ -1077,19 +1077,21 @@ if not df.empty:
             "nav-link-selected": style_active if st.session_state.active_menu in opts2 else style_inactive
         }
 
-        m1 = option_menu(menu_title=None, options=opts1, icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"], default_index=opts1.index(st.session_state.m1_old) if st.session_state.m1_old in opts1 else 0, styles=s1, key="m1")
+        m1 = option_menu(menu_title=None, options=opts1, icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"], default_index=opts1.index(st.session_state.m1_old) if st.session_state.m1_old in opts1 else 0, styles=s1, key=f"m1_{1 if st.session_state.active_menu in opts1 else 0}")
         
         st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 20px;">DASHBOARD ASSURANCE</p>', unsafe_allow_html=True)
         
-        m2 = option_menu(menu_title=None, options=opts2, icons=["file-text", "graph-up"], default_index=opts2.index(st.session_state.m2_old) if st.session_state.m2_old in opts2 else 0, styles=s2, key="m2")
+        m2 = option_menu(menu_title=None, options=opts2, icons=["file-text", "graph-up"], default_index=opts2.index(st.session_state.m2_old) if st.session_state.m2_old in opts2 else 0, styles=s2, key=f"m2_{1 if st.session_state.active_menu in opts2 else 0}")
         
         if m1 != st.session_state.m1_old:
             st.session_state.active_menu = m1
             st.session_state.m1_old = m1
+
             st.rerun()
         elif m2 != st.session_state.m2_old:
             st.session_state.active_menu = m2
             st.session_state.m2_old = m2
+
             st.rerun()
             
         menu = st.session_state.active_menu
@@ -1273,6 +1275,9 @@ if not df.empty:
                 insera_auto_puller.stop()
                 
             if insera_auto_puller.running:
+                import time
+                if insera_auto_puller.next_run_time and (insera_auto_puller.next_run_time - time.time() > 900):
+                    insera_auto_puller.reset_timer()
                 if insera_auto_puller.next_run_time:
                     import streamlit.components.v1 as components
                     
@@ -4926,14 +4931,8 @@ if not df.empty:
     elif menu == "GRAFIK TIKET PERIODE":
         df_asr, asr_source = load_assurance_data(insera_time)
         
-        source_badge = '<span style="background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #34d399; font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; margin-left: 10px;">🟢 GOOGLE SHEETS LIVE</span>' if asr_source == "GOOGLE_SHEETS" else '<span style="background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #38bdf8; font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; margin-left: 10px;">⚡ SINKRONISASI INSERA</span>'
+
         
-        st.markdown(f'''
-        <div class="metric-container mc-teal" style="margin-bottom: 20px;">
-            <div class="mc-title">🎫 GRAFIK DISTRIBUSI TIKET ASSURANCE PERIODE {source_badge}</div>
-            <div class="mc-value">{len(df_asr):,} <span style="font-size:1rem; color:#94a3b8">TIKET TERPANTAU DI SHEET GABUNGAN</span></div>
-        </div>
-        ''', unsafe_allow_html=True)
         
         if df_asr.empty:
             st.warning("⚠️ Data tiket Assurance belum berhasil dimuat.")
@@ -5370,20 +5369,53 @@ if not df.empty:
 
                     import html as html_lib
                     
-                    def compute_ttr_badge(ttr_val, cust_type_val):
-                        try:
-                            parts = str(ttr_val).strip().split(':')
-                            if len(parts) == 3:
-                                elapsed_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-                            elif len(parts) == 2:
-                                elapsed_sec = int(parts[0]) * 60 + int(parts[1])
-                            else:
-                                elapsed_sec = float(parts[0]) * 3600
-                        except:
-                            elapsed_sec = 0
+                    def compute_ttr_badge(ttr_val, cust_type_val, rep_val=None):
+                        import math
+                        elapsed_sec = None
 
+                        # 1. Coba baca dari kolom TTR jika ada
+                        if ttr_val is not None:
+                            try:
+                                if isinstance(ttr_val, (int, float)):
+                                    if not math.isnan(ttr_val):
+                                        if 0 < ttr_val < 10:
+                                            elapsed_sec = float(ttr_val) * 86400
+                                        else:
+                                            elapsed_sec = float(ttr_val)
+                                else:
+                                    s_ttr = str(ttr_val).strip()
+                                    if s_ttr and s_ttr.lower() not in ['nan', 'none', '-', '', '<na>', 'nat']:
+                                        parts = s_ttr.split(':')
+                                        if len(parts) == 3:
+                                            elapsed_sec = float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+                                        elif len(parts) == 2:
+                                            elapsed_sec = float(parts[0]) * 3600 + float(parts[1]) * 60
+                                        else:
+                                            val = float(parts[0])
+                                            if not math.isnan(val):
+                                                elapsed_sec = val * 3600
+                            except Exception:
+                                elapsed_sec = None
+
+                        # 2. Fallback hitung otomatis dari selisih REPORTED DATE ke saat ini
+                        if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
+                            if rep_val:
+                                try:
+                                    dt_rep = pd.to_datetime(rep_val, errors='coerce')
+                                    if pd.notna(dt_rep):
+                                        from datetime import datetime as dt_cls
+                                        now_dt = dt_cls.now()
+                                        diff = (now_dt - dt_rep.to_pydatetime()).total_seconds()
+                                        if diff >= 0:
+                                            elapsed_sec = diff
+                                except Exception:
+                                    pass
+
+                        if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
+                            elapsed_sec = 0.0
+
+                        elapsed_sec = float(elapsed_sec)
                         c_up = str(cust_type_val).upper()
-                        # Baseline SLA: 3 Jam untuk HVC (Gold, Platinum, Diamond) dan 6 Jam untuk Reguler
                         target_sec = 6 * 3600 if 'REGULER' in c_up else 3 * 3600
                         remain_sec = target_sec - elapsed_sec
                         remain_pct = (remain_sec / target_sec) * 100
@@ -5398,21 +5430,21 @@ if not df.empty:
                             bg = "rgba(16, 185, 129, 0.18)"
                             bd = "#10b981"
                             cl = "#34d399"
-                            ic = "🟢"
+                            ic = "\U0001F7E2"
                             lbl = f"({int(round(remain_pct))}%)"
                         elif remain_pct >= 41.0:
                             # Orange (70% sampai 41%)
                             bg = "rgba(245, 158, 11, 0.18)"
                             bd = "#f59e0b"
                             cl = "#fbbf24"
-                            ic = "🟠"
+                            ic = "\U0001F7E0"
                             lbl = f"({int(round(remain_pct))}%)"
                         else:
                             # Merah (40% sampai 0% atau minus / OSLA)
                             bg = "rgba(239, 68, 68, 0.18)"
                             bd = "#ef4444"
                             cl = "#f87171"
-                            ic = "🔴" if remain_pct >= 0 else "⚠️"
+                            ic = "\U0001F534" if remain_pct >= 0 else "\u26A0\uFE0F"
                             lbl = f"({int(round(max(0, remain_pct)))}%)" if remain_pct >= 0 else "(OSLA)"
 
                         return (
@@ -5424,7 +5456,6 @@ if not df.empty:
                             f'<span style="font-size: 0.69rem; opacity: 0.9;">{lbl}</span>'
                             f'</span>'
                         )
-
                     table_rows = []
                     # Tampilkan maksimal 300 tiket per tampilan agar browser tetap super ringan
                     display_limit = 300
@@ -5442,8 +5473,8 @@ if not df.empty:
                         raw_cust = str(row.get('Cust_Clean', str(row.get('CUSTOMER TYPE', '-')))).upper().strip()
                         cust_badge = cust_badges.get(raw_cust, f'<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_cust)}</span>')
                         
-                        ttr_val = row.get('TTR CUSTOMER', row.get('TTR_CUSTOMER', '-'))
-                        ttr_badge = compute_ttr_badge(ttr_val, raw_cust)
+                        ttr_val = row.get('TTR CUSTOMER', row.get('TTR_CUSTOMER', row.get('TTR BERJALAN', row.get('TTR', None))))
+                        ttr_badge = compute_ttr_badge(ttr_val, raw_cust, row.get('REPORTED DATE'))
 
                         cname_val = html_lib.escape(str(row.get('CUSTOMER NAME', '-')))
                         stype_val = html_lib.escape(str(row.get('SERVICE TYPE', '-')))
