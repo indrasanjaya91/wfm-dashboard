@@ -424,8 +424,13 @@ def load_assurance_data(sync_time_val):
         import urllib.parse
         encoded_name = urllib.parse.quote(ASSURANCE_SHEET_NAME)
         url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
-        df_sheet = pd.read_csv(url, timeout=5)
-        if not df_sheet.empty and len(df_sheet.columns) > 10:
+        import urllib.request
+        import io
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content = resp.read().decode('utf-8')
+            df_sheet = pd.read_csv(io.StringIO(content)) if (content and not content.strip().startswith("<!DOCTYPE")) else pd.DataFrame()
+        if not df_sheet.empty and len(df_sheet.columns) > 5:
             return df_sheet, "GOOGLE_SHEETS"
     except Exception:
         pass
@@ -576,6 +581,23 @@ if os.path.exists(insera_summary_file):
                 insera_time = js["last_sync"]
                 insera_source = js.get("source", "VIA DASHBOARD")
     except:
+        pass
+
+if insera_time == "Belum Ada Data":
+    try:
+        df_asr_probe, asr_probe_src = load_assurance_data("probe")
+        if not df_asr_probe.empty:
+            insera_total_cnt = len(df_asr_probe)
+            insera_source = "GOOGLE SHEETS LIVE" if asr_probe_src == "GOOGLE_SHEETS" else "CACHE"
+            for col_chk in ['REPORTED DATE', 'REPORTED_DATE', 'STATUS DATE', 'TANGGAL TIKET']:
+                if col_chk in df_asr_probe.columns:
+                    valid_dates = pd.to_datetime(df_asr_probe[col_chk], errors='coerce').dropna()
+                    if not valid_dates.empty:
+                        insera_time = valid_dates.max().strftime("%d %b %Y | %H:%M:%S")
+                        break
+            if insera_time == "Belum Ada Data":
+                insera_time = "LIVE SATELLITE"
+    except Exception:
         pass
 
 # Helper ekstraksi jam ringkas (lengkap dengan detik HH:MM:SS) untuk pill di navbar
@@ -4914,7 +4936,8 @@ if not df.empty:
         ''', unsafe_allow_html=True)
         
         if df_asr.empty:
-            st.warning("⚠️ Data tiket Assurance belum tersedia. Silakan lakukan penarikan data melalui tombol **'🚀 Tarik INSERA ASR'** di sidebar kiri.")
+            st.warning("⚠️ Data tiket Assurance belum berhasil dimuat.")
+            st.info("💡 **Petunjuk untuk Web Public (Streamlit Cloud):**\nPastikan spreadsheet **'SA ULIN - ANTIGRAVITY ASSURANCE'** sudah dibagikan dengan akses **'Siapa saja yang memiliki link: Pelihat'** agar server publik dapat membaca data secara otomatis. Di localhost, data juga dapat ditarik langsung melalui tombol **'🚀 Tarik INSERA ASR'** di sidebar.")
         else:
             # 1. Deteksi Kolom Tanggal Lapor
             date_col_asr = None
