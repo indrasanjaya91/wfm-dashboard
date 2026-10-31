@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import psutil
 import textwrap
 import re
@@ -124,12 +125,78 @@ def get_ibooster_auto_puller():
 
 ibooster_auto_puller = get_ibooster_auto_puller()
 
+@st.cache_resource
+def get_insera_auto_puller():
+    import threading
+    import random
+    import time
+    import subprocess
+    import sys
+    import os
+    
+    class InseraAutoPuller:
+        def __init__(self):
+            self.running = False
+            self.thread = None
+            self.next_run_time = None
+            
+        def _loop(self):
+            while self.running:
+                # Durasi penarikan sama seperti WFM & ADING (1200-1260 detik / ~20-21 menit)
+                sleep_time = random.randint(1200, 1260)
+                self.next_run_time = time.time() + sleep_time
+                
+                while self.running and self.next_run_time and time.time() < self.next_run_time:
+                    time.sleep(1)
+                    
+                if not self.running:
+                    self.next_run_time = None
+                    return
+                    
+                # Menjalankan penarikan data INSERA ASR secara otomatis
+                try:
+                    py_exec = sys.executable or "python"
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    script_path = os.path.join(base_dir, "main_assurance.py")
+                    subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "Otomatis"], cwd=base_dir, capture_output=True, text=True)
+                except Exception:
+                    pass
+                    
+        def start(self):
+            if not self.running:
+                import time, random
+                self.next_run_time = time.time() + random.randint(1200, 1260)
+                self.running = True
+                self.thread = threading.Thread(target=self._loop, daemon=True)
+                self.thread.start()
+                
+        def stop(self):
+            self.running = False
+            self.thread = None
+            
+        def reset_timer(self):
+            if self.running:
+                sleep_time = random.randint(1200, 1260)
+                self.next_run_time = time.time() + sleep_time
+            
+    return InseraAutoPuller()
+
+insera_auto_puller = get_insera_auto_puller()
+
 
 # --- CUSTOM CSS (PREMIUM DARK THEME) ---
 st.markdown("""
 <style>
     @import url('https://fonts.cdnfonts.com/css/superstar-m54');
-    .stApp { background-color: #0b1121; color: #f8fafc; }
+    .stApp { background-color: #0b1121 !important; color: #f8fafc !important; }
+    
+    /* Enforce Consistent Dark Theme on Sidebar */
+    [data-testid="stSidebar"], [data-testid="stSidebar"] > div:first-child {
+        background-color: #0e1626 !important;
+    }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {
+        color: #f8fafc !important;
+    }
     
     /* Global Container Border Override */
     div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -153,6 +220,26 @@ st.markdown("""
     .header-right { display: flex; align-items: center; gap: 20px; }
     .update-time { font-size: 1.05rem; color: #94a3b8; text-align: right; line-height: 1.2; }
     .export-btn { background-color: #1e293b; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; color: white; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    
+    /* Sync Status Badge & Modal Styling */
+    @keyframes syncPulse {
+        0% { transform: scale(0.95); opacity: 0.8; }
+        50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px #10b981; }
+        100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .sync-pulse-dot {
+        animation: syncPulse 2s infinite ease-in-out;
+    }
+    .sync-status-pill:hover {
+        transform: translateY(-2px);
+        border-color: #facc15 !important;
+        box-shadow: 0 6px 20px rgba(234, 179, 8, 0.45) !important;
+    }
+    #btn-close-sync-modal:hover, #btn-close-sync-modal-bottom:hover {
+        background: rgba(239, 68, 68, 0.2) !important;
+        border-color: #ef4444 !important;
+        color: #fca5a5 !important;
+    }
 
     /* 6 Grid Cards (Changed to 4 columns) */
     .grid-6 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
@@ -326,10 +413,65 @@ SHEET_ID = "1zA5ucYxE9gOSnKZIhEKQyV2rEdV5je__knsS9neA5iA"
 SHEET_NAME = "GABUNGAN"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={SHEET_NAME}"
 
+ASSURANCE_SHEET_ID = "1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o"
+ASSURANCE_SHEET_NAME = "GABUNGAN ALL & CLOSE TIKET"
+
+@st.cache_data(ttl=300)
+def load_assurance_data(sync_time_val):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # 1. Coba baca dari Google Sheets jika sharing link pelihat sudah aktif
+    try:
+        import urllib.parse
+        encoded_name = urllib.parse.quote(ASSURANCE_SHEET_NAME)
+        url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
+        df_sheet = pd.read_csv(url, timeout=5)
+        if not df_sheet.empty and len(df_sheet.columns) > 10:
+            return df_sheet, "GOOGLE_SHEETS"
+    except Exception:
+        pass
+        
+    # 2. Coba baca dari cache Parquet super cepat (1 detik)
+    try:
+        parquet_cache = os.path.join(base_dir, "last_insera_gabungan.parquet")
+        if os.path.exists(parquet_cache):
+            df_pq = pd.read_parquet(parquet_cache)
+            if not df_pq.empty:
+                return df_pq, "LOCAL_CACHE"
+    except Exception:
+        pass
+        
+    # 3. Fallback: Baca dari file unduhan excel terbaru di folder downloads
+    try:
+        import glob
+        dl_dir = os.path.join(base_dir, "downloads")
+        all_files = sorted(glob.glob(os.path.join(dl_dir, "insera_all_ticket_*.xlsx")), reverse=True)
+        closed_files = sorted(glob.glob(os.path.join(dl_dir, "insera_closed_ticket_*.xlsx")), reverse=True)
+        if all_files or closed_files:
+            df_a = pd.read_excel(all_files[0]) if all_files else pd.DataFrame()
+            df_c = pd.read_excel(closed_files[0]) if closed_files else pd.DataFrame()
+            df_m = pd.concat([df_a, df_c], ignore_index=True)
+            return df_m, "LOCAL_EXCEL"
+    except Exception:
+        pass
+        
+    return pd.DataFrame(), None
+
+
 @st.cache_data(ttl=600)
 def load_data(sync_time_val):
     try:
         df = pd.read_csv(CSV_URL)
+        if 'Workorder' not in df.columns:
+            err_detail = ""
+            for col in df.columns:
+                if any(k in str(col).lower() for k in ['message', '429', 'export']):
+                    err_detail = str(col)
+                    break
+            if err_detail:
+                raise ValueError(f"Respon Google Sheets: {err_detail}")
+            else:
+                raise ValueError("Kolom 'Workorder' tidak ditemukan pada sumber data.")
+
         cloud_sync = None
         if 'Workorder' in df.columns and 'Description' in df.columns:
             meta = df[df['Workorder'] == 'METADATA_SYNC']
@@ -338,7 +480,7 @@ def load_data(sync_time_val):
                 df = df[df['Workorder'] != 'METADATA_SYNC']
         return df, cloud_sync
     except Exception as e:
-        st.error(f"Gagal mengambil data dari Google Sheet: {e}")
+        st.error(f"⚠️ Gagal memuat data dari Google Sheet: {e}")
         return pd.DataFrame(), None
 
 
@@ -374,28 +516,385 @@ if last_sync_time == "Belum Ada Data" and cloud_sync:
     else:
         last_sync_time = cloud_sync.replace(" WIB", "")
 
-# --- HEADER BERSAMA ---
-st.markdown(f'''
+# 2. Segmentasi Penarikan IBOOSTER FFG (Target AO TSEL & INDIBIZ)
+base_dir = os.path.dirname(os.path.abspath(__file__))
+ibooster_ao_file = os.path.join(base_dir, "last_ibooster_AO_TSEL.txt")
+ibooster_ind_file = os.path.join(base_dir, "last_ibooster_INDIBIZ.txt")
+ibooster_ao_time = "Belum Ada Data"
+ibooster_ao_source = "VIA DASHBOARD"
+ibooster_ind_time = "Belum Ada Data"
+ibooster_ind_source = "VIA DASHBOARD"
+
+if os.path.exists(ibooster_ao_file):
+    try:
+        with open(ibooster_ao_file, "r") as f:
+            c = f.read().strip().replace(" WIB", "")
+            p = c.split(" | VIA ")
+            ibooster_ao_time = p[0]
+            if len(p) > 1: ibooster_ao_source = "VIA " + p[1]
+    except:
+        pass
+
+if os.path.exists(ibooster_ind_file):
+    try:
+        with open(ibooster_ind_file, "r") as f:
+            c = f.read().strip().replace(" WIB", "")
+            p = c.split(" | VIA ")
+            ibooster_ind_time = p[0]
+            if len(p) > 1: ibooster_ind_source = "VIA " + p[1]
+    except:
+        pass
+
+# 3. Segmentasi Penarikan INSERA ASR (Assurance Incident)
+import json
+insera_file = os.path.join(base_dir, "last_insera_sync.txt")
+insera_summary_file = os.path.join(base_dir, "last_insera_summary.json")
+insera_time = "Belum Ada Data"
+insera_source = "VIA DASHBOARD"
+insera_all_cnt = 2716
+insera_closed_cnt = 591
+insera_total_cnt = 3307
+
+if os.path.exists(insera_file):
+    try:
+        with open(insera_file, "r") as f:
+            c = f.read().strip().replace(" WIB", "")
+            p = c.split(" | VIA ")
+            insera_time = p[0]
+            if len(p) > 1: insera_source = "VIA " + p[1]
+    except:
+        pass
+
+if os.path.exists(insera_summary_file):
+    try:
+        with open(insera_summary_file, "r", encoding="utf-8") as f:
+            js = json.load(f)
+            insera_all_cnt = js.get("all_count", insera_all_cnt)
+            insera_closed_cnt = js.get("closed_count", insera_closed_cnt)
+            insera_total_cnt = js.get("total_count", insera_total_cnt)
+            if (insera_time == "Belum Ada Data" or not insera_time) and "last_sync" in js:
+                insera_time = js["last_sync"]
+                insera_source = js.get("source", "VIA DASHBOARD")
+    except:
+        pass
+
+# Helper ekstraksi jam ringkas (lengkap dengan detik HH:MM:SS) untuk pill di navbar
+def extract_time_short(t_str):
+    if not t_str or "Belum Ada" in t_str: return "-"
+    clean = t_str.replace("WIB", "").strip()
+    if "|" in clean:
+        clean = clean.split("|")[-1].strip()
+    parts = clean.split(":")
+    if len(parts) >= 3:
+        sec = parts[2].strip().split()[0]
+        return f"{parts[0].strip()}:{parts[1].strip()}:{sec}"
+    elif len(parts) == 2:
+        sec = parts[1].strip().split()[0]
+        return f"{parts[0].strip()}:{sec}:00"
+    return clean
+
+wfm_short_time = extract_time_short(last_sync_time)
+ibooster_short_time = extract_time_short(ibooster_ao_time)
+insera_short_time = extract_time_short(insera_time)
+
+# Hitung rincian order WFM dari df
+wfm_order_col = None
+if not df.empty:
+    for c in ['CECK BY ORDER', 'CEK INDIBIZ', 'PRODUCT TYPE', 'ORDER']:
+        if c in df.columns:
+            wfm_order_col = c
+            break
+
+wfm_ao_cnt = 0
+wfm_pda_cnt = 0
+wfm_ind_cnt = 0
+wfm_vula_cnt = 0
+wfm_total_cnt = len(df) if not df.empty else 0
+
+if not df.empty and wfm_order_col:
+    counts_wfm = df[wfm_order_col].astype(str).str.upper().value_counts()
+    wfm_ao_cnt = counts_wfm.get('AO TSEL', 0) + counts_wfm.get('AO', 0)
+    wfm_pda_cnt = counts_wfm.get('PDA TSEL', 0) + counts_wfm.get('PDA', 0)
+    wfm_ind_cnt = counts_wfm.get('INDIBIZ', 0)
+    wfm_vula_cnt = counts_wfm.get('ISP VULA', 0)
+
+# --- HEADER BERSAMA & POP-UP SINKRONISASI 3 SEGMENTASI DATA ---
+sync_header_html = f'''
 <div class="header-container">
     <div class="header-left">
         <h1 class="dash-title">SERVICE AREA ULIN</h1>
         <p class="dash-subtitle" style="display: flex; align-items: center; font-size: 1.45rem; letter-spacing: 1px; margin-top: -8px;">OPERATION DASHBOARD &ndash;&nbsp;<span style="font-family: 'Superstar M54', sans-serif; color: #dc2626; font-size: 1.5rem; letter-spacing: 2px; text-transform: uppercase; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); padding-top: 2px;">YOU'LL NEVER WALK ALONE</span></p>
     </div>
     <div class="header-right">
-        <div style="position: fixed; top: 14px; right: 200px; z-index: 999999; border: 1px solid #eab308; border-radius: 20px; padding: 5px 15px; display: flex; align-items: center; gap: 10px; background-color: #0f172a; box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);">
-            <div style="background-color: #3b82f6; width: 10px; height: 10px; border-radius: 2px;"></div>
-            <div style="color: #cbd5e1; font-size: 0.85rem; font-weight: bold; font-family: sans-serif; letter-spacing: 0.5px;">
-                UPDATE: <span style="color: white; margin-left: 4px;">{last_sync_time}</span>
+        
+        <!-- PILL SINKRONISASI 3 DATA (MEMANJANG & INTERAKTIF) -->
+        <div id="btn-open-sync-modal" class="sync-status-pill" title="Klik untuk membuka rincian lengkap 3 segmentasi data penarikan" style="position: fixed; top: 12px; right: 170px; z-index: 999990; border: 1.5px solid #eab308; border-radius: 24px; padding: 5px 14px; display: flex; align-items: center; gap: 11px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25); cursor: pointer; transition: all 0.2s ease; white-space: nowrap;">
+            
+            <!-- Live Pulse Status -->
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="sync-pulse-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+                <span style="color: #fbbf24; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">SYNC:</span>
             </div>
-            <div style="background-color: #059669; color: white; font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; font-weight: bold; margin-left: 5px;">{sync_source}</div>
+            
+            <!-- 1. WFM & ADING -->
+            <div style="display: flex; align-items: center; gap: 5px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 9px;" title="WFM &amp; ADING: {last_sync_time} ({sync_source})">
+                <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: #38bdf8;"></span>
+                <span style="font-size: 0.74rem; color: #94a3b8; font-weight: 600;">WFM &amp; ADING :</span>
+                <span style="font-size: 0.78rem; color: #f8fafc; font-weight: bold;">{wfm_short_time}</span>
+            </div>
+
+            <!-- 2. IBOOSTER FFG -->
+            <div style="display: flex; align-items: center; gap: 5px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 9px;" title="IBOOSTER FFG: AO ({ibooster_ao_time}) | INDIBIZ ({ibooster_ind_time})">
+                <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: #c084fc;"></span>
+                <span style="font-size: 0.74rem; color: #94a3b8; font-weight: 600;">IBOOSTER FFG :</span>
+                <span style="font-size: 0.78rem; color: #f8fafc; font-weight: bold;">{ibooster_short_time}</span>
+            </div>
+
+            <!-- 3. INSERA ASR -->
+            <div style="display: flex; align-items: center; gap: 5px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 9px;" title="INSERA ASR: {insera_time} ({insera_source})">
+                <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: #34d399;"></span>
+                <span style="font-size: 0.74rem; color: #94a3b8; font-weight: 600;">INSERA ASR :</span>
+                <span style="font-size: 0.78rem; color: #f8fafc; font-weight: bold;">{insera_short_time}</span>
+            </div>
+
+            <!-- Badge Buka Pop-up -->
+            <div style="background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.5); color: #fef08a; font-size: 0.68rem; padding: 2px 8px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; margin-left: 2px;">
+                <span>Detail</span>
+                <span style="font-size: 0.65rem;">▼</span>
+            </div>
         </div>
+
         <div class="update-time" id="live-clock-inline" style="color: #60a5fa; font-weight: bold; font-size: 1.1rem; text-align: right;">Memuat waktu...</div>
         <div class="export-btn">📥 Export ▾</div>
     </div>
 </div>
-''', unsafe_allow_html=True)
 
-# Inject JS untuk Live Clock Real-time
+<!-- POP-UP MODAL DETAIL 3 SEGMENTASI DATA PENARIKAN (MEMANJANG) -->
+<div id="modal-sync-summary" class="sync-summary-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px); z-index: 9999999; justify-content: center; align-items: center;">
+    <div style="background: #0f172a; width: 95%; max-width: 1060px; max-height: 88vh; border: 2px solid #eab308; border-radius: 16px; box-shadow: 0 25px 60px -15px rgba(0,0,0,0.9), 0 0 25px rgba(234, 179, 8, 0.3); display: flex; flex-direction: column; overflow: hidden;">
+        
+        <!-- Header Pop-Up -->
+        <div style="padding: 16px 24px; background: linear-gradient(90deg, #1e293b, #0f172a); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: rgba(234, 179, 8, 0.2); border: 1px solid #eab308; width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                    🔄
+                </div>
+                <div>
+                    <h2 style="margin: 0; color: #f8fafc; font-size: 1.22rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
+                        DETAIL 3 SEGMENTASI DATA PENARIKAN OPERASIONAL
+                    </h2>
+                    <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 0.8rem;">
+                        Status &amp; Rincian Lengkap Penarikan: <b>WFM &amp; ADING</b> &bull; <b>IBOOSTER FFG</b> &bull; <b>INSERA ASR</b>
+                    </p>
+                </div>
+            </div>
+            <button id="btn-close-sync-modal" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; font-size: 1.6rem; cursor: pointer; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s;">&times;</button>
+        </div>
+
+        <!-- Body Pop-Up (3 Kolom Memanjang Side-by-Side) -->
+        <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                
+                <!-- KOLOM 1: WFM & ADING -->
+                <div style="background: rgba(30, 41, 59, 0.6); border: 1.5px solid #0284c7; border-top: 4px solid #38bdf8; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                        <div>
+                            <div style="color: #38bdf8; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">SEGMENTASI 1: FULFILLMENT</div>
+                            <div style="color: #ffffff; font-size: 1.05rem; font-weight: bold; margin-top: 2px;">WFM &amp; ADING</div>
+                        </div>
+                        <span style="background: #0284c7; color: white; font-size: 0.68rem; padding: 3px 8px; border-radius: 10px; font-weight: bold;">AKTIF</span>
+                    </div>
+
+                    <!-- Waktu & Info -->
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: #94a3b8;">Terakhir Sinkron:</span>
+                            <span style="color: #f8fafc; font-weight: bold;">{last_sync_time}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: #94a3b8;">Metode:</span>
+                            <span style="color: #38bdf8; font-weight: 600;">{sync_source}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #94a3b8;">Total Terpantau:</span>
+                            <span style="color: #fbbf24; font-weight: bold;">{wfm_total_cnt} Workorder</span>
+                        </div>
+                    </div>
+
+                    <!-- Detail Segmentasi Produk -->
+                    <div>
+                        <div style="color: #cbd5e1; font-size: 0.78rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📌 Segmentasi Order &amp; WO:
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- AO TSEL -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: #be123c;"></span>
+                                    <span style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">AO TSEL</span>
+                                </div>
+                                <span style="color: #f8fafc; font-weight: bold; font-size: 0.85rem;">{wfm_ao_cnt} <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">WO</span></span>
+                            </div>
+                            <!-- PDA TSEL -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: #166534;"></span>
+                                    <span style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">PDA TSEL</span>
+                                </div>
+                                <span style="color: #f8fafc; font-weight: bold; font-size: 0.85rem;">{wfm_pda_cnt} <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">WO</span></span>
+                            </div>
+                            <!-- INDIBIZ -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: #1d4ed8;"></span>
+                                    <span style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">INDIBIZ</span>
+                                </div>
+                                <span style="color: #f8fafc; font-weight: bold; font-size: 0.85rem;">{wfm_ind_cnt} <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">WO</span></span>
+                            </div>
+                            <!-- ISP VULA -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="width: 8px; height: 8px; border-radius: 2px; background: #d97706;"></span>
+                                    <span style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">ISP VULA</span>
+                                </div>
+                                <span style="color: #f8fafc; font-weight: bold; font-size: 0.85rem;">{wfm_vula_cnt} <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">WO</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KOLOM 2: IBOOSTER FFG -->
+                <div style="background: rgba(30, 41, 59, 0.6); border: 1.5px solid #7c3aed; border-top: 4px solid #c084fc; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                        <div>
+                            <div style="color: #c084fc; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">SEGMENTASI 2: QUALITY &amp; SQI</div>
+                            <div style="color: #ffffff; font-size: 1.05rem; font-weight: bold; margin-top: 2px;">IBOOSTER FFG</div>
+                        </div>
+                        <span style="background: #7c3aed; color: white; font-size: 0.68rem; padding: 3px 8px; border-radius: 10px; font-weight: bold;">FFG 60 HARI</span>
+                    </div>
+
+                    <!-- Target Segmentasi 1: AO TSEL -->
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="color: #f472b6; font-weight: bold;">📱 Target AO TSEL</span>
+                            <span style="background: rgba(244, 114, 182, 0.15); color: #f472b6; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px;">Validated</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <span style="color: #94a3b8;">Terakhir Sinkron:</span>
+                            <span style="color: #f8fafc; font-weight: bold;">{ibooster_ao_time}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #94a3b8;">Sumber:</span>
+                            <span style="color: #c084fc; font-weight: 600;">{ibooster_ao_source}</span>
+                        </div>
+                    </div>
+
+                    <!-- Target Segmentasi 2: INDIBIZ -->
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="color: #60a5fa; font-weight: bold;">🏢 Target INDIBIZ</span>
+                            <span style="background: rgba(96, 165, 250, 0.15); color: #60a5fa; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px;">Validated</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <span style="color: #94a3b8;">Terakhir Sinkron:</span>
+                            <span style="color: #f8fafc; font-weight: bold;">{ibooster_ind_time}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #94a3b8;">Sumber:</span>
+                            <span style="color: #c084fc; font-weight: 600;">{ibooster_ind_source}</span>
+                        </div>
+                    </div>
+
+                    <!-- Info Fitur -->
+                    <div style="background: rgba(15, 23, 42, 0.4); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; font-size: 0.75rem; color: #94a3b8; line-height: 1.4;">
+                        <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 2px;">🎯 Kegunaan Data:</div>
+                        Validasi kualitas sinyal optik / redaman, profil FFG H-60, serta filter status ukur i-Booster di tabel detail ODS.
+                    </div>
+                </div>
+
+                <!-- KOLOM 3: INSERA ASR -->
+                <div style="background: rgba(30, 41, 59, 0.6); border: 1.5px solid #059669; border-top: 4px solid #34d399; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                        <div>
+                            <div style="color: #34d399; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">SEGMENTASI 3: INCIDENT ASSURANCE</div>
+                            <div style="color: #ffffff; font-size: 1.05rem; font-weight: bold; margin-top: 2px;">INSERA ASR</div>
+                        </div>
+                        <span style="background: #059669; color: white; font-size: 0.68rem; padding: 3px 8px; border-radius: 10px; font-weight: bold;">TELKOM ASR</span>
+                    </div>
+
+                    <!-- Waktu & Status -->
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: #94a3b8;">Terakhir Sinkron:</span>
+                            <span style="color: #f8fafc; font-weight: bold;">{insera_time}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: #94a3b8;">Metode:</span>
+                            <span style="color: #34d399; font-weight: 600;">{insera_source}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #94a3b8;">Spreadsheet:</span>
+                            <span style="color: #fef08a; font-weight: 600;">SA ULIN - ASSURANCE</span>
+                        </div>
+                    </div>
+
+                    <!-- Detail Segmentasi Sheet & Data -->
+                    <div>
+                        <div style="color: #cbd5e1; font-size: 0.78rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📌 Segmentasi Sheet &amp; Tiket:
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- ALL TICKET LIST -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">ALL TICKET LIST</div>
+                                    <div style="color: #94a3b8; font-size: 0.7rem;">Tiket Aktif / Open</div>
+                                </div>
+                                <span style="color: #38bdf8; font-weight: bold; font-size: 0.88rem;">{insera_all_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">data</span></span>
+                            </div>
+                            <!-- CLOSED TICKET LIST -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">CLOSED TICKET LIST</div>
+                                    <div style="color: #94a3b8; font-size: 0.7rem;">Tiket Closed / Selesai</div>
+                                </div>
+                                <span style="color: #10b981; font-weight: bold; font-size: 0.88rem;">{insera_closed_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">data</span></span>
+                            </div>
+                            <!-- GABUNGAN -->
+                            <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: #fbbf24; font-weight: bold; font-size: 0.82rem;">GABUNGAN ALL &amp; CLOSE</div>
+                                    <div style="color: #fef08a; font-size: 0.7rem;">Total Konsolidasi (Header Baku)</div>
+                                </div>
+                                <span style="color: #fbbf24; font-weight: 800; font-size: 0.92rem;">{insera_total_cnt:,} <span style="font-size: 0.7rem; color: #cbd5e1; font-weight: normal;">data</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filter Insera -->
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: -2px;">
+                        Filter: Segmen <b style="color:#94a3b8;">DCS, PL-TSEL</b> &bull; Zone <b style="color:#94a3b8;">GMB, ULI</b> &bull; <b style="color:#94a3b8;">TECHNICAL</b>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer Pop-Up -->
+        <div style="padding: 12px 24px; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+            <div style="color: #94a3b8; font-size: 0.78rem; display: flex; align-items: center; gap: 6px;">
+                <span>💡</span>
+                <span>Untuk menarik data terbaru kapan saja, gunakan menu <b>"⚙️ TARIK DATA MANUAL"</b> pada sidebar Admin di sebelah kiri.</span>
+            </div>
+            <button id="btn-close-sync-modal-bottom" style="background: #334155; border: 1px solid #475569; color: white; padding: 6px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">Tutup Jendela ✕</button>
+        </div>
+
+    </div>
+</div>
+'''
+st.markdown(sync_header_html.replace('\n', ' '), unsafe_allow_html=True)
+
+# Inject JS untuk Live Clock Real-time & Modal Sinkronisasi 3 Segmentasi Data
 js_clock = """
 <script>
     function updateClock() {
@@ -418,14 +917,56 @@ js_clock = """
         const timeInline = `${dayName}, ${now.getDate()} ${monthLongName} ${year} | ${hours}:${minutes}:${seconds}`;
         
         try {
-
             const elInline = window.parent.document.getElementById('live-clock-inline');
             if(elInline) elInline.innerText = timeInline;
         } catch(e) {}
     }
     
+    function attachSyncModalListeners() {
+        try {
+            const parentDoc = window.parent.document;
+            const badgeBtn = parentDoc.getElementById('btn-open-sync-modal');
+            const syncModal = parentDoc.getElementById('modal-sync-summary');
+            const closeBtn1 = parentDoc.getElementById('btn-close-sync-modal');
+            const closeBtn2 = parentDoc.getElementById('btn-close-sync-modal-bottom');
+
+            if (badgeBtn && !badgeBtn.dataset.listener) {
+                badgeBtn.dataset.listener = 'true';
+                badgeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (syncModal) syncModal.style.display = 'flex';
+                });
+            }
+
+            function closeSync(e) {
+                if (e) { e.preventDefault(); e.stopPropagation(); }
+                if (syncModal) syncModal.style.display = 'none';
+            }
+
+            if (closeBtn1 && !closeBtn1.dataset.listener) {
+                closeBtn1.dataset.listener = 'true';
+                closeBtn1.addEventListener('click', closeSync);
+            }
+            if (closeBtn2 && !closeBtn2.dataset.listener) {
+                closeBtn2.dataset.listener = 'true';
+                closeBtn2.addEventListener('click', closeSync);
+            }
+            if (syncModal && !syncModal.dataset.listener) {
+                syncModal.dataset.listener = 'true';
+                syncModal.addEventListener('click', function(e) {
+                    if (e.target === syncModal) {
+                        closeSync(e);
+                    }
+                });
+            }
+        } catch(e) {}
+    }
+
     setInterval(updateClock, 1000);
+    setInterval(attachSyncModalListeners, 500);
     updateClock();
+    attachSyncModalListeners();
 </script>
 """
 import streamlit.components.v1 as components
@@ -490,18 +1031,46 @@ if not df.empty:
     
     from streamlit_option_menu import option_menu
     with st.sidebar:
-        menu = option_menu(
-            menu_title=None,
-            options=["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER"],
-            icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"],
-            default_index=0,
-            styles={
-                "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
-                "icon": {"color": "#94a3b8", "font-size": "18px"}, 
-                "nav-link": {"font-size": "15px", "text-align": "left", "margin":"2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px"},
-                "nav-link-selected": {"background-color": "#3f2b34", "border-left": "4px solid #ef4444", "color": "white", "border-radius": "8px", "border-top-left-radius": "8px", "border-bottom-left-radius": "8px"},
-            }
-        )
+        if "active_menu" not in st.session_state: st.session_state.active_menu = "PS/RE"
+        if "m1_old" not in st.session_state: st.session_state.m1_old = "PS/RE"
+        if "m2_old" not in st.session_state: st.session_state.m2_old = "DAILY REPORT"
+        
+        opts1 = ["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER"]
+        opts2 = ["DAILY REPORT", "GRAFIK TIKET PERIODE"]
+        
+        style_active = {"background-color": "#3f2b34", "border-left": "4px solid #ef4444", "color": "white", "border-radius": "8px", "border-top-left-radius": "8px", "border-bottom-left-radius": "8px", "font-weight": "bold"}
+        style_inactive = {"background-color": "transparent", "border-left": "4px solid transparent", "color": "#cbd5e1", "font-weight": "normal"}
+        
+        s1 = {
+            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
+            "icon": {"color": "#94a3b8", "font-size": "18px"}, 
+            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px", "font-weight": "normal"},
+            "nav-link-selected": style_active if st.session_state.active_menu in opts1 else style_inactive
+        }
+        
+        s2 = {
+            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
+            "icon": {"color": "#94a3b8", "font-size": "18px"}, 
+            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px", "font-weight": "normal"},
+            "nav-link-selected": style_active if st.session_state.active_menu in opts2 else style_inactive
+        }
+
+        m1 = option_menu(menu_title=None, options=opts1, icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"], default_index=opts1.index(st.session_state.m1_old) if st.session_state.m1_old in opts1 else 0, styles=s1, key="m1")
+        
+        st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 20px;">DASHBOARD ASSURANCE</p>', unsafe_allow_html=True)
+        
+        m2 = option_menu(menu_title=None, options=opts2, icons=["file-text", "graph-up"], default_index=opts2.index(st.session_state.m2_old) if st.session_state.m2_old in opts2 else 0, styles=s2, key="m2")
+        
+        if m1 != st.session_state.m1_old:
+            st.session_state.active_menu = m1
+            st.session_state.m1_old = m1
+            st.rerun()
+        elif m2 != st.session_state.m2_old:
+            st.session_state.active_menu = m2
+            st.session_state.m2_old = m2
+            st.rerun()
+            
+        menu = st.session_state.active_menu
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("**Sinkronisasi Data:**")
@@ -528,10 +1097,10 @@ if not df.empty:
         else:
             st.sidebar.success("✅ Mode Admin Aktif")
             st.sidebar.markdown("---")
-            st.sidebar.markdown("⚙️ **TARIK DATA MANUAL (WFM & IBOOSTER):**")
+            st.sidebar.markdown("⚙️ **TARIK DATA MANUAL (WFM, IBOOSTER & INSERA):**")
             
-            # Pilihan Tarik Manual WFM & MORNING
-            if st.sidebar.button("🚀 Tarik WFM & Morning"):
+            # Pilihan Tarik Manual WFM & ADING
+            if st.sidebar.button("🚀 Tarik WFM & ADING"):
                 with st.spinner("⏳ Robot sedang bekerja... (Tunggu 1-2 menit)"):
                     try:
                         subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING", "Manual"], capture_output=True, text=True, check=True)
@@ -544,8 +1113,8 @@ if not df.empty:
                     except Exception as e:
                         st.sidebar.error(f"❌ Terjadi kesalahan: {e}")
                         
-            # Pilihan Tarik Manual IBOOSTER
-            if st.sidebar.button("🚀 Tarik Data Ibooster"):
+            # Pilihan Tarik Manual IBOOSTER FFG
+            if st.sidebar.button("🚀 Tarik IBOOSTER FFG"):
                 with st.spinner("⏳ Robot menarik data Ibooster (AO & INDIBIZ)... (Tunggu agak lama)"):
                     try:
                         subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "IBOOSTER", "Manual"], capture_output=True, text=True, check=True)
@@ -554,6 +1123,25 @@ if not df.empty:
                     except Exception as e:
                         st.sidebar.error("❌ Robot Gagal menarik data.")
                         
+            # Pilihan Tarik Manual INSERA ASR
+            if st.sidebar.button("🚀 Tarik INSERA ASR"):
+                with st.spinner("⏳ Robot menarik data INSERA ASR (ALL & CLOSED)... (Tunggu 1-2 menit)"):
+                    try:
+                        import sys
+                        py_exec = sys.executable or "python"
+                        base_dir = os.path.dirname(os.path.abspath(__file__))
+                        script_path = os.path.join(base_dir, "main_assurance.py")
+                        subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "Manual"], cwd=base_dir, capture_output=True, text=True, check=True)
+                        if insera_auto_puller.running:
+                            insera_auto_puller.reset_timer()
+                        st.sidebar.success("✅ Berhasil menarik data INSERA ASR ke Google Sheets!")
+                        time.sleep(2)
+                        st.rerun()
+                    except subprocess.CalledProcessError as e:
+                        st.sidebar.error("❌ Robot Gagal menarik data INSERA ASR.")
+                    except Exception as e:
+                        st.sidebar.error(f"❌ Terjadi kesalahan: {e}")
+
             # Pilihan Tarik Otomatis menggunakan Toggle Gulir
             st.sidebar.markdown("---")
             is_auto = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (WFM)", value=auto_puller.running)
@@ -655,6 +1243,55 @@ if not df.empty:
                     st.rerun()
                 
             st.sidebar.markdown("---")
+            is_auto_insera = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (INSERA ASR)", value=insera_auto_puller.running)
+            
+            if is_auto_insera and not insera_auto_puller.running:
+                insera_auto_puller.start()
+            elif not is_auto_insera and insera_auto_puller.running:
+                insera_auto_puller.stop()
+                
+            if insera_auto_puller.running:
+                if insera_auto_puller.next_run_time:
+                    import streamlit.components.v1 as components
+                    
+                    countdown_html3 = f'''
+                    <div id="countdown3" style="
+                        background-color: rgba(16, 185, 129, 0.1);
+                        border-left: 4px solid #10b981;
+                        padding: 10px;
+                        border-radius: 5px;
+                        color: #10b981;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        font-size: 13px;
+                        font-weight: 600;
+                    ">
+                        ⏳ Menghitung waktu...
+                    </div>
+                    <script>
+                        var targetTime = {insera_auto_puller.next_run_time} * 1000;
+                        var elem = document.getElementById("countdown3");
+                        setInterval(function() {{
+                            var now = new Date().getTime();
+                            var distance = targetTime - now;
+                            if (distance < 0) {{
+                                elem.innerHTML = "⏳ Menarik data INSERA ASR...";
+                                return;
+                            }}
+                            var m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            var s = Math.floor((distance % (1000 * 60)) / 1000);
+                            elem.innerHTML = "⏳ INSERA otomatis: " + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                        }}, 1000);
+                    </script>
+                    '''
+                    with st.sidebar:
+                        components.html(countdown_html3, height=45)
+                else:
+                    import time
+                    st.sidebar.info("⏳ Menyiapkan jadwal INSERA ASR...")
+                    time.sleep(0.5)
+                    st.rerun()
+
+            st.sidebar.markdown("---")
             
             if st.sidebar.button("🔒 Keluar Admin"):
                 st.session_state.is_admin = False
@@ -679,8 +1316,10 @@ if not df.empty:
     if jam_mod_col:
         temp_dt_mod = pd.to_datetime(df[jam_mod_col], format='mixed', errors='coerce')
         df['Jam_Update'] = temp_dt_mod.dt.strftime('%H:%M:%S').fillna('Unknown')
+        df['Parsed_Date_Mod'] = temp_dt_mod.dt.date
     else:
         df['Jam_Update'] = 'Unknown'
+        df['Parsed_Date_Mod'] = None
     
     df['Status_Upper'] = df[status_col].astype(str).str.upper().str.strip() if status_col else "UNKNOWN"
     
@@ -723,10 +1362,10 @@ if not df.empty:
     potensi_df = df[df['Status_Upper'].isin(potensi_statuses)].copy()
     brk_pot = get_breakdown(potensi_df)
     
-    prog_df = df[(df[morning_status_col].astype(str).str.strip().str.upper() == 'SEDANG DIKERJAKAN') & (df['Status_Upper'] == 'STARTWORK')].copy() if morning_status_col else pd.DataFrame()
+    prog_df = df[(df[morning_status_col].astype(str).str.strip().str.upper().isin(['SEDANG DIKERJAKAN', 'PROGRESS'])) & (df['Status_Upper'] == 'STARTWORK')].copy() if morning_status_col else pd.DataFrame()
     brk_prog = get_breakdown(prog_df)
     
-    pending_df = df[df[morning_status_col].astype(str).str.strip().str.upper() == 'PENDING'].copy() if morning_status_col else pd.DataFrame()
+    pending_df = df[(df[morning_status_col].astype(str).str.strip().str.upper() == 'PENDING') & (df['Parsed_Date_Mod'] >= start_date) & (df['Parsed_Date_Mod'] <= end_date)].copy() if morning_status_col else pd.DataFrame()
     brk_pending = get_breakdown(pending_df)
     
     kendala_df = df[(df['Status_Upper'].isin(['WORKFAIL', 'CANCLWORK'])) & (df['Parsed_Date_PS'] >= start_date) & (df['Parsed_Date_PS'] <= end_date)].copy()
@@ -740,7 +1379,27 @@ if not df.empty:
     startwork_df = df[df['Status_Upper'] == "STARTWORK"].copy()
     
     # Manja (H-, HI, H+)
-    manja_df = df[(df[flag_manja_col].notna()) & (df['Status_Upper'] == 'STARTWORK')].copy() if flag_manja_col else pd.DataFrame()
+    if flag_manja_col and flag_manja_col in df.columns:
+        is_err = df[flag_manja_col].astype(str).str.contains('#VALUE!', na=False)
+        if is_err.any():
+            booking_col = find_col(['Booking Date', 'BOOKING DATE REAL', 'BOOKING DATE'])
+            if booking_col and booking_col in df.columns:
+                today_norm = pd.Timestamp.now().normalize()
+                def calc_fallback_manja(val):
+                    if pd.isna(val) or str(val).strip() in ['', '-', 'nan']:
+                        return 'NON MANJA'
+                    try:
+                        dt = pd.to_datetime(val, errors='coerce')
+                        if pd.isna(dt): return 'NON MANJA'
+                        diff = (dt.normalize() - today_norm).days
+                        if diff < 0: return 'MANJA H-1'
+                        elif diff == 0: return 'MANJA HI'
+                        else: return 'MANJA H++'
+                    except:
+                        return 'NON MANJA'
+                df.loc[is_err, flag_manja_col] = df.loc[is_err, booking_col].apply(calc_fallback_manja)
+
+    manja_df = df[(df[flag_manja_col].notna()) & (~df[flag_manja_col].astype(str).str.upper().isin(['NON MANJA', '-', '', 'NAN'])) & (df['Status_Upper'] == 'STARTWORK')].copy() if flag_manja_col else pd.DataFrame()
     
     # =====================================================================
     # HALAMAN 1: DASHBOARD UTAMA
@@ -818,7 +1477,7 @@ if not df.empty:
                     </div>
                     <div class="dc-value">{make_link(len(df_re_today), "RE MASUK HI", "ALL")}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.05rem; font-weight: bold;"><span style="color: #cbd5e1;">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.15rem; text-shadow: 1px 1px 3px #ff0000, -1px -1px 2px rgba(255,0,0,0.8);"><span style="color:white; font-weight:bold; font-size:1.15rem; margin-right:12px;">{re_hi_ao}/{ps_hi_ao}</span>{ps_re_pct}</span></div></div>
+                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.15rem; font-weight: bold;"><span style="color: #cbd5e1; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.25rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);"><span style="color:white; font-weight:bold; font-size:1.25rem; margin-right:12px;">{re_hi_ao}/{ps_hi_ao}</span>{ps_re_pct}</span></div></div>
             </div>
             <!-- CARD 2: WO VALIDASI -->
             <div class="d-card c-indigo">
@@ -905,6 +1564,7 @@ if not df.empty:
         
         # --- PRE-RENDER ALL MODALS ---
         c_date = find_col(['DATE CREATE REAL', 'DATE CREATE', 'TANGGAL PS', 'PS', 'Booking Date', 'Date Modified'])
+        c_date_mod = find_col(['DATE MODIFIED REAL', 'Date Modified', 'DATE MODIFIED'])
         c_order = order_col if order_col else ''
         c_sto = find_col(['WORKZONE', 'WORZONE', 'ZONE'])
         c_wonum_ao = find_col(['NO WONUM & AO', 'NO WONUM'])
@@ -945,8 +1605,8 @@ if not df.empty:
                 if len(src_df) > 0:
                     if c_date and c_date in src_df.columns:
                         src_df = src_df.sort_values(by=c_date, ascending=False)
-                    html_table = '<div style="width: 100%; display: flex; flex-direction: column;"><div style="position: sticky; top: 0; z-index: 10; display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); font-size: 12px; text-transform: uppercase;">'
-                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STATUS WO</span></div></div>'
+                    html_table = '<div style="width: 100%; display: flex; flex-direction: column;"><div style="position: sticky; top: 0; z-index: 10; display: grid; width: 100%; padding: 0; margin: 0; border-bottom: 2px solid #3b82f6; background: #0f172a; grid-template-columns: 45px 160px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); font-size: 12px; text-transform: uppercase;">'
+                    html_table += '<div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">NO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">DATE CREATE</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">DATE MODIFIED</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">ORDER</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">NO WONUM & AO</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">CUSTOMER NAME</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STATUS</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15);"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">TIM</span></div><div style="display: flex; justify-content: center; align-items: center; text-align: center; padding: 10px; border-right: 1px solid rgba(255,255,255,0.15); white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 900; font-size: 16px; letter-spacing: 0.5px; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.9), -1px -1px 1px rgba(0,0,0,0.5);">STATUS WO</span></div></div>'
                     
                     for idx, row in enumerate(src_df.to_dict('records'), 1):
                         def get_val(col_name): return str(row.get(col_name, '-')) if pd.notna(row.get(col_name)) else '-'
@@ -967,11 +1627,22 @@ if not df.empty:
                         else:
                             status_bg = "background-color: rgba(255,255,255,0.1); color: white;"
                             
+                        order_val_raw = get_val(c_order).strip().upper()
+                        if order_val_raw == 'AO TSEL':
+                            order_bg_css = "background: #831843; color: white; border: 1px solid #be123c;"
+                        elif order_val_raw == 'PDA TSEL':
+                            order_bg_css = "background: #14532d; color: white; border: 1px solid #166534;"
+                        elif order_val_raw == 'INDIBIZ':
+                            order_bg_css = "background: #1e3a8a; color: white; border: 1px solid #1d4ed8;"
+                        else:
+                            order_bg_css = "background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(220,38,38,0.4);"
+                            
                         html_table += f'''
-                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{idx}</span></div>
                             <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_date)}</span></div>
-                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; background: rgba(220,38,38,0.2); color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: bold;">{get_val(c_order)}</span></div>
+                            <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_date_mod)}</span></div>
+                            <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; {order_bg_css} padding: 2px 8px; border-radius: 4px; font-size: 14px; font-weight: bold;">{get_val(c_order)}</span></div>
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_sto)}</span></div>
                             <div style="padding: 10px; font-size: 14px; word-break: break-all; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_wonum_ao)}</span></div>
                             <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; white-space: normal; word-break: break-word; line-height: 1.3;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_cust).upper()}</span></div>
@@ -1513,7 +2184,7 @@ if not df.empty:
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="color: white; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px;">WORKFAIL</div>
                             <div style="color: #ef4444; font-size: 1.8rem; font-weight: bold; line-height: 1;">{wfm_count}</div>
-                            <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">({wfm_pct})</div>
+                            <div style="color: white; font-size: 0.9rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8); margin-top: 4px;">({wfm_pct})</div>
                         </div>
                         <div style="margin-left: auto; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
                             {wfm_breakdown_html}
@@ -1535,7 +2206,7 @@ if not df.empty:
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="color: white; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px;">CANCLWORK</div>
                             <div style="color: #f97316; font-size: 1.8rem; font-weight: bold; line-height: 1;">{cancl_count}</div>
-                            <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">({cancl_pct})</div>
+                            <div style="color: white; font-size: 0.9rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8); margin-top: 4px;">({cancl_pct})</div>
                         </div>
                         <div style="margin-left: auto; display: flex; flex-direction: column; justify-content: center; gap: 3px;">
                             {cancl_breakdown_html}
@@ -1559,7 +2230,7 @@ if not df.empty:
                         <div style="display: flex; flex-direction: column; justify-content: center;">
                             <div style="color: white; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px;">TOTAL WO</div>
                             <div style="color: #3b82f6; font-size: 1.8rem; font-weight: bold; line-height: 1;">{total_kendala}</div>
-                            <div style="color: #3b82f6; font-size: 0.8rem; margin-top: 4px;">(100%)</div>
+                            <div style="color: white; font-size: 0.9rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8); margin-top: 4px;">[100%]</div>
                         </div>
                     </div>
                     <div style="height: 3px; background-color: #3b82f6; margin: 0 15px 15px 15px; border-radius: 2px;"></div>
@@ -1585,7 +2256,7 @@ if not df.empty:
                         'Status': ['WORKFAIL', 'CANCLWORK'],
                         'Jumlah': [wfm_count, cancl_count],
                         'Color': ['#ef4444', '#f97316'],
-                        'Label': [f'WORKFAIL&nbsp;&nbsp;&nbsp;&nbsp;{wfm_count} ({wfm_pct})', f'CANCLWORK&nbsp;&nbsp;&nbsp;&nbsp;{cancl_count} ({cancl_pct})']
+                        'Label': [f'WORKFAIL  {wfm_count} ({wfm_pct})', f'CANCLWORK  {cancl_count} ({cancl_pct})']
                     })
                     donut_df = donut_df[donut_df['Jumlah'] > 0]
                     if not donut_df.empty:
@@ -1598,17 +2269,23 @@ if not df.empty:
                             hoverinfo='label'
                         )])
                         fig1.update_layout(
-                            showlegend=True,
-                            legend=dict(orientation="v", yanchor="top", y=-0.1, xanchor="left", x=0, font=dict(color="#cbd5e1", size=11)),
+                            showlegend=False,
                             annotations=[dict(text=f"TOTAL<br><b>{total_kendala}</b><br>WO", x=0.5, y=0.5, font_size=13, font_color="white", showarrow=False)],
                             paper_bgcolor='rgba(0,0,0,0)',
                             plot_bgcolor='rgba(0,0,0,0)',
-                            margin=dict(t=0, b=50, l=0, r=0),
-                            height=300
+                            margin=dict(t=0, b=10, l=0, r=0),
+                            height=250
                         )
                         # Center the pie
                         fig1.update_traces(domain=dict(x=[0, 1]))
                         st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                        
+                        leg_html = '<div style="display: flex; flex-direction: column; gap: 8px; margin-left: 10px; margin-top: 5px;">'
+                        for _, row in donut_df.iterrows():
+                            pct_val = wfm_pct if row['Status'] == 'WORKFAIL' else cancl_pct
+                            leg_html += f'<div style="display: flex; align-items: center; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {row["Color"]}; border-radius: 1px; flex-shrink: 0;"></div><div style="color: white; font-weight: bold; font-size: 0.85rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{row["Status"]} &nbsp;&nbsp; {row["Jumlah"]} ({pct_val})</div></div>'
+                        leg_html += '</div>'
+                        st.markdown(leg_html, unsafe_allow_html=True)
                     else:
                         st.info("No Data")
                         
@@ -1639,7 +2316,7 @@ if not df.empty:
                                     c = default_colors[idx % len(default_colors)]
                                 colors.append(c)
                                 
-                                labels.append(f'{order_type}&nbsp;&nbsp;&nbsp;&nbsp;{count} ({pct})')
+                                labels.append(f'{order_type}  {count} ({pct})')
                                 
                             order_counts['Color'] = colors
                             order_counts['Label'] = labels
@@ -1655,16 +2332,24 @@ if not df.empty:
                             )])
                             
                             fig1b.update_layout(
-                                showlegend=True,
-                                legend=dict(orientation="v", yanchor="top", y=-0.1, xanchor="left", x=0, font=dict(color="#cbd5e1", size=11)),
+                                showlegend=False,
                                 annotations=[dict(text=f"TOTAL<br><span style='font-size: 18px; font-weight: bold;'>{total_kendala}</span><br>KENDALA", x=0.5, y=0.5, font_size=11, font_color="white", showarrow=False)],
                                 paper_bgcolor='rgba(0,0,0,0)',
                                 plot_bgcolor='rgba(0,0,0,0)',
-                                margin=dict(t=0, b=50, l=0, r=0),
-                                height=300
+                                margin=dict(t=0, b=10, l=0, r=0),
+                                height=250
                             )
                             fig1b.update_traces(domain=dict(x=[0, 1]))
                             st.plotly_chart(fig1b, use_container_width=True, config={'displayModeBar': False}, theme=None)
+                            
+                            leg_html2 = '<div style="display: flex; flex-direction: column; gap: 8px; margin-left: 10px; margin-top: 5px;">'
+                            for idx, row in order_counts.iterrows():
+                                order_type = row['Order']
+                                count = row['Jumlah']
+                                pct = f"{(count / total_kendala) * 100:.1f}%"
+                                leg_html2 += f'<div style="display: flex; align-items: center; gap: 8px;"><div style="width: 10px; height: 10px; background-color: {row["Color"]}; border-radius: 1px; flex-shrink: 0;"></div><div style="color: white; font-weight: bold; font-size: 0.85rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{order_type} &nbsp;&nbsp; {count} ({pct})</div></div>'
+                            leg_html2 += '</div>'
+                            st.markdown(leg_html2, unsafe_allow_html=True)
                         else:
                             st.info("No Order Data")
                     else:
@@ -1690,7 +2375,7 @@ if not df.empty:
                                 width_pct2 = (val2 / max_val2) * 100 if max_val2 > 0 else 0
                                 
                                 html_bars2 += f'<div style="display: flex; align-items: center; width: 100%;">'
-                                html_bars2 += f'<div style="color: #cbd5e1; width: 170px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.8rem; margin-right: 10px; flex-shrink: 0;" title="{name2}">{name2}</div>'
+                                html_bars2 += f'<div style="color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8); width: 170px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.9rem; margin-right: 10px; flex-shrink: 0;" title="{name2}">{name2}</div>'
                                 html_bars2 += f'<div style="flex-grow: 1; display: flex; align-items: center; padding-right: 10px;">'
                                 html_bars2 += f'<div style="background-color: {color2}; height: 14px; width: {width_pct2}%;"></div>'
                                 html_bars2 += f'<div style="color: #ffffff; font-weight: bold; font-size: 0.8rem; margin-left: 8px;">{val2}</div>'
@@ -1725,7 +2410,7 @@ if not df.empty:
                                 
                                 html_bars += f'<div style="display: flex; align-items: center; width: 100%;">'
                                 html_bars += f'<div style="background-color: #1e293b; color: #94a3b8; border-radius: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; flex-shrink: 0;">{rank}</div>'
-                                html_bars += f'<div style="color: #cbd5e1; width: 140px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.8rem; margin-right: 10px; flex-shrink: 0;" title="{name}">{name}</div>'
+                                html_bars += f'<div style="color: white; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8); width: 140px; white-space: normal; word-wrap: break-word; line-height: 1.2; font-size: 0.9rem; margin-right: 10px; flex-shrink: 0;" title="{name}">{name}</div>'
                                 html_bars += f'<div style="flex-grow: 1; display: flex; align-items: center; padding-right: 10px;">'
                                 html_bars += f'<div style="background-color: {color}; height: 14px; width: {width_pct}%;"></div>'
                                 html_bars += f'<div style="color: #ffffff; font-weight: bold; font-size: 0.8rem; margin-left: 8px;">{val}</div>'
@@ -1840,7 +2525,10 @@ if not df.empty:
                           if bg_color != 'transparent':
                               display_val = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{val}</div>'
                               
-                      html_table += f'<td style="border: 1.5px solid #475569; padding: 10px 8px;">{display_val}</td>'
+                      if str(display_val).startswith('<div'):
+                          html_table += f'<td style="border: 1.5px solid #475569; padding: 10px 8px; font-size: 0.8rem;">{display_val}</td>'
+                      else:
+                          html_table += f'<td style="border: 1.5px solid #475569; padding: 10px 8px; font-size: 0.8rem; font-weight: bold; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{display_val}</td>'
                   html_table += '</tr>'
               html_table += '</tbody></table>'
               
@@ -1938,7 +2626,10 @@ if not df.empty:
                     for trace in fig_jam.data:
                         if trace.name in fill_colors:
                             trace.fillcolor = fill_colors[trace.name]
+                        trace.name = f'<b><span style="color:white; text-shadow:2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{trace.name}</span></b>'
 
+                    fig_jam.add_vrect(x0="00:00", x1="07:00", fillcolor="rgba(160, 160, 160, 0.25)", layer="below", line_width=0)
+                    fig_jam.add_vrect(x0="16:00", x1="23:00", fillcolor="rgba(160, 160, 160, 0.25)", layer="below", line_width=0)
                             
                     fig_jam.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
                                          font=dict(color='#cbd5e1'), xaxis_title="Waktu (Jam)", yaxis_title="Jumlah WO", 
@@ -1946,10 +2637,11 @@ if not df.empty:
                                          legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
                                          hovermode="x unified",
                                          hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
-                                         xaxis=dict(fixedrange=True, dtick=2, showgrid=True, gridwidth=1, gridcolor='#334155'),
+                                         xaxis=dict(fixedrange=True, dtick=2, range=[-0.5, 23.5], showgrid=True, gridwidth=1, gridcolor='#334155'),
                                          yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155'))
                     fig_jam.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
                     fig_jam.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_jam.update_traces(cliponaxis=False)
                     st.plotly_chart(fig_jam, use_container_width=True, config={'displayModeBar': False}, theme=None)
                     
                 with ch_col2:
@@ -2030,6 +2722,7 @@ if not df.empty:
                     fig_mini.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
                     
                     with mini_cols[i]:
+                        fig_mini.update_traces(cliponaxis=False)
                         st.plotly_chart(fig_mini, use_container_width=True, config={'displayModeBar': False}, theme=None)
             else:
                 st.info("Format jam tidak valid.")
@@ -2224,7 +2917,7 @@ if not df.empty:
                     margin=dict(l=40, r=40, t=20, b=40),
                     xaxis=dict(title="Waktu (Jam)", color='#cbd5e1', showgrid=True, gridcolor='#1e293b', dtick=1),
                     yaxis=dict(title="Jumlah WO", color='#cbd5e1', showgrid=True, gridcolor='#1e293b'),
-                    legend=dict(title="", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#cbd5e1", size=11)),
+                    legend=dict(title="", orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#cbd5e1", size=13)),
                     height=490
                 )
                 st.plotly_chart(fig_ao, use_container_width=True, config={'displayModeBar': False})
@@ -2523,9 +3216,9 @@ if not df.empty:
                                 pill = f'<div style="background-color: {bg_color}; color: {text_color}; border-radius: 12px; padding: 4px 10px; display: inline-block; font-weight: bold; font-size: 12px;">{val}</div>'
                                 html_table += f'<td style="padding: 10px;">{pill}</td>'
                             else:
-                                html_table += f'<td style="padding: 10px;">{val}</td>'
+                                html_table += f'<td style="padding: 10px; font-size: 0.75rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{val}</td>'
                         else:
-                            html_table += f'<td style="padding: 10px;">{val}</td>'
+                            html_table += f'<td style="padding: 10px; font-size: 0.75rem; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{val}</td>'
                     html_table += '</tr>'
                 
                 html_table += '</tbody></table></div>'
@@ -3213,14 +3906,14 @@ if not df.empty:
         st.markdown("""
         <style>
         .cp-container { color: #f1f5f9; font-size: 12px; max-height: 800px; }
-        .manja-header { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); padding: 6px 15px; font-weight: 900; color: #020617; font-size: 1.05rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
-        .manja-row { display: grid; grid-template-columns: 0.5fr 3fr 1.5fr 1fr 2fr 1fr 1.5fr; padding: 8px 15px; border-bottom: 1px solid #334155; align-items: center; text-align: center; color: white; font-size: 12px; font-weight: bold; font-family: "Source Sans Pro", sans-serif; }
+        .manja-header { display: grid; grid-template-columns: 5% 30% 15% 10% 20% 10% 10%; background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #d4af37 100%); font-weight: 900; color: #020617; font-size: 1.05rem; text-align: center; border-radius: 4px 4px 0 0; font-family: "Source Sans Pro", sans-serif; letter-spacing: 0.5px; text-transform: uppercase; padding: 0; }
+        .manja-row { display: grid; grid-template-columns: 5% 30% 15% 10% 20% 10% 10%; border-bottom: 1px solid #334155; align-items: stretch; text-align: center; color: white; font-size: 13px; font-weight: bold; font-family: "Source Sans Pro", sans-serif; padding: 0; }
         .pill-compwork { background-color: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; display: inline-block; }
         .pill-startwork { background-color: #475569; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; display: inline-block; }
         .pill-other { background-color: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; display: inline-block; }
-        .manja-header > div { border-right: 2px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; }
+        .manja-header > div { border-right: 2px solid rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center; padding: 6px 15px; }
         .manja-header > div:last-child { border-right: none; }
-        .manja-row > div { border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; }
+        .manja-row > div { border-right: 1px solid #64748b; display: flex; justify-content: center; align-items: center; padding: 8px 15px; }
         .cp-container .manja-row > div:nth-child(1) { justify-content: center !important; text-align: center !important; }
         .manja-row > div:last-child { border-right: none; }
         </style>
@@ -3235,11 +3928,11 @@ if not df.empty:
             df_ods = df[(df[ods_col].astype(str).str.strip().str.upper() == 'ONE DAY SERVICE') & 
                         (df['Parsed_Date_ODS'] >= start_date) & 
                         (df['Parsed_Date_ODS'] <= end_date) & 
-                        (~df['Status_Upper'].str.contains('COMPLETE', na=False))].copy()
+                        (~df['Status_Upper'].str.contains('COMPLETE|WAPPR', na=False))].copy()
         else:
             df_ods = df[(df['Parsed_Date_RE'] >= start_date) & 
                         (df['Parsed_Date_RE'] <= end_date) & 
-                        (~df['Status_Upper'].str.contains('COMPLETE', na=False))].copy()
+                        (~df['Status_Upper'].str.contains('COMPLETE|WAPPR', na=False))].copy()
         
         if len(df_ods) == 0:
             st.info("Tidak ada data WO ODS untuk periode ini.")
@@ -3667,8 +4360,13 @@ if not df.empty:
                     if no_inet.endswith('.0'): no_inet = no_inet[:-2]
                     if no_inet.lower() == 'nan' or not no_inet.strip(): no_inet = '-'
                     
-                    hasil_ukur = str(row.get('HASIL UKUR IBOSSTER', '-'))
-                    if hasil_ukur.lower() == 'nan': hasil_ukur = '-'
+                    hasil_ukur_raw = str(row.get('HASIL UKUR IBOSSTER', '-')).strip()
+                    if hasil_ukur_raw.lower() == 'nan' or hasil_ukur_raw == '':
+                        hasil_ukur = '-'
+                    elif hasil_ukur_raw == '-':
+                        hasil_ukur = 'LOS'
+                    else:
+                        hasil_ukur = hasil_ukur_raw
                     
                     prioritas = str(row.get('PRIORITAS UNSPEC', '-'))
                     if prioritas.lower() == 'nan': prioritas = '-'
@@ -3734,18 +4432,24 @@ if not df.empty:
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NAMA TEKNISI"]}</td>'
                     order_val = str(row["ORDER"]).strip().upper()
                     if order_val == "AO TSEL":
-                        order_bg = "background-color: #831843; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold; border: 1px solid #be123c;"
+                        order_bg = "background-color: #831843; color: white; border-radius: 12px; padding: 4px 0px; width: 85px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #be123c; font-size: 11px; letter-spacing: 0.5px;"
                     elif order_val == "PDA TSEL":
-                        order_bg = "background-color: #14532d; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold; border: 1px solid #166534;"
+                        order_bg = "background-color: #14532d; color: white; border-radius: 12px; padding: 4px 0px; width: 85px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #166534; font-size: 11px; letter-spacing: 0.5px;"
                     elif order_val == "INDIBIZ":
-                        order_bg = "background-color: #1e3a8a; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold; border: 1px solid #1d4ed8;"
+                        order_bg = "background-color: #1e3a8a; color: white; border-radius: 12px; padding: 4px 0px; width: 85px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #1d4ed8; font-size: 11px; letter-spacing: 0.5px;"
                     else:
-                        order_bg = "background-color: #334155; color: white; border-radius: 12px; padding: 4px 12px; display: inline-block; font-weight: bold;"
+                        order_bg = "background-color: #334155; color: white; border-radius: 12px; padding: 4px 0px; width: 85px; text-align: center; display: inline-block; font-weight: bold; font-size: 11px; letter-spacing: 0.5px;"
                     
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;"><span style="{order_bg}">{row["ORDER"]}</span></td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; word-break: break-all;">{row["WONUM (AO)"]}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NO INET"]}</td>'
-                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; color: #fca5a5; font-weight: bold;">{row["HASIL UKUR"]}</td>'
+                    ukur_content = str(row["HASIL UKUR"])
+                    if ukur_content == "LOS":
+                        ukur_content = '<span style="background-color: #7f1d1d; color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444;">LOS</span>'
+                    elif ukur_content != "-":
+                        ukur_content = f'<b><span style="color: #ff3333; font-weight: 900;">{ukur_content}</span></b>'
+                    
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; font-weight: bold; color: #cbd5e1;">{ukur_content}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["PRIORITAS"]}</td>'
                     html_table += f'<td style="padding: 10px;">{row["DURASI FFG"]}</td>'
                     html_table += '</tr>'
@@ -4191,4 +4895,590 @@ if not df.empty:
               st.error(f"Gagal membaca riwayat: {e}")
         else:
           st.info("Belum ada histori penarikan data (file log belum terbentuk). Lakukan penarikan data minimal 1 kali.")
+
+
+    elif menu == "DAILY REPORT":
+        st.markdown('<div class="section-title-wrap"><div class="section-title">📄 DAILY REPORT ASSURANCE</div></div>', unsafe_allow_html=True)
+        st.info("Halaman Daily Report sedang dalam tahap pengembangan.")
+
+    elif menu == "GRAFIK TIKET PERIODE":
+        df_asr, asr_source = load_assurance_data(insera_time)
+        
+        source_badge = '<span style="background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #34d399; font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; margin-left: 10px;">🟢 GOOGLE SHEETS LIVE</span>' if asr_source == "GOOGLE_SHEETS" else '<span style="background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #38bdf8; font-size: 0.72rem; padding: 3px 8px; border-radius: 12px; margin-left: 10px;">⚡ SINKRONISASI INSERA</span>'
+        
+        st.markdown(f'''
+        <div class="metric-container mc-teal" style="margin-bottom: 20px;">
+            <div class="mc-title">🎫 GRAFIK DISTRIBUSI TIKET ASSURANCE PERIODE {source_badge}</div>
+            <div class="mc-value">{len(df_asr):,} <span style="font-size:1rem; color:#94a3b8">TIKET TERPANTAU DI SHEET GABUNGAN</span></div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        if df_asr.empty:
+            st.warning("⚠️ Data tiket Assurance belum tersedia. Silakan lakukan penarikan data melalui tombol **'🚀 Tarik INSERA ASR'** di sidebar kiri.")
+        else:
+            # 1. Deteksi Kolom Tanggal Lapor
+            date_col_asr = None
+            for col in ['REPORTED DATE', 'REPORTED_DATE', 'TANGGAL TIKET', 'TANGGAL', 'STATUS DATE']:
+                if col in df_asr.columns:
+                    date_col_asr = col
+                    break
+                    
+            if date_col_asr:
+                df_asr['dt_parsed'] = pd.to_datetime(df_asr[date_col_asr], errors='coerce')
+                df_asr['date_only'] = df_asr['dt_parsed'].dt.date
+                df_asr['Jam'] = df_asr['dt_parsed'].dt.hour.apply(lambda h: f"{int(h):02d}:00" if pd.notna(h) else "00:00")
+            else:
+                df_asr['date_only'] = None
+                df_asr['Jam'] = "00:00"
+
+            # 2. Filter Berdasarkan Rentang Tanggal Sidebar
+            if start_date and end_date and date_col_asr:
+                df_filtered = df_asr[(df_asr['date_only'] >= start_date) & (df_asr['date_only'] <= end_date)].copy()
+            else:
+                df_filtered = df_asr.copy()
+
+            # Fallback jika tanggal terpilih kosong
+            if df_filtered.empty:
+                avail_dates = df_asr['date_only'].dropna().unique()
+                latest_avail = max(avail_dates) if len(avail_dates) > 0 else None
+                st.warning(f"⚠️ Belum ada tiket masuk pada rentang tanggal terpilih: **{start_date} s/d {end_date}**.")
+                if latest_avail:
+                    st.info(f"💡 Data tiket terbaru yang tersedia di sistem adalah tanggal **{latest_avail}**. Anda dapat mengubah filter **'📅 KONTROL WAKTU'** di sidebar ke tanggal tersebut, atau klik tombol di bawah untuk langsung menampilkannya:")
+                    if st.button(f"📅 Tampilkan Data Tiket Tanggal {latest_avail}", key="btn_show_latest_asr"):
+                        st.session_state['force_asr_date'] = latest_avail
+                        st.rerun()
+                if 'force_asr_date' in st.session_state and st.session_state['force_asr_date']:
+                    df_filtered = df_asr[df_asr['date_only'] == st.session_state['force_asr_date']].copy()
+
+            if not df_filtered.empty:
+                # 3. Deteksi Kolom STATUS TIKET & Normalisasi OPEN / CLOSE
+                status_col_asr = None
+                for c in ['STATUS TIKET', 'STATUS_TIKET', 'STATUS', 'TICKET STATUS', 'STATUS WO']:
+                    if c in df_filtered.columns:
+                        status_col_asr = c
+                        break
+                if status_col_asr:
+                    is_closed = df_filtered[status_col_asr].astype(str).str.upper().str.contains('CLOSE', na=False)
+                    df_filtered['Status_Kategori'] = np.where(is_closed, 'TIKET CLOSE', 'TIKET OPEN')
+                else:
+                    df_filtered['Status_Kategori'] = 'TIKET CLOSE'
+
+                # 4. Deteksi Kolom CUSTOMER TYPE (REGULER, HVC_GOLD, HVC_DIAMOND, HVC_PLATINUM)
+                cust_col_asr = None
+                for c in ['CUSTOMER TYPE', 'CUSTOMER_TYPE', 'TIPE CUSTOMER', 'TIPE PELANGGAN']:
+                    if c in df_filtered.columns:
+                        cust_col_asr = c
+                        break
+                if cust_col_asr:
+                    df_filtered['Cust_Clean'] = df_filtered[cust_col_asr].astype(str).str.upper().str.strip()
+                else:
+                    df_filtered['Cust_Clean'] = 'REGULER'
+
+                # 5. Agregasi Jam 24 Jam (00:00 s/d 23:00)
+                all_hours = pd.DataFrame({'Jam': [f"{i:02d}:00" for i in range(24)]})
+                
+                cust_targets = ['REGULER', 'HVC_GOLD', 'HVC_DIAMOND', 'HVC_PLATINUM']
+                cust_frames = []
+                for ct in cust_targets:
+                    sub = df_filtered[df_filtered['Cust_Clean'] == ct]
+                    cnt = pd.merge(all_hours, sub.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                    cnt['Kategori'] = ct
+                    cust_frames.append(cnt)
+                
+                status_targets = ['TIKET OPEN', 'TIKET CLOSE']
+                status_frames = []
+                for st_name in status_targets:
+                    sub = df_filtered[df_filtered['Status_Kategori'] == st_name]
+                    cnt = pd.merge(all_hours, sub.groupby('Jam').size().reset_index(name='Jumlah'), on='Jam', how='left').fillna(0)
+                    cnt['Kategori'] = st_name
+                    status_frames.append(cnt)
+                    
+                chart_df_asr = pd.concat(cust_frames + status_frames, ignore_index=True)
+                chart_df_asr['Text'] = chart_df_asr['Jumlah'].apply(lambda x: str(int(x)) if x > 0 else '')
+
+                # 6. Kontrol View Layer Grafik
+                main_chart_container = st.container()
+                with main_chart_container:
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div class="section-title-wrap"><div class="section-title">📈 DISTRIBUSI JAM MASUK TIKET & STATUS PERIODE</div></div>', unsafe_allow_html=True)
+                    
+                    view_mode = st.radio(
+                        "Layer Tampilan Grafik:",
+                        options=["🌐 Tampilkan Semua (Customer Type & Status)", "👑 Khusus Customer Type (REGULER, GOLD, DIAMOND, PLATINUM)", "⚡ Khusus Status (OPEN vs CLOSE)"],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key="asr_layer_radio"
+                    )
+
+                if "Khusus Customer Type" in view_mode:
+                    display_chart_df = chart_df_asr[chart_df_asr['Kategori'].isin(cust_targets)]
+                elif "Khusus Status" in view_mode:
+                    display_chart_df = chart_df_asr[chart_df_asr['Kategori'].isin(status_targets)]
+                else:
+                    display_chart_df = chart_df_asr
+
+                ch_col1, ch_col2 = main_chart_container.columns([3, 1])
+
+                with ch_col1:
+                    fig_asr = px.line(
+                        display_chart_df, x='Jam', y='Jumlah', color='Kategori', text='Text', markers=True,
+                        color_discrete_map={
+                            'HVC_GOLD': '#eab308',
+                            'HVC_PLATINUM': '#a855f7',
+                            'HVC_DIAMOND': '#06b6d4',
+                            'REGULER': '#3b82f6',
+                            'TIKET OPEN': '#ef4444',
+                            'TIKET CLOSE': '#10b981'
+                        }
+                    )
+                    fig_asr.update_traces(line=dict(width=3, shape='spline'), fill='tozeroy', marker=dict(size=7), textposition='top center', textfont=dict(color='#ffffff'))
+                    
+                    fill_colors_asr = {
+                        'HVC_GOLD': 'rgba(234, 179, 8, 0.12)',
+                        'HVC_PLATINUM': 'rgba(168, 85, 247, 0.12)',
+                        'HVC_DIAMOND': 'rgba(6, 182, 212, 0.12)',
+                        'REGULER': 'rgba(59, 130, 246, 0.12)',
+                        'TIKET OPEN': 'rgba(239, 68, 68, 0.12)',
+                        'TIKET CLOSE': 'rgba(16, 185, 129, 0.12)'
+                    }
+                    for trace in fig_asr.data:
+                        raw_name = trace.name
+                        if raw_name in fill_colors_asr:
+                            trace.fillcolor = fill_colors_asr[raw_name]
+                        trace.name = f'<b><span style="color:white; text-shadow:2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{raw_name}</span></b>'
+                        
+                    fig_asr.add_vrect(x0="00:00", x1="07:00", fillcolor="rgba(160, 160, 160, 0.20)", layer="below", line_width=0)
+                    fig_asr.add_vrect(x0="17:00", x1="23:00", fillcolor="rgba(160, 160, 160, 0.20)", layer="below", line_width=0)
+                    
+                    max_y_val = display_chart_df['Jumlah'].max() if not display_chart_df.empty else 5
+                    fig_asr.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', 
+                        font=dict(color='#cbd5e1'), xaxis_title="Waktu (Jam)", yaxis_title="Jumlah Tiket", 
+                        margin=dict(t=10, b=40, l=50, r=10),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
+                        hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
+                        xaxis=dict(fixedrange=True, dtick=2, range=[-0.5, 23.5], showgrid=True, gridwidth=1, gridcolor='#334155'),
+                        yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155', range=[0, max_y_val * 1.25 if max_y_val > 0 else 5])
+                    )
+                    fig_asr.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_asr.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_asr.update_traces(cliponaxis=False)
+                    st.plotly_chart(fig_asr, use_container_width=True, config={'displayModeBar': False}, theme=None)
+
+                # 7. Summary Card Sisi Kanan (Struktur Identik DETAIL RE PERIODE)
+                with ch_col2:
+                    tot_all_tkt = len(df_filtered)
+                    tot_close = len(df_filtered[df_filtered['Status_Kategori'] == 'TIKET CLOSE'])
+                    tot_open = len(df_filtered[df_filtered['Status_Kategori'] == 'TIKET OPEN'])
+                    pct_close_val = (tot_close / tot_all_tkt * 100) if tot_all_tkt > 0 else 0
+                    pct_close_color = "#10b981" if pct_close_val >= 80.0 else "#f59e0b"
+                    
+                    cnt_gold = len(df_filtered[df_filtered['Cust_Clean'] == 'HVC_GOLD'])
+                    cnt_plat = len(df_filtered[df_filtered['Cust_Clean'] == 'HVC_PLATINUM'])
+                    cnt_diam = len(df_filtered[df_filtered['Cust_Clean'] == 'HVC_DIAMOND'])
+                    cnt_reg = len(df_filtered[df_filtered['Cust_Clean'] == 'REGULER'])
+                    
+                    pct_gold = f"{(cnt_gold/tot_all_tkt)*100:.1f}".rstrip('0').rstrip('.') if tot_all_tkt > 0 else "0"
+                    pct_plat = f"{(cnt_plat/tot_all_tkt)*100:.1f}".rstrip('0').rstrip('.') if tot_all_tkt > 0 else "0"
+                    pct_diam = f"{(cnt_diam/tot_all_tkt)*100:.1f}".rstrip('0').rstrip('.') if tot_all_tkt > 0 else "0"
+                    pct_reg = f"{(cnt_reg/tot_all_tkt)*100:.1f}".rstrip('0').rstrip('.') if tot_all_tkt > 0 else "0"
+                    
+                    html_summary_asr = f'''
+                    <div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 20px;">GRAND TOTAL TIKET ASSURANCE</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px 10px; margin-bottom: 20px;">
+                            <div><div style="font-size: 2.0rem; font-weight: bold; color: #38bdf8; line-height: 1;">{tot_all_tkt}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Total Tiket</div></div>
+                            <div><div style="font-size: 2.0rem; font-weight: bold; color: #10b981; line-height: 1;">{tot_close}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Tiket Close</div></div>
+                            <div><div style="font-size: 2.0rem; font-weight: bold; color: #ef4444; line-height: 1;">{tot_open}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Tiket Open</div></div>
+                            <div><div style="font-size: 2.0rem; font-weight: bold; color: {pct_close_color}; line-height: 1;">{pct_close_val:.1f}%</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">% Selesai</div></div>
+                        </div>
+                        <div style="border-top: 1px dashed #334155; padding-top: 15px; margin-top: auto; font-size: 0.92rem; font-weight: bold; color: #94a3b8; text-align: left;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <span style="display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; border-radius:50%; background:#eab308;"></span>HVC_GOLD</span>
+                                <span style="color:white;">{cnt_gold} ({pct_gold}%)</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <span style="display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; border-radius:50%; background:#a855f7;"></span>HVC_PLATINUM</span>
+                                <span style="color:white;">{cnt_plat} ({pct_plat}%)</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <span style="display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; border-radius:50%; background:#06b6d4;"></span>HVC_DIAMOND</span>
+                                <span style="color:white;">{cnt_diam} ({pct_diam}%)</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; border-radius:50%; background:#3b82f6;"></span>REGULER</span>
+                                <span style="color:white;">{cnt_reg} ({pct_reg}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    '''
+                    st.markdown(html_summary_asr, unsafe_allow_html=True)
+
+                # 8. Mini-Charts (Small Multiples Grid 6 Kolom)
+                st.markdown("<br>", unsafe_allow_html=True)
+                mini_cols_asr = st.columns(6)
+                
+                mini_categories_asr = [
+                    ('REGULER', '#3b82f6', 'rgba(59, 130, 246, 0.15)'),
+                    ('HVC_GOLD', '#eab308', 'rgba(234, 179, 8, 0.15)'),
+                    ('HVC_DIAMOND', '#06b6d4', 'rgba(6, 182, 212, 0.15)'),
+                    ('HVC_PLATINUM', '#a855f7', 'rgba(168, 85, 247, 0.15)'),
+                    ('TIKET OPEN', '#ef4444', 'rgba(239, 68, 68, 0.15)'),
+                    ('TIKET CLOSE', '#10b981', 'rgba(16, 185, 129, 0.15)')
+                ]
+                
+                for i, (cat, color, fill_color) in enumerate(mini_categories_asr):
+                    df_cat = chart_df_asr[chart_df_asr['Kategori'] == cat]
+                    max_y_mini = df_cat['Jumlah'].max() if not df_cat.empty else 5
+                    
+                    fig_mini_asr = px.line(df_cat, x='Jam', y='Jumlah', text='Text', markers=True)
+                    fig_mini_asr.update_traces(
+                        line=dict(width=2, color=color, shape='spline'),
+                        fill='tozeroy', fillcolor=fill_color,
+                        marker=dict(size=4, color=color), textposition='top center',
+                        textfont=dict(color='#ffffff'), cliponaxis=False
+                    )
+                    fig_mini_asr.update_layout(
+                        title=dict(text=cat, font=dict(color=color, size=12), x=0.5, xanchor='center'),
+                        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='#0f172a',
+                        margin=dict(t=40, b=45, l=45, r=10),
+                        xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=8, title="Waktu (Jam)"),
+                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Tiket", range=[0, max_y_mini * 1.3 if max_y_mini > 0 else 1]),
+                        hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
+                        height=260
+                    )
+                    fig_mini_asr.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_mini_asr.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    
+                    with mini_cols_asr[i]:
+                        fig_mini_asr.update_traces(cliponaxis=False)
+                        st.plotly_chart(fig_mini_asr, use_container_width=True, config={'displayModeBar': False}, theme=None)
+
+                # 9. Analisa Peak Hours & Insight Box
+                def get_asr_stats(df_data):
+                    if df_data.empty: return 0, "-"
+                    hours = pd.to_numeric(df_data['Jam'].astype(str).str[:2], errors='coerce').dropna().astype(int)
+                    if hours.empty: return 0, "-"
+                    total = len(hours)
+                    val_counts = hours.value_counts()
+                    peak_h = val_counts.idxmax()
+                    peak_val = val_counts.max()
+                    puncak = f"{peak_h:02d}:00 &rarr; {peak_val} Tiket"
+                    return total, puncak
+                    
+                tot_rep, peak_rep = get_asr_stats(df_filtered)
+                tot_cls, peak_cls = get_asr_stats(df_filtered[df_filtered['Status_Kategori'] == 'TIKET CLOSE'])
+                
+                top_cust = df_filtered['Cust_Clean'].value_counts()
+                top_cust_name = top_cust.index[0] if len(top_cust) > 0 else "-"
+                top_cust_cnt = top_cust.iloc[0] if len(top_cust) > 0 else 0
+                top_cust_pct = f"{(top_cust_cnt / tot_all_tkt * 100):.1f}%" if tot_all_tkt > 0 else "0%"
+                
+                st.markdown(f'''
+                <div style="background-color: #0f172a; padding: 22px; border-radius: 12px; border: 1px solid #1e293b; margin-top: 20px;">
+                    <div style="font-size: 1.2rem; font-weight: 800; color: white; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <span>📊</span> ANALISA PEAK &amp; INSIGHT TIKET ASSURANCE
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+                        <div style="background: rgba(56, 189, 248, 0.08); border-top: 3px solid #38bdf8; border-radius: 10px; padding: 14px; border: 1px solid #334155;">
+                            <div style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">⏰ Jam Puncak Masuk</div>
+                            <div style="font-size: 1.25rem; font-weight: bold; color: #38bdf8; margin-top: 6px;">{peak_rep}</div>
+                            <div style="color: #cbd5e1; font-size: 0.78rem; margin-top: 4px;">Waktu pelaporan tiket tertinggi</div>
+                        </div>
+                        <div style="background: rgba(16, 185, 129, 0.08); border-top: 3px solid #10b981; border-radius: 10px; padding: 14px; border: 1px solid #334155;">
+                            <div style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">✅ Jam Puncak Selesai</div>
+                            <div style="font-size: 1.25rem; font-weight: bold; color: #10b981; margin-top: 6px;">{peak_cls}</div>
+                            <div style="color: #cbd5e1; font-size: 0.78rem; margin-top: 4px;">Waktu penyelesaian (closing) terbanyak</div>
+                        </div>
+                        <div style="background: rgba(234, 179, 8, 0.08); border-top: 3px solid #eab308; border-radius: 10px; padding: 14px; border: 1px solid #334155;">
+                            <div style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">👑 Segmen Pelanggan Terbanyak</div>
+                            <div style="font-size: 1.25rem; font-weight: bold; color: #eab308; margin-top: 6px;">{top_cust_name} ({top_cust_cnt})</div>
+                            <div style="color: #cbd5e1; font-size: 0.78rem; margin-top: 4px;">Porsi {top_cust_pct} dari seluruh volume</div>
+                        </div>
+                        <div style="background: rgba(168, 85, 247, 0.08); border-top: 3px solid #a855f7; border-radius: 10px; padding: 14px; border: 1px solid #334155;">
+                            <div style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; text-transform: uppercase;">⚡ Rasio Tiket Selesai</div>
+                            <div style="font-size: 1.25rem; font-weight: bold; color: #a855f7; margin-top: 6px;">{tot_close} / {tot_all_tkt}</div>
+                            <div style="color: #cbd5e1; font-size: 0.78rem; margin-top: 4px;">{pct_close_val:.1f}% tiket telah terselesaikan</div>
+                        </div>
+                    </div>
+                </div>
+                ''', unsafe_allow_html=True)
+
+                # 10. Tabel Rincian Lengkap Tiket Periode (Permanent Card & Scrollable)
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # CSS khusus untuk tabel berdesain mewah & scrollbar horizontal/vertikal yang halus
+                st.markdown('''
+                <style>
+                .asr-table-wrapper {
+                    background-color: #0f172a;
+                    padding: 22px;
+                    border-radius: 12px;
+                    border: 1px solid #1e293b;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+                    margin-top: 15px;
+                }
+                .asr-scroll-container {
+                    width: 100%;
+                    overflow-x: auto !important;
+                    overflow-y: auto !important;
+                    max-height: 820px;
+                    border: 1px solid #334155;
+                    border-radius: 8px;
+                    background-color: #0b1120;
+                    margin-top: 12px;
+                    scrollbar-width: thin;
+                    scrollbar-color: #3b82f6 #0b1120;
+                }
+                .asr-scroll-container::-webkit-scrollbar {
+                    height: 12px;
+                    width: 10px;
+                }
+                .asr-scroll-container::-webkit-scrollbar-track {
+                    background: #0b1120;
+                    border-radius: 6px;
+                }
+                .asr-scroll-container::-webkit-scrollbar-thumb {
+                    background: #1e40af;
+                    border-radius: 6px;
+                    border: 2px solid #0b1120;
+                }
+                .asr-scroll-container::-webkit-scrollbar-thumb:hover {
+                    background: #2563eb;
+                }
+                .asr-table-custom {
+                    width: 100%;
+                    min-width: 1650px;
+                    border-collapse: collapse;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    text-align: left;
+                    font-size: 0.82rem;
+                }
+                .asr-table-custom thead th {
+                    background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%) !important;
+                    position: sticky;
+                    top: 0;
+                    z-index: 10;
+                    padding: 14px 12px;
+                    border-bottom: 2px solid #2563eb;
+                    color: #ffffff !important;
+                    text-shadow: 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000, 0 0 4px #000;
+                    font-weight: 800;
+                    text-align: center !important;
+                    text-transform: uppercase;
+                    letter-spacing: 0.6px;
+                    box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+                }
+                .asr-table-custom tbody tr:hover {
+                    background-color: #1e293b !important;
+                }
+                </style>
+                ''', unsafe_allow_html=True)
+                
+                st.markdown('<div class="asr-table-wrapper">', unsafe_allow_html=True)
+                
+                # Header Card
+                tbl_head_col1, tbl_head_col2 = st.columns([3, 1])
+                with tbl_head_col1:
+                    st.markdown('''
+                    <div style="font-size: 1.18rem; font-weight: 800; color: white; display:flex; align-items:center; gap:8px;">
+                        <span>📋</span> TABEL RINCIAN TIKET ASSURANCE PERIODE
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.78rem; margin-top: 4px;">
+                        ↔️ <i>Tabel dapat di-scroll ke kanan &amp; kiri untuk membaca Summary lengkap. Header tetap terkunci di atas saat scroll ke bawah.</i>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                
+                # Filter Section
+                st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                tf_c1, tf_c2, tf_c3 = st.columns([2, 2, 3])
+                with tf_c1:
+                    sel_cust = st.selectbox("Filter Tipe Pelanggan:", ["Semua"] + cust_targets, key="tb_filter_cust")
+                with tf_c2:
+                    sel_stat = st.selectbox("Filter Status:", ["Semua", "TIKET OPEN", "TIKET CLOSE"], key="tb_filter_stat")
+                with tf_c3:
+                    search_txt = st.text_input("🔍 Cari Tiket / Pelanggan / Summary:", key="tb_filter_search")
+                    
+                df_table = df_filtered.copy()
+                if sel_cust != "Semua":
+                    df_table = df_table[df_table['Cust_Clean'] == sel_cust]
+                if sel_stat != "Semua":
+                    df_table = df_table[df_table['Status_Kategori'] == sel_stat]
+                if search_txt:
+                    s_low = search_txt.lower()
+                    match_m = (
+                        df_table['INCIDENT'].astype(str).str.lower().str.contains(s_low, na=False) |
+                        df_table['CUSTOMER NAME'].astype(str).str.lower().str.contains(s_low, na=False) |
+                        df_table['SUMMARY'].astype(str).str.lower().str.contains(s_low, na=False)
+                    )
+                    df_table = df_table[match_m]
+
+                with tbl_head_col2:
+                    st.markdown(f'''
+                    <div style="text-align: right; margin-top: 5px;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: #38bdf8; background: rgba(56,189,248,0.12); padding: 5px 12px; border-radius: 20px; border: 1px solid #38bdf8; display: inline-block;">
+                            {len(df_table):,} Tiket Ditampilkan
+                        </span>
+                    </div>
+                    ''', unsafe_allow_html=True)
+
+                if df_table.empty:
+                    st.markdown('''
+                    <div style="background: rgba(245,158,11,0.08); border: 1px solid #f59e0b; border-radius: 8px; padding: 18px; text-align: center; color: #fbbf24; margin-top: 15px;">
+                        ⚠️ Tidak ada tiket yang sesuai dengan kriteria filter di atas.
+                    </div>
+                    ''', unsafe_allow_html=True)
+                else:
+                    status_badges = {
+                        'CLOSED': '<span style="background: rgba(16,185,129,0.18); border: 1px solid #10b981; color: #34d399; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">CLOSED</span>',
+                        'BACKEND': '<span style="background: rgba(245,158,11,0.18); border: 1px solid #f59e0b; color: #fbbf24; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">BACKEND</span>',
+                        'SALAMSIM': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">SALAMSIM</span>',
+                        'DRAFT': '<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">DRAFT</span>'
+                    }
+
+                    cust_badges = {
+                        'HVC_GOLD': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">👑 HVC_GOLD</span>',
+                        'HVC_PLATINUM': '<span style="background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #c084fc; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">💎 HVC_PLATINUM</span>',
+                        'HVC_DIAMOND': '<span style="background: rgba(6,182,212,0.18); border: 1px solid #06b6d4; color: #22d3ee; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">✨ HVC_DIAMOND</span>',
+                        'REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">👤 REGULER</span>'
+                    }
+
+                    import html as html_lib
+                    
+                    def compute_ttr_badge(ttr_val, cust_type_val):
+                        try:
+                            parts = str(ttr_val).strip().split(':')
+                            if len(parts) == 3:
+                                elapsed_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                            elif len(parts) == 2:
+                                elapsed_sec = int(parts[0]) * 60 + int(parts[1])
+                            else:
+                                elapsed_sec = float(parts[0]) * 3600
+                        except:
+                            elapsed_sec = 0
+
+                        c_up = str(cust_type_val).upper()
+                        # Baseline SLA: 3 Jam untuk HVC (Gold, Platinum, Diamond) dan 6 Jam untuk Reguler
+                        target_sec = 6 * 3600 if 'REGULER' in c_up else 3 * 3600
+                        remain_sec = target_sec - elapsed_sec
+                        remain_pct = (remain_sec / target_sec) * 100
+
+                        h = int(elapsed_sec // 3600)
+                        m = int((elapsed_sec % 3600) // 60)
+                        s = int(elapsed_sec % 60)
+                        time_str = f"{h:02d}:{m:02d}:{s:02d}"
+
+                        if remain_pct >= 71.0:
+                            # Hijau (100% sampai 71%)
+                            bg = "rgba(16, 185, 129, 0.18)"
+                            bd = "#10b981"
+                            cl = "#34d399"
+                            ic = "🟢"
+                            lbl = f"({int(round(remain_pct))}%)"
+                        elif remain_pct >= 41.0:
+                            # Orange (70% sampai 41%)
+                            bg = "rgba(245, 158, 11, 0.18)"
+                            bd = "#f59e0b"
+                            cl = "#fbbf24"
+                            ic = "🟠"
+                            lbl = f"({int(round(remain_pct))}%)"
+                        else:
+                            # Merah (40% sampai 0% atau minus / OSLA)
+                            bg = "rgba(239, 68, 68, 0.18)"
+                            bd = "#ef4444"
+                            cl = "#f87171"
+                            ic = "🔴" if remain_pct >= 0 else "⚠️"
+                            lbl = f"({int(round(max(0, remain_pct)))}%)" if remain_pct >= 0 else "(OSLA)"
+
+                        return (
+                            f'<span style="background: {bg}; border: 1px solid {bd}; color: {cl}; '
+                            f'font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; '
+                            f'display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;" '
+                            f'title="TTR Berjalan: {time_str} | Sisa Waktu SLA: {lbl}">'
+                            f'{ic} <span style="font-family: monospace; font-size: 0.82rem;">{time_str}</span> '
+                            f'<span style="font-size: 0.69rem; opacity: 0.9;">{lbl}</span>'
+                            f'</span>'
+                        )
+
+                    table_rows = []
+                    # Tampilkan maksimal 300 tiket per tampilan agar browser tetap super ringan
+                    display_limit = 300
+                    df_view = df_table.head(display_limit)
+                    
+                    for idx, row in enumerate(df_view.to_dict('records')):
+                        bg_tr = "#0f172a" if idx % 2 == 0 else "#0b1120"
+                        
+                        inc_val = html_lib.escape(str(row.get('INCIDENT', '-')))
+                        rep_val = html_lib.escape(str(row.get('REPORTED DATE', '-')))
+                        
+                        raw_stat = str(row.get('STATUS', '-')).upper().strip()
+                        stat_badge = status_badges.get(raw_stat, f'<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_stat)}</span>')
+                        
+                        raw_cust = str(row.get('Cust_Clean', str(row.get('CUSTOMER TYPE', '-')))).upper().strip()
+                        cust_badge = cust_badges.get(raw_cust, f'<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_cust)}</span>')
+                        
+                        ttr_val = row.get('TTR CUSTOMER', row.get('TTR_CUSTOMER', '-'))
+                        ttr_badge = compute_ttr_badge(ttr_val, raw_cust)
+
+                        cname_val = html_lib.escape(str(row.get('CUSTOMER NAME', '-')))
+                        stype_val = html_lib.escape(str(row.get('SERVICE TYPE', '-')))
+                        wzone_val = html_lib.escape(str(row.get('WORKZONE', '-')))
+                        summary_val = html_lib.escape(str(row.get('SUMMARY', '-')))
+
+                        r_html = f'''<tr style="background-color: {bg_tr}; border-bottom: 1px solid #1e293b; transition: background 0.15s ease;">
+                            <td style="padding: 12px 8px; text-align: center; color: #64748b; font-weight: 600;">{idx+1}</td>
+                            <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8; white-space: nowrap;">{inc_val}</td>
+                            <td style="padding: 12px 12px; text-align: center; color: #cbd5e1; white-space: nowrap;">{rep_val}</td>
+                            <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{stat_badge}</td>
+                            <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{cust_badge}</td>
+                            <td style="padding: 12px 10px; text-align: center; white-space: nowrap;">{ttr_badge}</td>
+                            <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 600; white-space: nowrap;">{cname_val}</td>
+                            <td style="padding: 12px 12px; text-align: center; color: #94a3b8; white-space: nowrap;">{stype_val}</td>
+                            <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #f8fafc; white-space: nowrap;">{wzone_val}</td>
+                            <td style="padding: 12px 18px; min-width: 500px; max-width: 750px; line-height: 1.5; color: #cbd5e1; font-size: 0.80rem; white-space: normal; word-break: break-word; text-align: justify; text-justify: inter-word;">{summary_val}</td>
+                        </tr>'''
+                        table_rows.append(r_html)
+
+                    table_body = "".join(table_rows)
+                    
+                    full_table_html = f'''
+                    <div class="asr-scroll-container">
+                        <table class="asr-table-custom">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">NO</th>
+                                    <th style="width: 145px; text-align: center;">INCIDENT</th>
+                                    <th style="width: 165px; text-align: center;">REPORTED DATE</th>
+                                    <th style="width: 130px; text-align: center;">STATUS</th>
+                                    <th style="width: 155px; text-align: center;">CUSTOMER TYPE</th>
+                                    <th style="width: 165px; text-align: center;">TTR CUSTOMER</th>
+                                    <th style="width: 200px; text-align: center;">CUSTOMER NAME</th>
+                                    <th style="width: 110px; text-align: center;">SERVICE</th>
+                                    <th style="width: 100px; text-align: center;">WORKZONE</th>
+                                    <th style="min-width: 500px; text-align: center;">SUMMARY TIKET</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {table_body}
+                            </tbody>
+                        </table>
+                    </div>
+                    '''
+                    st.markdown(full_table_html, unsafe_allow_html=True)
+                    
+                    if len(df_table) > display_limit:
+                        st.caption(f"⚡ Menampilkan {display_limit:,} dari total {len(df_table):,} tiket untuk kecepatan maksimal browser.")
+                    else:
+                        st.caption(f"Menampilkan seluruh {len(df_table):,} tiket.")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+
+else:
+    st.warning("⚠️ **Data satelit belum dapat ditampilkan atau terjadi pembatasan jam ekspor oleh Google Sheets.**")
+    st.info("💡 Catatan: Google Sheets membatasi ekspor data antara pukul 06:00 - 23:00 WIB (07:00 - 24:00 WITA).")
+    if st.button("🔄 Muat Ulang Data (Clear Cache)"):
+        st.cache_data.clear()
+        st.rerun()
 
