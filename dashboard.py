@@ -583,6 +583,28 @@ if os.path.exists(insera_summary_file):
     except:
         pass
 
+# Fallback cerdas: Cek jika file parquet lokal memiliki waktu yang lebih baru dari file sync
+parquet_cache_file = os.path.join(base_dir, "last_insera_gabungan.parquet")
+if os.path.exists(parquet_cache_file):
+    try:
+        pq_mtime = os.path.getmtime(parquet_cache_file)
+        pq_dt = datetime.fromtimestamp(pq_mtime)
+        is_newer = False
+        if insera_time != "Belum Ada Data":
+            try:
+                curr_dt = datetime.strptime(insera_time, "%d %b %Y | %H:%M:%S")
+                if pq_dt > curr_dt + timedelta(seconds=30):
+                    is_newer = True
+            except Exception:
+                pass
+        else:
+            is_newer = True
+            
+        if is_newer:
+            insera_time = pq_dt.strftime("%d %b %Y | %H:%M:%S")
+    except Exception:
+        pass
+
 if insera_time == "Belum Ada Data":
     try:
         df_asr_probe, asr_probe_src = load_assurance_data("probe")
@@ -1052,83 +1074,97 @@ if not df.empty:
     with st.sidebar:
         from streamlit_option_menu import option_menu
 
+        all_opts = [
+            "PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER",
+            "DAILY REPORT", "GRAFIK TIKET PERIODE"
+        ]
+        all_icons = [
+            "trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server",
+            "file-earmark-text", "graph-up"
+        ]
+
         if "active_menu" not in st.session_state:
             st.session_state.active_menu = "PS/RE"
-        if "m1_old" not in st.session_state:
-            st.session_state.m1_old = "PS/RE"
-        if "m2_old" not in st.session_state:
-            st.session_state.m2_old = "DAILY REPORT"
 
-        opts1 = ["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER"]
-        icons1 = ["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"]
+        if st.session_state.active_menu not in all_opts:
+            st.session_state.active_menu = "PS/RE"
 
-        opts2 = ["DAILY REPORT", "GRAFIK TIKET PERIODE"]
-        icons2 = ["file-earmark-text", "graph-up"]
-
-        is_m1_active = st.session_state.active_menu in opts1
-        is_m2_active = st.session_state.active_menu in opts2
-
-        style_active = {
-            "background-color": "#3f2b34",
-            "border-left": "4px solid #ef4444",
-            "color": "white",
-            "border-radius": "8px",
-            "border-top-left-radius": "8px",
-            "border-bottom-left-radius": "8px"
-        }
-        style_inactive = {
-            "background-color": "transparent",
-            "border-left": "4px solid transparent",
-            "color": "#cbd5e1"
-        }
-
-        s1 = {
-            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
-            "icon": {"color": "#94a3b8", "font-size": "18px"},
-            "nav-link": {"font-size": "15px", "text-align": "left", "margin": "2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px"},
-            "nav-link-selected": style_active if is_m1_active else style_inactive
-        }
-
-        s2 = {
-            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
-            "icon": {"color": "#94a3b8", "font-size": "18px"},
-            "nav-link": {"font-size": "15px", "text-align": "left", "margin": "2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px"},
-            "nav-link-selected": style_active if is_m2_active else style_inactive
-        }
+        cur_idx = all_opts.index(st.session_state.active_menu)
 
         st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 15px;">DASHBOARD FULFILLMENT</p>', unsafe_allow_html=True)
-        idx1 = opts1.index(st.session_state.active_menu) if is_m1_active else 0
-        m1 = option_menu(
+
+        selected_menu = option_menu(
             menu_title=None,
-            options=opts1,
-            icons=icons1,
-            default_index=idx1,
-            styles=s1,
-            key="m1_sidebar"
+            options=all_opts,
+            icons=all_icons,
+            default_index=cur_idx,
+            styles={
+                "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
+                "icon": {"color": "#94a3b8", "font-size": "18px"},
+                "nav-link": {"font-size": "15px", "text-align": "left", "margin": "2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px"},
+                "nav-link-selected": {
+                    "background-color": "#3f2b34",
+                    "border-left": "4px solid #ef4444",
+                    "color": "white",
+                    "border-radius": "8px",
+                    "border-top-left-radius": "8px",
+                    "border-bottom-left-radius": "8px"
+                }
+            },
+            key="unified_sidebar_menu"
         )
 
-        st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 25px;">DASHBOARD ASSURANCE</p>', unsafe_allow_html=True)
-        idx2 = opts2.index(st.session_state.active_menu) if is_m2_active else 0
-        m2 = option_menu(
-            menu_title=None,
-            options=opts2,
-            icons=icons2,
-            default_index=idx2,
-            styles=s2,
-            key="m2_sidebar"
-        )
-
-        # Event-driven update: HANYA rerun jika opsi benar-benar diklik/berubah
-        if m1 != st.session_state.m1_old:
-            st.session_state.active_menu = m1
-            st.session_state.m1_old = m1
-            st.rerun()
-        elif m2 != st.session_state.m2_old:
-            st.session_state.active_menu = m2
-            st.session_state.m2_old = m2
+        if selected_menu != st.session_state.active_menu:
+            st.session_state.active_menu = selected_menu
             st.rerun()
 
         menu = st.session_state.active_menu
+
+        import streamlit.components.v1 as components
+        components.html('''
+        <script>
+        function injectAssuranceHeader() {
+            try {
+                const parentDoc = window.parent.document;
+                if (!parentDoc) return;
+                
+                const iframes = parentDoc.querySelectorAll('iframe');
+                iframes.forEach(iframe => {
+                    try {
+                        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                        if (!doc) return;
+                        
+                        const links = doc.querySelectorAll('.nav-link');
+                        links.forEach(link => {
+                            const txt = (link.innerText || '').trim().toUpperCase();
+                            if (txt.includes('DAILY REPORT')) {
+                                const li = link.closest('.nav-item');
+                                if (li && !doc.getElementById('sec-hdr-assurance')) {
+                                    const hdr = doc.createElement('div');
+                                    hdr.id = 'sec-hdr-assurance';
+                                    hdr.innerHTML = '<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px; margin-top: 24px; text-transform: uppercase; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; padding-left: 2px;">DASHBOARD ASSURANCE</p>';
+                                    li.parentNode.insertBefore(hdr, li);
+                                }
+                            }
+                        });
+                        
+                        // Ensure iframe is always tall enough without scrollbars
+                        if (doc.getElementById('sec-hdr-assurance') && doc.body) {
+                            doc.body.style.overflow = 'hidden';
+                            iframe.style.overflow = 'hidden';
+                            const neededH = Math.max(doc.body.scrollHeight + 30, 480);
+                            if (parseInt(iframe.style.height) < neededH) {
+                                iframe.style.height = neededH + 'px';
+                            }
+                        }
+                    } catch(err) {}
+                });
+            } catch(e) {}
+        }
+        setInterval(injectAssuranceHeader, 250);
+        injectAssuranceHeader();
+        </script>
+        ''', height=0, width=0)
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("**Sinkronisasi Data:**")
@@ -1516,7 +1552,7 @@ if not df.empty:
         # - HVC DIAMOND : 3 Jam
         # - HVC PLATINUM: 6 Jam
         # - HVC GOLD    : 12 Jam
-        # - HVC REGULER : 24 Jam
+        # - REGULER : 24 Jam
         if 'DIAMOND' in c_up:
             target_sec = 3 * 3600
         elif 'PLATINUM' in c_up:
@@ -5105,16 +5141,16 @@ if not df.empty:
             gap: 10px;
         }
         .asr-card-icon {
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.15rem;
+            font-size: 1.35rem;
         }
         .asr-card-title {
-            font-size: 1.05rem;
+            font-size: 1.18rem;
             font-weight: 800;
             color: #ffffff;
             text-transform: uppercase;
@@ -5123,7 +5159,7 @@ if not df.empty:
             text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
         }
         .asr-card-val {
-            font-size: 2.2rem;
+            font-size: 2.5rem;
             font-weight: 800;
             color: #ffffff;
             line-height: 1;
@@ -5133,9 +5169,9 @@ if not df.empty:
         }
         .asr-card-tbl-hdr {
             display: grid;
-            padding: 4px 0 6px 0;
+            padding: 6px 0 8px 0;
             border-bottom: 2px solid #334155;
-            font-size: 0.74rem;
+            font-size: 0.92rem;
             font-weight: 800;
             color: #94a3b8;
             text-transform: uppercase;
@@ -5144,9 +5180,10 @@ if not df.empty:
         .asr-card-tbl-row {
             display: grid;
             align-items: center;
-            padding: 6px 0;
+            padding: 7px 0;
             border-bottom: 1px solid rgba(255,255,255,0.06);
-            font-size: 0.85rem;
+            font-size: 0.98rem;
+            font-weight: 700;
         }
         .asr-card-tbl-row:last-child {
             border-bottom: none;
@@ -5155,20 +5192,26 @@ if not df.empty:
         /* Modal & Link Trigger Styling */
         .asr-modal-trigger {
             transition: all 0.15s ease;
+            text-decoration: none !important;
+            font-weight: 800 !important;
+            font-size: 1.02rem;
+            display: inline-block;
         }
         .asr-modal-trigger:hover {
-            filter: brightness(1.35) drop-shadow(0 0 5px rgba(56, 189, 248, 0.7));
-            text-decoration: underline;
+            filter: brightness(1.4) drop-shadow(0 0 6px rgba(56, 189, 248, 0.9));
+            text-decoration: none !important;
         }
         .asr-card-val a {
             color: #ffffff;
-            text-decoration: none;
+            text-decoration: none !important;
+            font-weight: 800 !important;
             cursor: pointer;
             transition: all 0.15s ease;
         }
         .asr-card-val a:hover {
             color: #38bdf8 !important;
             text-shadow: 0 0 12px rgba(56, 189, 248, 0.9);
+            text-decoration: none !important;
         }
         .asr-modal-box {
             animation: asrModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -5181,10 +5224,73 @@ if not df.empty:
             color: #f87171 !important;
             transform: scale(1.15);
         }
+
+        /* Modal & Table Sticky Header & Custom Scrollbars */
+        .asr-modal-scroll {
+            width: 100%;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #0b1120;
+        }
+        .asr-modal-scroll::-webkit-scrollbar,
+        .asr-scroll-container::-webkit-scrollbar {
+            height: 12px;
+            width: 10px;
+        }
+        .asr-modal-scroll::-webkit-scrollbar-track,
+        .asr-scroll-container::-webkit-scrollbar-track {
+            background: #0b1120;
+            border-top: 1px solid #1e293b;
+            border-radius: 6px;
+        }
+        .asr-modal-scroll::-webkit-scrollbar-thumb,
+        .asr-scroll-container::-webkit-scrollbar-thumb {
+            background: #2563eb;
+            border-radius: 6px;
+            border: 2px solid #0b1120;
+        }
+        .asr-modal-scroll::-webkit-scrollbar-thumb:hover,
+        .asr-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+        .asr-modal-table th,
+        .asr-table-custom th {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background-color: #1e3a8a !important;
+            color: #ffffff !important;
+            font-weight: 800;
+            border-bottom: 2.5px solid #3b82f6;
+            border-right: 1px solid rgba(255,255,255,0.12);
+            box-shadow: inset 0 -2.5px 0 #3b82f6, 0 3px 6px rgba(0,0,0,0.4);
+        }
+        .asr-scroll-container {
+            width: 100%;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            max-height: 800px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background-color: #0b1120;
+            margin-top: 12px;
+            scrollbar-width: thin;
+            scrollbar-color: #3b82f6 #0b1120;
+        }
+        .asr-table-custom {
+            width: 100%;
+            min-width: 1750px;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            text-align: left;
+            font-size: 0.82rem;
+        }
         </style>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="section-title-wrap"><div class="section-title">\U0001F4CA DAILY REPORT ASSURANCE</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title-wrap"><div class="section-title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.5px;">\U0001F4CA DAILY REPORT ASSURANCE</div></div>', unsafe_allow_html=True)
         
         df_asr, asr_source = load_assurance_data(insera_time)
         
@@ -5223,6 +5329,40 @@ if not df.empty:
                     col_map['cust_name'] = c
                 elif cu in ['SERVICE TYPE', 'SERVICE_TYPE', 'SERVICE']:
                     col_map['service'] = c
+                elif cu in ['ALPRO OK', 'ALPRO_OK', 'ALPRO', 'ODC']:
+                    col_map['alpro_ok'] = c
+                elif cu in ['RK INFORMATION', 'RK_INFORMATION']:
+                    col_map['rk_info'] = c
+                elif cu in ['DEVICE NAME', 'DEVICE_NAME']:
+                    col_map['device_name'] = c
+
+            import re
+            def get_alpro_ok(r):
+                # 1. Direct column in sheet/dataframe
+                for k in ['alpro_ok', 'ALPRO OK', 'ALPRO', 'alpro']:
+                    val = safe_val(r, col_map.get(k, k))
+                    if val and val.strip() not in ['-', '', 'nan', 'None', 'null', '0']:
+                        return val.strip()
+                # 2. Derive from RK INFORMATION
+                rk = safe_val(r, col_map.get('rk_info', 'RK INFORMATION'))
+                if rk and rk.strip() not in ['-', '', 'nan', 'None', 'null', '0']:
+                    token = rk.strip().split()[0]
+                    cleaned = token.replace('mODC-', 'ODC-').replace('ODC-ULN-', 'ODC-ULI-')
+                    if 'ODC-' in cleaned or 'ODP-' in cleaned:
+                        return cleaned
+                    return token
+                # 3. Derive from DEVICE NAME (ODP -> ODC)
+                dev = safe_val(r, col_map.get('device_name', 'DEVICE NAME'))
+                if dev and 'ODP-' in dev:
+                    odp_part = dev.split('/')[0].split()[0]
+                    return odp_part.replace('ODP-', 'ODC-').replace('ODC-ULN-', 'ODC-ULI-')
+                # 4. Search in SUMMARY
+                summ = safe_val(r, col_map.get('summary', 'SUMMARY'))
+                if summ:
+                    m = re.search(r'\b(OD[CP]-[A-Z]{3}-[A-Z0-9]+)', summ)
+                    if m:
+                        return m.group(1).replace('ODP-', 'ODC-').replace('ODC-ULN-', 'ODC-ULI-')
+                return '-'
 
             # Parsed Reported Date
             if 'reported_date' in col_map:
@@ -5260,12 +5400,12 @@ if not df.empty:
                 elif 'GOLD' in s:
                     return 'HVC GOLD'
                 else:
-                    return 'HVC REGULER'
+                    return 'REGULER'
 
             if 'cust_type' in col_map:
                 df_asr['cust_tier'] = df_asr[col_map['cust_type']].apply(parse_cust_tier)
             else:
-                df_asr['cust_tier'] = 'HVC REGULER'
+                df_asr['cust_tier'] = 'REGULER'
 
             # Normalisasi Workzone (ULI vs GMB)
             def parse_workzone(val):
@@ -5371,14 +5511,15 @@ if not df.empty:
                 ('HVC DIAMOND', '#22d3ee', '\U0001F48E'),
                 ('HVC PLATINUM', '#c084fc', '\U0001F451'),
                 ('HVC GOLD', '#facc15', '\U0001F3C6'),
-                ('HVC REGULER', '#60a5fa', '\U0001F464')
+                ('REGULER', '#60a5fa', '\U0001F464')
             ]
 
             cust_badges_daily = {
                 'HVC GOLD': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_GOLD</span>',
                 'HVC PLATINUM': '<span style="background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #c084fc; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_PLATINUM</span>',
                 'HVC DIAMOND': '<span style="background: rgba(6,182,212,0.18); border: 1px solid #06b6d4; color: #22d3ee; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_DIAMOND</span>',
-                'HVC REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_REGULER</span>',
+                'REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">REGULER</span>',
+                'HVC REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">REGULER</span>',
             }
             status_badges_daily = {
                 'ANALYSIS': '<span style="background: rgba(245,158,11,0.18); border: 1px solid #f59e0b; color: #fbbf24; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">ANALYSIS</span>',
@@ -5400,15 +5541,15 @@ if not df.empty:
 
             asr_modals = {}
 
-            def make_asr_link(val, modal_id, modal_title, sub_df, underline=True, color=None, is_header=False):
+            def make_asr_link(val, modal_id, modal_title, sub_df, underline=False, color=None, is_header=False):
                 if val and val > 0 and sub_df is not None and len(sub_df) > 0:
                     asr_modals[modal_id] = (modal_title, sub_df)
-                    u = "underline" if underline else "none"
                     c = f"color:{color};" if color else ""
-                    return f'<a href="javascript:void(0)" class="modal-trigger asr-modal-trigger" data-target="{modal_id}" style="{c} text-decoration:{u}; cursor:pointer; font-weight:inherit; font-family:inherit;">{val}</a>'
+                    fs = "font-size:2.5rem;" if is_header else "font-size:1.02rem;"
+                    return f'<a href="javascript:void(0)" class="modal-trigger asr-modal-trigger" data-target="{modal_id}" style="{c} text-decoration:none !important; font-weight:800 !important; {fs} cursor:pointer; font-family:monospace,sans-serif;">{val}</a>'
                 if is_header:
-                    return '<span style="color:#ffffff;">0</span>'
-                return '<span style="color:#64748b;">-</span>'
+                    return '<span style="color:#ffffff; font-weight:800; font-size:2.5rem;">0</span>'
+                return '<span style="color:#64748b; font-weight:700; font-size:1.02rem;">-</span>'
 
             def render_wzone_rows(df_sub, card_slug, card_title):
                 html_rows = []
@@ -5419,13 +5560,13 @@ if not df.empty:
                     tot_cnt = len(sub)
                     tier_slug = make_slug(tier_name)
                     
-                    uli_str = make_asr_link(len(sub_uli), f"modal-asr-{card_slug}-{tier_slug}-uli", f"{card_title} - {tier_name} (ULI)", sub_uli, underline=True, color="#ffffff")
-                    gmb_str = make_asr_link(len(sub_gmb), f"modal-asr-{card_slug}-{tier_slug}-gmb", f"{card_title} - {tier_name} (GMB)", sub_gmb, underline=True, color="#ffffff")
-                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{tier_slug}-total", f"{card_title} - {tier_name} (TOTAL)", sub, underline=True, color="#38bdf8")
+                    uli_str = make_asr_link(len(sub_uli), f"modal-asr-{card_slug}-{tier_slug}-uli", f"{card_title} - {tier_name} (ULI)", sub_uli, underline=False, color="#ffffff")
+                    gmb_str = make_asr_link(len(sub_gmb), f"modal-asr-{card_slug}-{tier_slug}-gmb", f"{card_title} - {tier_name} (GMB)", sub_gmb, underline=False, color="#ffffff")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{tier_slug}-total", f"{card_title} - {tier_name} (TOTAL)", sub, underline=False, color="#38bdf8")
                     
                     html_rows.append(
                         f'<div class="asr-card-tbl-row" style="grid-template-columns: 2fr 1fr 1fr 1fr;">'
-                        f'<span style="color:{color}; font-weight:700; white-space:nowrap;">{icon} {tier_name}</span>'
+                        f'<span style="color:{color}; font-weight:700; font-size:0.96rem; white-space:nowrap;">{icon} {tier_name}</span>'
                         f'<span style="text-align:center;">{uli_str}</span>'
                         f'<span style="text-align:center;">{gmb_str}</span>'
                         f'<span style="text-align:center;">{tot_str}</span>'
@@ -5442,13 +5583,13 @@ if not df.empty:
                     tot_cnt = len(sub)
                     tier_slug = make_slug(tier_name)
                     
-                    not_str = make_asr_link(len(sub_not), f"modal-asr-{card_slug}-{tier_slug}-not-osla", f"{card_title} - {tier_name} (NOT OSLA)", sub_not, underline=True, color="#34d399")
-                    osla_str = make_asr_link(len(sub_osla), f"modal-asr-{card_slug}-{tier_slug}-osla", f"{card_title} - {tier_name} (OSLA)", sub_osla, underline=True, color="#f87171")
-                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{tier_slug}-total", f"{card_title} - {tier_name} (TOTAL)", sub, underline=True, color="#38bdf8")
+                    not_str = make_asr_link(len(sub_not), f"modal-asr-{card_slug}-{tier_slug}-not-osla", f"{card_title} - {tier_name} (NOT OSLA)", sub_not, underline=False, color="#34d399")
+                    osla_str = make_asr_link(len(sub_osla), f"modal-asr-{card_slug}-{tier_slug}-osla", f"{card_title} - {tier_name} (OSLA)", sub_osla, underline=False, color="#f87171")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{tier_slug}-total", f"{card_title} - {tier_name} (TOTAL)", sub, underline=False, color="#38bdf8")
                     
                     html_rows.append(
                         f'<div class="asr-card-tbl-row" style="grid-template-columns: 1.8fr 1.1fr 1.1fr 1.1fr;">'
-                        f'<span style="color:{color}; font-weight:700; white-space:nowrap;">{icon} {tier_name}</span>'
+                        f'<span style="color:{color}; font-weight:700; font-size:0.96rem; white-space:nowrap;">{icon} {tier_name}</span>'
                         f'<span style="text-align:center;">{not_str}</span>'
                         f'<span style="text-align:center;">{osla_str}</span>'
                         f'<span style="text-align:center;">{tot_str}</span>'
@@ -5462,10 +5603,10 @@ if not df.empty:
                     for _ in range(4):
                         html_rows.append(
                             '<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr; opacity:0.3;">'
-                            '<span style="color:#64748b;">-</span>'
-                            '<span style="text-align:center; color:#64748b;">-</span>'
-                            '<span style="text-align:center; color:#64748b;">-</span>'
-                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '<span style="color:#64748b; font-size:0.96rem;">-</span>'
+                            '<span style="text-align:center; color:#64748b; font-size:1.02rem; font-weight:700;">-</span>'
+                            '<span style="text-align:center; color:#64748b; font-size:1.02rem; font-weight:700;">-</span>'
+                            '<span style="text-align:center; color:#64748b; font-size:1.02rem; font-weight:700;">-</span>'
                             '</div>'
                         )
                     return "".join(html_rows)
@@ -5481,14 +5622,14 @@ if not df.empty:
                     tot_cnt = len(sub)
                     grp_slug = make_slug(grp)
                     
-                    uli_str = make_asr_link(len(sub_uli), f"modal-asr-{card_slug}-{grp_slug}-uli", f"{card_title} - {grp} (ULI)", sub_uli, underline=True, color="#ffffff")
-                    gmb_str = make_asr_link(len(sub_gmb), f"modal-asr-{card_slug}-{grp_slug}-gmb", f"{card_title} - {grp} (GMB)", sub_gmb, underline=True, color="#ffffff")
-                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{grp_slug}-total", f"{card_title} - {grp} (TOTAL)", sub, underline=True, color="#38bdf8")
+                    uli_str = make_asr_link(len(sub_uli), f"modal-asr-{card_slug}-{grp_slug}-uli", f"{card_title} - {grp} (ULI)", sub_uli, underline=False, color="#ffffff")
+                    gmb_str = make_asr_link(len(sub_gmb), f"modal-asr-{card_slug}-{grp_slug}-gmb", f"{card_title} - {grp} (GMB)", sub_gmb, underline=False, color="#ffffff")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{grp_slug}-total", f"{card_title} - {grp} (TOTAL)", sub, underline=False, color="#38bdf8")
                     
                     disp_label = grp if len(grp) <= 18 else grp[:16] + '..'
                     html_rows.append(
                         f'<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr;">'
-                        f'<span style="color:#e2e8f0; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{html_lib.escape(grp)}">{html_lib.escape(disp_label)}</span>'
+                        f'<span style="color:#e2e8f0; font-weight:700; font-size:0.96rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{html_lib.escape(grp)}">{html_lib.escape(disp_label)}</span>'
                         f'<span style="text-align:center;">{uli_str}</span>'
                         f'<span style="text-align:center;">{gmb_str}</span>'
                         f'<span style="text-align:center;">{tot_str}</span>'
@@ -5502,14 +5643,14 @@ if not df.empty:
                     sub_oth_gmb = sub_oth[sub_oth['wzone_clean'] == 'GMB']
                     tot_oth = len(sub_oth)
                     
-                    uli_str = make_asr_link(len(sub_oth_uli), f"modal-asr-{card_slug}-lainnya-uli", f"{card_title} - LAINNYA (ULI)", sub_oth_uli, underline=True, color="#ffffff")
-                    gmb_str = make_asr_link(len(sub_oth_gmb), f"modal-asr-{card_slug}-lainnya-gmb", f"{card_title} - LAINNYA (GMB)", sub_oth_gmb, underline=True, color="#ffffff")
-                    tot_str = make_asr_link(tot_oth, f"modal-asr-{card_slug}-lainnya-total", f"{card_title} - LAINNYA (TOTAL)", sub_oth, underline=True, color="#38bdf8")
+                    uli_str = make_asr_link(len(sub_oth_uli), f"modal-asr-{card_slug}-lainnya-uli", f"{card_title} - LAINNYA (ULI)", sub_oth_uli, underline=False, color="#ffffff")
+                    gmb_str = make_asr_link(len(sub_oth_gmb), f"modal-asr-{card_slug}-lainnya-gmb", f"{card_title} - LAINNYA (GMB)", sub_oth_gmb, underline=False, color="#ffffff")
+                    tot_str = make_asr_link(tot_oth, f"modal-asr-{card_slug}-lainnya-total", f"{card_title} - LAINNYA (TOTAL)", sub_oth, underline=False, color="#38bdf8")
                     oth_title = html_lib.escape(", ".join(other_grps))
                     
                     html_rows.append(
                         f'<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr;">'
-                        f'<span style="color:#94a3b8; font-weight:700; font-style:italic;" title="Grup Lainnya: {oth_title}">LAINNYA ({len(other_grps)})</span>'
+                        f'<span style="color:#94a3b8; font-weight:700; font-size:0.96rem; font-style:italic;" title="Grup Lainnya: {oth_title}">LAINNYA ({len(other_grps)})</span>'
                         f'<span style="text-align:center;">{uli_str}</span>'
                         f'<span style="text-align:center;">{gmb_str}</span>'
                         f'<span style="text-align:center;">{tot_str}</span>'
@@ -5519,10 +5660,10 @@ if not df.empty:
                     for _ in range(4 - len(top_grps)):
                         html_rows.append(
                             '<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr; opacity:0.3;">'
-                            '<span style="color:#64748b;">-</span>'
-                            '<span style="text-align:center; color:#64748b;">-</span>'
-                            '<span style="text-align:center; color:#64748b;">-</span>'
-                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '<span style="color:#64748b; font-size:0.96rem;">-</span>'
+                            '<span style="text-align:center; color:#64748b; font-size:1.02rem; font-weight:700;">-</span>'
+                            '<span style="text-align:center; color:#64748b; font-size:1.02rem; font-weight:700;">-</span>'
+                            '<span style="text-align:center; color:#64748b; font-size:1.02rem; font-weight:700;">-</span>'
                             '</div>'
                         )
                 return "".join(html_rows)
@@ -5542,7 +5683,7 @@ if not df.empty:
                     raw_stat = safe_val(row, 'status').upper()
                     stat_badge = status_badges_daily.get(raw_stat, f'<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_stat)}</span>')
                     
-                    c_tier = row.get('cust_tier', 'HVC REGULER')
+                    c_tier = row.get('cust_tier', 'REGULER')
                     cust_badge = cust_badges_daily.get(c_tier, f'<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(c_tier)}</span>')
                     
                     ttr_val = row.get(col_map.get('ttr_val', 'TTR CUSTOMER'), None)
@@ -5551,8 +5692,8 @@ if not df.empty:
                     cname_val = html_lib.escape(safe_val(row, 'cust_name'))
                     stype_val = html_lib.escape(safe_val(row, 'service'))
                     wzone_val = html_lib.escape(str(row.get('wzone_clean', '-')))
-                    
                     owner_val = html_lib.escape(safe_val(row, 'owner_group', str(row.get('owner_group_clean', '-'))))
+                    alpro_val = html_lib.escape(get_alpro_ok(row))
                     summary_val = html_lib.escape(safe_val(row, 'summary'))
                     
                     r = (
@@ -5563,11 +5704,12 @@ if not df.empty:
                         f'<td style="padding:10px 10px; text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{stat_badge}</td>'
                         f'<td style="padding:10px 10px; text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{cust_badge}</td>'
                         f'<td style="padding:10px 8px; text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{ttr_badge}</td>'
-                        f'<td style="padding:10px 10px; color:#ffffff; font-weight:600; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{cname_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; color:#ffffff; font-weight:600; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{cname_val}</td>'
                         f'<td style="padding:10px 10px; text-align:center; color:#ffffff; font-weight:600; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{stype_val}</td>'
                         f'<td style="padding:10px 10px; text-align:center; font-weight:700; color:#f8fafc; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{wzone_val}</td>'
-                        f'<td style="padding:10px 10px; color:#cbd5e1; font-size:0.82rem; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{owner_val}</td>'
-                        f'<td style="padding:10px 14px; min-width:320px; max-width:550px; line-height:1.4; color:#cbd5e1; font-size:0.80rem; white-space:normal; word-break:break-word;">{summary_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; color:#cbd5e1; font-size:0.82rem; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{owner_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; font-family:monospace; font-size:0.83rem; font-weight:700; color:#38bdf8; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{alpro_val}</td>'
+                        f'<td style="padding:10px 16px; min-width:380px; max-width:650px; line-height:1.5; color:#cbd5e1; font-size:0.80rem; white-space:normal; word-break:break-word; text-align:justify; text-justify:inter-word;">{summary_val}</td>'
                         f'</tr>'
                     )
                     rows_html.append(r)
@@ -5575,29 +5717,30 @@ if not df.empty:
                 table_body = "".join(rows_html)
                 
                 modal_html = (
-                    f'<div id="{modal_id}" class="detail-modal asr-modal-box" style="display:none; position:fixed; top:8%; left:4%; right:4%; bottom:8%; background:#0f172a; z-index:999999; border:2.5px solid #eab308; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); flex-direction:column; overflow:hidden;">'
-                    f'<div style="padding:14px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #334155;">'
+                    f'<div id="{modal_id}" class="detail-modal asr-modal-box" style="display:none; position:fixed; top:6%; left:3%; right:3%; bottom:6%; background:#0f172a; z-index:999999; border:2.5px solid #eab308; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.95); flex-direction:column; overflow:hidden;">'
+                    f'<div style="padding:14px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #334155; flex-shrink:0;">'
                     f'<div style="display:flex; align-items:center; gap:10px;">'
                     f'<h3 style="margin:0; color:#ffffff; font-size:1.15rem; font-weight:700; letter-spacing:0.5px;">Detail Data: {modal_title}</h3>'
                     f'<span style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:700;">{len(sub_df):,} Tiket</span>'
                     f'</div>'
                     f'<button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 8px;" title="Tutup Modal">&times;</button>'
                     f'</div>'
-                    f'<div style="padding:0; overflow-y:auto; overflow-x:auto; flex:1; background:#0b1120;">'
-                    f'<table style="width:100%; border-collapse:collapse; font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif; text-align:left; font-size:0.82rem; min-width:1400px;">'
+                    f'<div class="asr-modal-scroll" style="padding:0; overflow-y:auto; overflow-x:auto; flex:1; background:#0b1120;">'
+                    f'<table class="asr-modal-table" style="width:100%; border-collapse:separate; border-spacing:0; font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif; text-align:left; font-size:0.82rem; min-width:1750px;">'
                     f'<thead>'
-                    f'<tr style="background:#0f172a; border-bottom:2px solid #3b82f6;">'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 8px; width:45px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">NO</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">INCIDENT</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:155px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">REPORTED DATE</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:120px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">STATUS</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER TYPE</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 8px; width:150px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">TTR CUSTOMER</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:180px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER NAME</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:100px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SERVICE</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:85px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">WORKZONE</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:170px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">OWNER GROUP</th>'
-                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; padding:12px 16px; min-width:320px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SUMMARY TIKET</th>'
+                    f'<tr>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 8px; width:45px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">NO</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">INCIDENT</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:155px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">REPORTED DATE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:120px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">STATUS</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER TYPE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 8px; width:150px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">TTR CUSTOMER</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:180px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER NAME</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:100px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SERVICE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:85px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">WORKZONE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:170px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">OWNER GROUP</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:135px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">ALPRO OK</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; padding:12px 16px; min-width:380px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SUMMARY TIKET</th>'
                     f'</tr>'
                     f'</thead>'
                     f'<tbody>'
@@ -5830,7 +5973,8 @@ if not df.empty:
                     'HVC GOLD': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_GOLD</span>',
                     'HVC PLATINUM': '<span style="background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #c084fc; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_PLATINUM</span>',
                     'HVC DIAMOND': '<span style="background: rgba(6,182,212,0.18); border: 1px solid #06b6d4; color: #22d3ee; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_DIAMOND</span>',
-                    'HVC REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_REGULER</span>',
+                    'REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">REGULER</span>',
+                    'HVC REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">REGULER</span>',
                 }
                 status_badges_daily = {
                     'ANALYSIS': '<span style="background: rgba(245,158,11,0.18); border: 1px solid #f59e0b; color: #fbbf24; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">ANALYSIS</span>',
@@ -5851,7 +5995,7 @@ if not df.empty:
                     raw_stat = str(row.get(col_map.get('status', 'STATUS'), '-')).upper().strip()
                     stat_badge = status_badges_daily.get(raw_stat, f'<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_stat)}</span>')
                     
-                    c_tier = row.get('cust_tier', 'HVC REGULER')
+                    c_tier = row.get('cust_tier', 'REGULER')
                     cust_badge = cust_badges_daily.get(c_tier, f'<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(c_tier)}</span>')
                     
                     ttr_val = row.get(col_map.get('ttr_val', 'TTR CUSTOMER'), None)
@@ -5860,19 +6004,23 @@ if not df.empty:
                     cname_val = html_lib.escape(str(row.get(col_map.get('cust_name', 'CUSTOMER NAME'), '-')))
                     stype_val = html_lib.escape(str(row.get(col_map.get('service', 'SERVICE TYPE'), '-')))
                     wzone_val = html_lib.escape(str(row.get('wzone_clean', '-')))
+                    owner_val = html_lib.escape(safe_val(row, 'owner_group', str(row.get('owner_group_clean', '-'))))
+                    alpro_val = html_lib.escape(get_alpro_ok(row))
                     summary_val = html_lib.escape(str(row.get(col_map.get('summary', 'SUMMARY'), '-')))
 
                     r_html = f'''<tr style="background-color: {bg_tr}; border-bottom: 1px solid #1e293b; transition: background 0.15s ease;">
-                        <td style="padding: 12px 8px; text-align: center; color: #64748b; font-weight: 600;">{idx+1}</td>
-                        <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8; white-space: nowrap;">{inc_val}</td>
-                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap;">{rep_val}</td>
-                        <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{stat_badge}</td>
-                        <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{cust_badge}</td>
-                        <td style="padding: 12px 10px; text-align: center; white-space: nowrap;">{ttr_badge}</td>
-                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 600; white-space: nowrap;">{cname_val}</td>
-                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap;">{stype_val}</td>
-                        <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #f8fafc; white-space: nowrap;">{wzone_val}</td>
-                        <td style="padding: 12px 18px; min-width: 500px; max-width: 750px; line-height: 1.5; color: #cbd5e1; font-size: 0.80rem; white-space: normal; word-break: break-word; text-align: justify; text-justify: inter-word;">{summary_val}</td>
+                        <td style="padding: 12px 8px; text-align: center; color: #64748b; font-weight: 600; border-right: 1px solid rgba(255,255,255,0.08);">{idx+1}</td>
+                        <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{inc_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{rep_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{stat_badge}</td>
+                        <td style="padding: 12px 12px; text-align: center; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{cust_badge}</td>
+                        <td style="padding: 12px 10px; text-align: center; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{ttr_badge}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 600; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{cname_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{stype_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #f8fafc; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{wzone_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #cbd5e1; font-size: 0.82rem; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{owner_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.83rem; font-weight: 700; color: #38bdf8; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{alpro_val}</td>
+                        <td style="padding: 12px 18px; min-width: 450px; max-width: 750px; line-height: 1.5; color: #cbd5e1; font-size: 0.80rem; white-space: normal; word-break: break-word; text-align: justify; text-justify: inter-word;">{summary_val}</td>
                     </tr>'''
                     t_rows.append(r_html)
 
@@ -5888,10 +6036,12 @@ if not df.empty:
                                 <th style="width: 130px; text-align: center;">STATUS</th>
                                 <th style="width: 155px; text-align: center;">CUSTOMER TYPE</th>
                                 <th style="width: 165px; text-align: center;">TTR CUSTOMER</th>
-                                <th style="width: 200px; text-align: center;">CUSTOMER NAME</th>
+                                <th style="width: 180px; text-align: center;">CUSTOMER NAME</th>
                                 <th style="width: 110px; text-align: center;">SERVICE</th>
-                                <th style="width: 100px; text-align: center;">WORKZONE</th>
-                                <th style="min-width: 500px; text-align: center;">SUMMARY TIKET</th>
+                                <th style="width: 90px; text-align: center;">WORKZONE</th>
+                                <th style="width: 170px; text-align: center;">OWNER GROUP</th>
+                                <th style="width: 135px; text-align: center;">ALPRO OK</th>
+                                <th style="min-width: 450px; text-align: center;">SUMMARY TIKET</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -6395,7 +6545,7 @@ if not df.empty:
                         # - HVC DIAMOND : 3 Jam
                         # - HVC PLATINUM: 6 Jam
                         # - HVC GOLD    : 12 Jam
-                        # - HVC REGULER : 24 Jam (dan default lainnya)
+                        # - REGULER : 24 Jam (dan default lainnya)
                         if 'DIAMOND' in c_up:
                             target_sec = 3 * 3600
                         elif 'PLATINUM' in c_up:
