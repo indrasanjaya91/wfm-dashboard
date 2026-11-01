@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 import pandas as pd
 import numpy as np
 import psutil
@@ -419,7 +419,18 @@ ASSURANCE_SHEET_NAME = "GABUNGAN ALL & CLOSE TIKET"
 @st.cache_data(ttl=300)
 def load_assurance_data(sync_time_val):
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    # 1. Coba baca dari Google Sheets jika sharing link pelihat sudah aktif
+    
+    # 1. Prioritaskan baca cache Parquet lokal super cepat (0.01 detik)
+    try:
+        parquet_cache = os.path.join(base_dir, "last_insera_gabungan.parquet")
+        if os.path.exists(parquet_cache) and os.path.getsize(parquet_cache) > 1000:
+            df_pq = pd.read_parquet(parquet_cache)
+            if not df_pq.empty:
+                return df_pq, "LOCAL_CACHE"
+    except Exception:
+        pass
+
+    # 2. Coba baca dari Google Sheets (hanya jika cache parquet belum ada, misal di Streamlit Cloud)
     try:
         import urllib.parse
         encoded_name = urllib.parse.quote(ASSURANCE_SHEET_NAME)
@@ -427,21 +438,11 @@ def load_assurance_data(sync_time_val):
         import urllib.request
         import io
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=4) as resp:
             content = resp.read().decode('utf-8')
             df_sheet = pd.read_csv(io.StringIO(content)) if (content and not content.strip().startswith("<!DOCTYPE")) else pd.DataFrame()
         if not df_sheet.empty and len(df_sheet.columns) > 5:
             return df_sheet, "GOOGLE_SHEETS"
-    except Exception:
-        pass
-        
-    # 2. Coba baca dari cache Parquet super cepat (1 detik)
-    try:
-        parquet_cache = os.path.join(base_dir, "last_insera_gabungan.parquet")
-        if os.path.exists(parquet_cache):
-            df_pq = pd.read_parquet(parquet_cache)
-            if not df_pq.empty:
-                return df_pq, "LOCAL_CACHE"
     except Exception:
         pass
         
@@ -460,7 +461,6 @@ def load_assurance_data(sync_time_val):
         pass
         
     return pd.DataFrame(), None
-
 
 @st.cache_data(ttl=600)
 def load_data(sync_time_val):
@@ -1049,51 +1049,85 @@ if not df.empty:
     # Keep selected_date for backwards compatibility where used
     selected_date = start_date
         
-    st.sidebar.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 20px;">DASHBOARD FULFILLMENT</p>', unsafe_allow_html=True)
-    
-    from streamlit_option_menu import option_menu
     with st.sidebar:
-        if "active_menu" not in st.session_state: st.session_state.active_menu = "PS/RE"
-        if "m1_old" not in st.session_state: st.session_state.m1_old = "PS/RE"
-        if "m2_old" not in st.session_state: st.session_state.m2_old = "DAILY REPORT"
-        
+        from streamlit_option_menu import option_menu
+
+        if "active_menu" not in st.session_state:
+            st.session_state.active_menu = "PS/RE"
+        if "m1_old" not in st.session_state:
+            st.session_state.m1_old = "PS/RE"
+        if "m2_old" not in st.session_state:
+            st.session_state.m2_old = "DAILY REPORT"
+
         opts1 = ["PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER"]
+        icons1 = ["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"]
+
         opts2 = ["DAILY REPORT", "GRAFIK TIKET PERIODE"]
-        
-        style_active = {"background-color": "#3f2b34", "border-left": "4px solid #ef4444", "color": "white", "border-radius": "8px", "border-top-left-radius": "8px", "border-bottom-left-radius": "8px", "font-weight": "bold"}
-        style_inactive = {"background-color": "transparent", "border-left": "4px solid transparent", "color": "#cbd5e1", "font-weight": "normal"}
-        
-        s1 = {
-            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
-            "icon": {"color": "#94a3b8", "font-size": "18px"}, 
-            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px", "font-weight": "normal"},
-            "nav-link-selected": style_active if st.session_state.active_menu in opts1 else style_inactive
+        icons2 = ["file-earmark-text", "graph-up"]
+
+        is_m1_active = st.session_state.active_menu in opts1
+        is_m2_active = st.session_state.active_menu in opts2
+
+        style_active = {
+            "background-color": "#3f2b34",
+            "border-left": "4px solid #ef4444",
+            "color": "white",
+            "border-radius": "8px",
+            "border-top-left-radius": "8px",
+            "border-bottom-left-radius": "8px"
         }
-        
-        s2 = {
-            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
-            "icon": {"color": "#94a3b8", "font-size": "18px"}, 
-            "nav-link": {"font-size": "15px", "text-align": "left", "margin":"2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px", "font-weight": "normal"},
-            "nav-link-selected": style_active if st.session_state.active_menu in opts2 else style_inactive
+        style_inactive = {
+            "background-color": "transparent",
+            "border-left": "4px solid transparent",
+            "color": "#cbd5e1"
         }
 
-        m1 = option_menu(menu_title=None, options=opts1, icons=["trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server"], default_index=opts1.index(st.session_state.m1_old) if st.session_state.m1_old in opts1 else 0, styles=s1, key=f"m1_{1 if st.session_state.active_menu in opts1 else 0}")
-        
-        st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 20px;">DASHBOARD ASSURANCE</p>', unsafe_allow_html=True)
-        
-        m2 = option_menu(menu_title=None, options=opts2, icons=["file-text", "graph-up"], default_index=opts2.index(st.session_state.m2_old) if st.session_state.m2_old in opts2 else 0, styles=s2, key=f"m2_{1 if st.session_state.active_menu in opts2 else 0}")
-        
+        s1 = {
+            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
+            "icon": {"color": "#94a3b8", "font-size": "18px"},
+            "nav-link": {"font-size": "15px", "text-align": "left", "margin": "2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px"},
+            "nav-link-selected": style_active if is_m1_active else style_inactive
+        }
+
+        s2 = {
+            "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
+            "icon": {"color": "#94a3b8", "font-size": "18px"},
+            "nav-link": {"font-size": "15px", "text-align": "left", "margin": "2px 0px", "color": "#cbd5e1", "--hover-color": "#1e293b", "border-radius": "8px"},
+            "nav-link-selected": style_active if is_m2_active else style_inactive
+        }
+
+        st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 15px;">DASHBOARD FULFILLMENT</p>', unsafe_allow_html=True)
+        idx1 = opts1.index(st.session_state.active_menu) if is_m1_active else 0
+        m1 = option_menu(
+            menu_title=None,
+            options=opts1,
+            icons=icons1,
+            default_index=idx1,
+            styles=s1,
+            key="m1_sidebar"
+        )
+
+        st.markdown('<p style="color: #94a3b8; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; margin-top: 25px;">DASHBOARD ASSURANCE</p>', unsafe_allow_html=True)
+        idx2 = opts2.index(st.session_state.active_menu) if is_m2_active else 0
+        m2 = option_menu(
+            menu_title=None,
+            options=opts2,
+            icons=icons2,
+            default_index=idx2,
+            styles=s2,
+            key="m2_sidebar"
+        )
+
+        # Event-driven update: HANYA rerun jika opsi benar-benar diklik/berubah
         if m1 != st.session_state.m1_old:
             st.session_state.active_menu = m1
             st.session_state.m1_old = m1
-
             st.rerun()
         elif m2 != st.session_state.m2_old:
             st.session_state.active_menu = m2
             st.session_state.m2_old = m2
-
             st.rerun()
-            
+
         menu = st.session_state.active_menu
     
     st.sidebar.markdown("---")
@@ -1429,6 +1463,110 @@ if not df.empty:
     manja_df = df[(df[flag_manja_col].notna()) & (~df[flag_manja_col].astype(str).str.upper().isin(['NON MANJA', '-', '', 'NAN'])) & (df['Status_Upper'] == 'STARTWORK')].copy() if flag_manja_col else pd.DataFrame()
     
     # =====================================================================
+
+
+    def compute_ttr_badge(ttr_val, cust_type_val, rep_val=None):
+        import math
+        elapsed_sec = None
+
+        # 1. Coba baca dari kolom TTR jika ada
+        if ttr_val is not None:
+            try:
+                if isinstance(ttr_val, (int, float)):
+                    if not math.isnan(ttr_val):
+                        if 0 < ttr_val < 10:
+                            elapsed_sec = float(ttr_val) * 86400
+                        else:
+                            elapsed_sec = float(ttr_val)
+                else:
+                    s_ttr = str(ttr_val).strip()
+                    if s_ttr and s_ttr.lower() not in ['nan', 'none', '-', '', '<na>', 'nat']:
+                        parts = s_ttr.split(':')
+                        if len(parts) == 3:
+                            elapsed_sec = float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+                        elif len(parts) == 2:
+                            elapsed_sec = float(parts[0]) * 3600 + float(parts[1]) * 60
+                        else:
+                            val = float(parts[0])
+                            if not math.isnan(val):
+                                elapsed_sec = val * 3600
+            except Exception:
+                elapsed_sec = None
+
+        # 2. Fallback hitung otomatis dari selisih REPORTED DATE ke saat ini
+        if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
+            if rep_val:
+                try:
+                    dt_rep = pd.to_datetime(rep_val, errors='coerce')
+                    if pd.notna(dt_rep):
+                        from datetime import datetime as dt_cls
+                        now_dt = dt_cls.now()
+                        diff = (now_dt - dt_rep.to_pydatetime()).total_seconds()
+                        if diff >= 0:
+                            elapsed_sec = diff
+                except Exception:
+                    pass
+
+        if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
+            elapsed_sec = 0.0
+
+        elapsed_sec = float(elapsed_sec)
+        c_up = str(cust_type_val).upper()
+        # Target SLA TTR:
+        # - HVC DIAMOND : 3 Jam
+        # - HVC PLATINUM: 6 Jam
+        # - HVC GOLD    : 12 Jam
+        # - HVC REGULER : 24 Jam
+        if 'DIAMOND' in c_up:
+            target_sec = 3 * 3600
+        elif 'PLATINUM' in c_up:
+            target_sec = 6 * 3600
+        elif 'GOLD' in c_up:
+            target_sec = 12 * 3600
+        else:
+            target_sec = 24 * 3600
+
+        remain_sec = target_sec - elapsed_sec
+        remain_pct = (remain_sec / target_sec) * 100
+
+        h = int(elapsed_sec // 3600)
+        m = int((elapsed_sec % 3600) // 60)
+        s = int(elapsed_sec % 60)
+        time_str = f"{h:02d}:{m:02d}:{s:02d}"
+
+        if remain_pct >= 71.0:
+            # Hijau (100% sampai 71%)
+            bg = "rgba(16, 185, 129, 0.18)"
+            bd = "#10b981"
+            cl = "#34d399"
+            ic = "\U0001F7E2"
+            lbl = f"({int(round(remain_pct))}%)"
+        elif remain_pct >= 41.0:
+            # Kuning (70% sampai 41%)
+            bg = "rgba(234, 179, 8, 0.18)"
+            bd = "#eab308"
+            cl = "#facc15"
+            ic = "\U0001F7E1"
+            lbl = f"({int(round(remain_pct))}%)"
+        else:
+            # Merah (40% sampai 0% atau minus / OSLA)
+            bg = "rgba(239, 68, 68, 0.18)"
+            bd = "#ef4444"
+            cl = "#f87171"
+            ic = "\U0001F534" if remain_pct >= 0 else "\u26A0\uFE0F"
+            lbl = f"({int(round(max(0, remain_pct)))}%)" if remain_pct >= 0 else "(OSLA)"
+
+        target_hours = int(target_sec // 3600)
+        return (
+            f'<span style="background: {bg}; border: 1px solid {bd}; color: {cl}; '
+            f'font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; '
+            f'display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;" '
+            f'title="TTR Berjalan: {time_str} | Sisa Waktu SLA: {lbl} (Target: {target_hours} Jam)">'
+            f'{ic} <span style="font-family: monospace; font-size: 0.82rem;">{time_str}</span> '
+            f'<span style="font-size: 0.69rem; opacity: 0.9;">{lbl}</span>'
+            f'</span>'
+        )
+
     # HALAMAN 1: DASHBOARD UTAMA
     # =====================================================================
     if menu == "PS/RE":
@@ -1716,7 +1854,7 @@ if not df.empty:
                     const modals = parentDoc.querySelectorAll('.detail-modal');
                     modals.forEach(m => m.style.display = 'none');
                     
-                    const targetId = 'modal-' + cat.replace(/ /g, '_') + '-' + prod.replace(/ /g, '_');
+                    const targetId = this.getAttribute('data-target') || ('modal-' + (cat||'').replace(/ /g, '_') + '-' + (prod||'').replace(/ /g, '_'));
                     const target = parentDoc.getElementById(targetId);
                     if(target) {
                         target.style.display = 'flex';
@@ -4923,11 +5061,848 @@ if not df.empty:
         else:
           st.info("Belum ada histori penarikan data (file log belum terbentuk). Lakukan penarikan data minimal 1 kali.")
 
-
     elif menu == "DAILY REPORT":
-        st.markdown('<div class="section-title-wrap"><div class="section-title">📄 DAILY REPORT ASSURANCE</div></div>', unsafe_allow_html=True)
-        st.info("Halaman Daily Report sedang dalam tahap pengembangan.")
+        st.markdown("""
+        <style>
+        .asr-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+        @media (max-width: 1280px) {
+            .asr-grid-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .asr-grid-3 { grid-template-columns: 1fr; }
+        }
+        .asr-card {
+            background-color: #0f172a;
+            border-radius: 10px;
+            padding: 16px 18px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            border: 2.5px solid #334155;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .asr-card-blue   { border-top: 4px solid #3b82f6; }
+        .asr-card-sky    { border-top: 4px solid #0ea5e9; }
+        .asr-card-teal   { border-top: 4px solid #14b8a6; }
+        .asr-card-green  { border-top: 4px solid #10b981; }
+        .asr-card-amber  { border-top: 4px solid #f59e0b; }
+        .asr-card-purple { border-top: 4px solid #8b5cf6; }
 
+        .asr-card-hdr {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .asr-card-hdr-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .asr-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+        }
+        .asr-card-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        }
+        .asr-card-val {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1;
+            text-align: right;
+            font-family: monospace;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        }
+        .asr-card-tbl-hdr {
+            display: grid;
+            padding: 4px 0 6px 0;
+            border-bottom: 2px solid #334155;
+            font-size: 0.74rem;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .asr-card-tbl-row {
+            display: grid;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.85rem;
+        }
+        .asr-card-tbl-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Modal & Link Trigger Styling */
+        .asr-modal-trigger {
+            transition: all 0.15s ease;
+        }
+        .asr-modal-trigger:hover {
+            filter: brightness(1.35) drop-shadow(0 0 5px rgba(56, 189, 248, 0.7));
+            text-decoration: underline;
+        }
+        .asr-card-val a {
+            color: #ffffff;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .asr-card-val a:hover {
+            color: #38bdf8 !important;
+            text-shadow: 0 0 12px rgba(56, 189, 248, 0.9);
+        }
+        .asr-modal-box {
+            animation: asrModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes asrModalFadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-close:hover {
+            color: #f87171 !important;
+            transform: scale(1.15);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div class="section-title-wrap"><div class="section-title">\U0001F4CA DAILY REPORT ASSURANCE</div></div>', unsafe_allow_html=True)
+        
+        df_asr, asr_source = load_assurance_data(insera_time)
+        
+        if df_asr.empty:
+            st.warning("\u26A0\uFE0F **Data tiket Assurance belum berhasil dimuat.**")
+            st.info("\U0001F4A1 Pastikan Anda telah melakukan penarikan data minimal 1 kali melalui tombol **'\U0001F680 Tarik INSERA ASR'** di sidebar.")
+        else:
+            import math
+            import html as html_lib
+
+            # 1. Deteksi Kolom Otomatis
+            col_map = {}
+            for c in df_asr.columns:
+                cu = str(c).strip().upper()
+                if cu in ['REPORTED DATE', 'REPORTED_DATE', 'TANGGAL TIKET', 'TANGGAL']:
+                    col_map['reported_date'] = c
+                elif cu in ['STATUS DATE', 'STATUS_DATE', 'DATE MODIFIED', 'DATEMODIFIED', 'RESOLVE DATE', 'RESOLVED DATE']:
+                    col_map['status_date'] = c
+                elif cu in ['STATUS', 'STATUS TIKET', 'TICKET STATUS', 'TICKET_STATUS']:
+                    col_map['status'] = c
+                elif cu in ['CUSTOMER TYPE', 'CUSTOMER_TYPE', 'TIPE CUSTOMER', 'TIPE PELANGGAN']:
+                    col_map['cust_type'] = c
+                elif cu in ['WORKZONE', 'WORK_ZONE', 'STO', 'ZONE']:
+                    col_map['workzone'] = c
+                elif cu in ['BOOKING DATE', 'BOOKING_DATE', 'TANGGAL BOOKING', 'TGL BOOKING']:
+                    col_map['booking_date'] = c
+                elif cu in ['SUMMARY', 'SUMMARY TIKET', 'DESCRIPTION']:
+                    col_map['summary'] = c
+                elif cu in ['OWNER GROUP', 'OWNER_GROUP', 'C_OWNER_GROUP']:
+                    col_map['owner_group'] = c
+                elif cu in ['TTR CUSTOMER', 'TTR_CUSTOMER', 'TTR BERJALAN', 'TTR']:
+                    col_map['ttr_val'] = c
+                elif cu in ['INCIDENT', 'ID TICKET', 'TICKET ID', 'NO TIKET']:
+                    col_map['incident'] = c
+                elif cu in ['CUSTOMER NAME', 'CUSTOMER_NAME', 'NAMA PELANGGAN']:
+                    col_map['cust_name'] = c
+                elif cu in ['SERVICE TYPE', 'SERVICE_TYPE', 'SERVICE']:
+                    col_map['service'] = c
+
+            # Parsed Reported Date
+            if 'reported_date' in col_map:
+                df_asr['dt_rep'] = pd.to_datetime(df_asr[col_map['reported_date']], errors='coerce')
+                df_asr['date_rep'] = df_asr['dt_rep'].dt.date
+            else:
+                df_asr['dt_rep'] = pd.NaT
+                df_asr['date_rep'] = None
+
+            # Parsed Status/Close Date
+            if 'status_date' in col_map:
+                df_asr['dt_status'] = pd.to_datetime(df_asr[col_map['status_date']], errors='coerce')
+                df_asr['date_status'] = df_asr['dt_status'].dt.date
+            else:
+                df_asr['dt_status'] = df_asr['dt_rep']
+                df_asr['date_status'] = df_asr['date_rep']
+
+            # Normalisasi Status Open vs Close
+            if 'status' in col_map:
+                stat_series = df_asr[col_map['status']].astype(str).str.upper().str.strip()
+                is_closed = stat_series.str.contains('CLOSE|RESOLV|CANCEL', na=False)
+                df_asr['is_closed'] = is_closed
+                df_asr['is_open'] = ~is_closed
+            else:
+                df_asr['is_closed'] = False
+                df_asr['is_open'] = True
+
+            # Normalisasi Customer Tier
+            def parse_cust_tier(val):
+                s = str(val).upper().strip()
+                if 'DIAMOND' in s:
+                    return 'HVC DIAMOND'
+                elif 'PLATINUM' in s:
+                    return 'HVC PLATINUM'
+                elif 'GOLD' in s:
+                    return 'HVC GOLD'
+                else:
+                    return 'HVC REGULER'
+
+            if 'cust_type' in col_map:
+                df_asr['cust_tier'] = df_asr[col_map['cust_type']].apply(parse_cust_tier)
+            else:
+                df_asr['cust_tier'] = 'HVC REGULER'
+
+            # Normalisasi Workzone (ULI vs GMB)
+            def parse_workzone(val):
+                s = str(val).upper().strip()
+                if 'GMB' in s:
+                    return 'GMB'
+                return 'ULI'
+
+            if 'workzone' in col_map:
+                df_asr['wzone_clean'] = df_asr[col_map['workzone']].apply(parse_workzone)
+            else:
+                df_asr['wzone_clean'] = 'ULI'
+
+            # MANJA Flag
+            has_booking = pd.Series(False, index=df_asr.index)
+            if 'booking_date' in col_map:
+                b_str = df_asr[col_map['booking_date']].astype(str).str.strip().str.lower()
+                has_booking = df_asr[col_map['booking_date']].notna() & (~b_str.isin(['', 'nan', 'none', '-', '<na>', 'nat']))
+            
+            has_kw_manja = pd.Series(False, index=df_asr.index)
+            if 'summary' in col_map:
+                has_kw_manja = df_asr[col_map['summary']].astype(str).str.upper().str.contains('MANJA', na=False)
+
+            df_asr['is_manja'] = has_booking | has_kw_manja
+
+            # TTR SLA OSLA vs NOT OSLA Calculation (Diamond: 3 Jam, Platinum: 6 Jam, Gold: 12 Jam, Reguler: 24 Jam)
+            def calc_osla_status(row):
+                tier = row['cust_tier']
+                if 'DIAMOND' in tier:
+                    target_sec = 3 * 3600
+                elif 'PLATINUM' in tier:
+                    target_sec = 6 * 3600
+                elif 'GOLD' in tier:
+                    target_sec = 12 * 3600
+                else:
+                    target_sec = 24 * 3600
+
+                elapsed_sec = None
+                if 'ttr_val' in col_map and pd.notna(row[col_map['ttr_val']]):
+                    s_ttr = str(row[col_map['ttr_val']]).strip()
+                    if s_ttr.lower() not in ['nan', 'none', '-', '', '<na>', 'nat']:
+                        try:
+                            parts = s_ttr.split(':')
+                            if len(parts) == 3:
+                                elapsed_sec = float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+                            elif len(parts) == 2:
+                                elapsed_sec = float(parts[0]) * 3600 + float(parts[1]) * 60
+                            else:
+                                val = float(parts[0])
+                                if not math.isnan(val):
+                                    elapsed_sec = val * 3600
+                        except Exception:
+                            pass
+
+                if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
+                    if pd.notna(row['dt_rep']):
+                        try:
+                            diff = (datetime.now() - row['dt_rep'].to_pydatetime().replace(tzinfo=None)).total_seconds()
+                            if diff >= 0:
+                                elapsed_sec = diff
+                        except Exception:
+                            pass
+
+                if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
+                    elapsed_sec = 0.0
+
+                return 'OSLA' if elapsed_sec > target_sec else 'NOT OSLA'
+
+            df_asr['osla_status'] = df_asr.apply(calc_osla_status, axis=1)
+
+            # Owner Group
+            if 'owner_group' in col_map:
+                df_asr['owner_group_clean'] = df_asr[col_map['owner_group']].astype(str).str.strip()
+                df_asr['owner_group_clean'] = df_asr['owner_group_clean'].replace({'nan': 'UNASSIGNED', 'None': 'UNASSIGNED', '': 'UNASSIGNED', '<NA>': 'UNASSIGNED'})
+            else:
+                df_asr['owner_group_clean'] = 'UNASSIGNED'
+
+            # 2. Pemisahan Data untuk 6 Kartu
+            # Periode terpilih dari sidebar (start_date s/d end_date)
+            if start_date and end_date and df_asr['date_rep'].notna().any():
+                df_masuk_hi = df_asr[(df_asr['date_rep'] >= start_date) & (df_asr['date_rep'] <= end_date)].copy()
+            else:
+                df_masuk_hi = df_asr.copy()
+
+            df_all_open = df_asr[df_asr['is_open']].copy()
+            
+            # MANJA: tiket open yang berstatus MANJA (atau seluruh tiket MANJA periode)
+            df_manja = df_asr[df_asr['is_manja'] & df_asr['is_open']].copy()
+            if df_manja.empty and df_asr['is_manja'].any():
+                df_manja = df_asr[df_asr['is_manja'] & (df_asr['date_rep'] >= start_date) & (df_asr['date_rep'] <= end_date)].copy()
+
+            # Tiket Close HI: tiket closed yang status date / resolve date nya dalam periode
+            if start_date and end_date and df_asr['date_status'].notna().any():
+                df_close_hi = df_asr[df_asr['is_closed'] & (df_asr['date_status'] >= start_date) & (df_asr['date_status'] <= end_date)].copy()
+            else:
+                df_close_hi = df_asr[df_asr['is_closed']].copy()
+
+            df_ttr_open = df_all_open.copy()
+            df_owner_open = df_all_open.copy()
+
+            # 3. Helper Render Tabel Per Kartu & Dynamic Pop-Up Modal
+            tiers_list = [
+                ('HVC DIAMOND', '#22d3ee', '\U0001F48E'),
+                ('HVC PLATINUM', '#c084fc', '\U0001F451'),
+                ('HVC GOLD', '#facc15', '\U0001F3C6'),
+                ('HVC REGULER', '#60a5fa', '\U0001F464')
+            ]
+
+            cust_badges_daily = {
+                'HVC GOLD': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_GOLD</span>',
+                'HVC PLATINUM': '<span style="background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #c084fc; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_PLATINUM</span>',
+                'HVC DIAMOND': '<span style="background: rgba(6,182,212,0.18); border: 1px solid #06b6d4; color: #22d3ee; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_DIAMOND</span>',
+                'HVC REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_REGULER</span>',
+            }
+            status_badges_daily = {
+                'ANALYSIS': '<span style="background: rgba(245,158,11,0.18); border: 1px solid #f59e0b; color: #fbbf24; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">ANALYSIS</span>',
+                'BACKEND': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">BACKEND</span>',
+                'CLOSED': '<span style="background: rgba(16,185,129,0.18); border: 1px solid #10b981; color: #34d399; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">CLOSED</span>',
+                'RESOLVED': '<span style="background: rgba(16,185,129,0.18); border: 1px solid #10b981; color: #34d399; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">RESOLVED</span>',
+                'DRAFT': '<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">DRAFT</span>'
+            }
+
+            def make_slug(s):
+                return re.sub(r'[^a-zA-Z0-9]+', '_', str(s).strip().lower()).strip('_')
+
+            def safe_val(row, col_key, default='-'):
+                c = col_map.get(col_key, col_key)
+                v = row.get(c, default)
+                if pd.isna(v) or v is None or str(v).strip().lower() in ['nan', 'none', '<na>', 'nat', '']:
+                    return default
+                return str(v).strip()
+
+            asr_modals = {}
+
+            def make_asr_link(val, modal_id, modal_title, sub_df, underline=True, color=None, is_header=False):
+                if val and val > 0 and sub_df is not None and len(sub_df) > 0:
+                    asr_modals[modal_id] = (modal_title, sub_df)
+                    u = "underline" if underline else "none"
+                    c = f"color:{color};" if color else ""
+                    return f'<a href="javascript:void(0)" class="modal-trigger asr-modal-trigger" data-target="{modal_id}" style="{c} text-decoration:{u}; cursor:pointer; font-weight:inherit; font-family:inherit;">{val}</a>'
+                if is_header:
+                    return '<span style="color:#ffffff;">0</span>'
+                return '<span style="color:#64748b;">-</span>'
+
+            def render_wzone_rows(df_sub, card_slug, card_title):
+                html_rows = []
+                for tier_name, color, icon in tiers_list:
+                    sub = df_sub[df_sub['cust_tier'] == tier_name]
+                    sub_uli = sub[sub['wzone_clean'] == 'ULI']
+                    sub_gmb = sub[sub['wzone_clean'] == 'GMB']
+                    tot_cnt = len(sub)
+                    tier_slug = make_slug(tier_name)
+                    
+                    uli_str = make_asr_link(len(sub_uli), f"modal-asr-{card_slug}-{tier_slug}-uli", f"{card_title} - {tier_name} (ULI)", sub_uli, underline=True, color="#ffffff")
+                    gmb_str = make_asr_link(len(sub_gmb), f"modal-asr-{card_slug}-{tier_slug}-gmb", f"{card_title} - {tier_name} (GMB)", sub_gmb, underline=True, color="#ffffff")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{tier_slug}-total", f"{card_title} - {tier_name} (TOTAL)", sub, underline=True, color="#38bdf8")
+                    
+                    html_rows.append(
+                        f'<div class="asr-card-tbl-row" style="grid-template-columns: 2fr 1fr 1fr 1fr;">'
+                        f'<span style="color:{color}; font-weight:700; white-space:nowrap;">{icon} {tier_name}</span>'
+                        f'<span style="text-align:center;">{uli_str}</span>'
+                        f'<span style="text-align:center;">{gmb_str}</span>'
+                        f'<span style="text-align:center;">{tot_str}</span>'
+                        f'</div>'
+                    )
+                return "".join(html_rows)
+
+            def render_ttr_rows(df_sub, card_slug="ttr-open", card_title="TTR TIKET OPEN"):
+                html_rows = []
+                for tier_name, color, icon in tiers_list:
+                    sub = df_sub[df_sub['cust_tier'] == tier_name]
+                    sub_not = sub[sub['osla_status'] == 'NOT OSLA']
+                    sub_osla = sub[sub['osla_status'] == 'OSLA']
+                    tot_cnt = len(sub)
+                    tier_slug = make_slug(tier_name)
+                    
+                    not_str = make_asr_link(len(sub_not), f"modal-asr-{card_slug}-{tier_slug}-not-osla", f"{card_title} - {tier_name} (NOT OSLA)", sub_not, underline=True, color="#34d399")
+                    osla_str = make_asr_link(len(sub_osla), f"modal-asr-{card_slug}-{tier_slug}-osla", f"{card_title} - {tier_name} (OSLA)", sub_osla, underline=True, color="#f87171")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{tier_slug}-total", f"{card_title} - {tier_name} (TOTAL)", sub, underline=True, color="#38bdf8")
+                    
+                    html_rows.append(
+                        f'<div class="asr-card-tbl-row" style="grid-template-columns: 1.8fr 1.1fr 1.1fr 1.1fr;">'
+                        f'<span style="color:{color}; font-weight:700; white-space:nowrap;">{icon} {tier_name}</span>'
+                        f'<span style="text-align:center;">{not_str}</span>'
+                        f'<span style="text-align:center;">{osla_str}</span>'
+                        f'<span style="text-align:center;">{tot_str}</span>'
+                        f'</div>'
+                    )
+                return "".join(html_rows)
+
+            def render_owner_rows(df_sub, card_slug="owner-open", card_title="OWNER GRUP OPEN"):
+                html_rows = []
+                if df_sub.empty:
+                    for _ in range(4):
+                        html_rows.append(
+                            '<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr; opacity:0.3;">'
+                            '<span style="color:#64748b;">-</span>'
+                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '</div>'
+                        )
+                    return "".join(html_rows)
+
+                grp_counts = df_sub['owner_group_clean'].value_counts()
+                top_grps = list(grp_counts.index[:3])
+                has_others = len(grp_counts) > 3
+
+                for grp in top_grps:
+                    sub = df_sub[df_sub['owner_group_clean'] == grp]
+                    sub_uli = sub[sub['wzone_clean'] == 'ULI']
+                    sub_gmb = sub[sub['wzone_clean'] == 'GMB']
+                    tot_cnt = len(sub)
+                    grp_slug = make_slug(grp)
+                    
+                    uli_str = make_asr_link(len(sub_uli), f"modal-asr-{card_slug}-{grp_slug}-uli", f"{card_title} - {grp} (ULI)", sub_uli, underline=True, color="#ffffff")
+                    gmb_str = make_asr_link(len(sub_gmb), f"modal-asr-{card_slug}-{grp_slug}-gmb", f"{card_title} - {grp} (GMB)", sub_gmb, underline=True, color="#ffffff")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{grp_slug}-total", f"{card_title} - {grp} (TOTAL)", sub, underline=True, color="#38bdf8")
+                    
+                    disp_label = grp if len(grp) <= 18 else grp[:16] + '..'
+                    html_rows.append(
+                        f'<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr;">'
+                        f'<span style="color:#e2e8f0; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{html_lib.escape(grp)}">{html_lib.escape(disp_label)}</span>'
+                        f'<span style="text-align:center;">{uli_str}</span>'
+                        f'<span style="text-align:center;">{gmb_str}</span>'
+                        f'<span style="text-align:center;">{tot_str}</span>'
+                        f'</div>'
+                    )
+
+                if has_others:
+                    other_grps = list(grp_counts.index[3:])
+                    sub_oth = df_sub[df_sub['owner_group_clean'].isin(other_grps)]
+                    sub_oth_uli = sub_oth[sub_oth['wzone_clean'] == 'ULI']
+                    sub_oth_gmb = sub_oth[sub_oth['wzone_clean'] == 'GMB']
+                    tot_oth = len(sub_oth)
+                    
+                    uli_str = make_asr_link(len(sub_oth_uli), f"modal-asr-{card_slug}-lainnya-uli", f"{card_title} - LAINNYA (ULI)", sub_oth_uli, underline=True, color="#ffffff")
+                    gmb_str = make_asr_link(len(sub_oth_gmb), f"modal-asr-{card_slug}-lainnya-gmb", f"{card_title} - LAINNYA (GMB)", sub_oth_gmb, underline=True, color="#ffffff")
+                    tot_str = make_asr_link(tot_oth, f"modal-asr-{card_slug}-lainnya-total", f"{card_title} - LAINNYA (TOTAL)", sub_oth, underline=True, color="#38bdf8")
+                    oth_title = html_lib.escape(", ".join(other_grps))
+                    
+                    html_rows.append(
+                        f'<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr;">'
+                        f'<span style="color:#94a3b8; font-weight:700; font-style:italic;" title="Grup Lainnya: {oth_title}">LAINNYA ({len(other_grps)})</span>'
+                        f'<span style="text-align:center;">{uli_str}</span>'
+                        f'<span style="text-align:center;">{gmb_str}</span>'
+                        f'<span style="text-align:center;">{tot_str}</span>'
+                        f'</div>'
+                    )
+                elif len(top_grps) < 4:
+                    for _ in range(4 - len(top_grps)):
+                        html_rows.append(
+                            '<div class="asr-card-tbl-row" style="grid-template-columns: 2.1fr 1fr 1fr 1fr; opacity:0.3;">'
+                            '<span style="color:#64748b;">-</span>'
+                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '<span style="text-align:center; color:#64748b;">-</span>'
+                            '</div>'
+                        )
+                return "".join(html_rows)
+
+            def build_asr_modal_html(modal_id, modal_title, sub_df):
+                if 'dt_rep' in sub_df.columns:
+                    sub_df = sub_df.sort_values(by='dt_rep', ascending=False)
+                
+                rows_html = []
+                limit_modal = 300
+                disp_df = sub_df.head(limit_modal)
+                for idx, row in enumerate(disp_df.to_dict('records'), 1):
+                    bg_tr = "#0f172a" if idx % 2 == 1 else "rgba(30,41,59,0.55)"
+                    inc_val = html_lib.escape(safe_val(row, 'incident'))
+                    rep_val = html_lib.escape(safe_val(row, 'reported_date'))
+                    
+                    raw_stat = safe_val(row, 'status').upper()
+                    stat_badge = status_badges_daily.get(raw_stat, f'<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_stat)}</span>')
+                    
+                    c_tier = row.get('cust_tier', 'HVC REGULER')
+                    cust_badge = cust_badges_daily.get(c_tier, f'<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(c_tier)}</span>')
+                    
+                    ttr_val = row.get(col_map.get('ttr_val', 'TTR CUSTOMER'), None)
+                    ttr_badge = compute_ttr_badge(ttr_val, c_tier, safe_val(row, 'reported_date'))
+                    
+                    cname_val = html_lib.escape(safe_val(row, 'cust_name'))
+                    stype_val = html_lib.escape(safe_val(row, 'service'))
+                    wzone_val = html_lib.escape(str(row.get('wzone_clean', '-')))
+                    
+                    owner_val = html_lib.escape(safe_val(row, 'owner_group', str(row.get('owner_group_clean', '-'))))
+                    summary_val = html_lib.escape(safe_val(row, 'summary'))
+                    
+                    r = (
+                        f'<tr style="background-color:{bg_tr}; border-bottom:1px solid rgba(255,255,255,0.06);">'
+                        f'<td style="padding:10px 8px; text-align:center; color:#94a3b8; font-weight:600; border-right:1px solid rgba(255,255,255,0.08);">{idx}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; font-family:monospace; font-size:0.85rem; font-weight:700; color:#38bdf8; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{inc_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; color:#ffffff; font-weight:600; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{rep_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{stat_badge}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{cust_badge}</td>'
+                        f'<td style="padding:10px 8px; text-align:center; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{ttr_badge}</td>'
+                        f'<td style="padding:10px 10px; color:#ffffff; font-weight:600; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{cname_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; color:#ffffff; font-weight:600; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{stype_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; font-weight:700; color:#f8fafc; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{wzone_val}</td>'
+                        f'<td style="padding:10px 10px; color:#cbd5e1; font-size:0.82rem; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{owner_val}</td>'
+                        f'<td style="padding:10px 14px; min-width:320px; max-width:550px; line-height:1.4; color:#cbd5e1; font-size:0.80rem; white-space:normal; word-break:break-word;">{summary_val}</td>'
+                        f'</tr>'
+                    )
+                    rows_html.append(r)
+                
+                table_body = "".join(rows_html)
+                
+                modal_html = (
+                    f'<div id="{modal_id}" class="detail-modal asr-modal-box" style="display:none; position:fixed; top:8%; left:4%; right:4%; bottom:8%; background:#0f172a; z-index:999999; border:2.5px solid #eab308; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); flex-direction:column; overflow:hidden;">'
+                    f'<div style="padding:14px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #334155;">'
+                    f'<div style="display:flex; align-items:center; gap:10px;">'
+                    f'<h3 style="margin:0; color:#ffffff; font-size:1.15rem; font-weight:700; letter-spacing:0.5px;">Detail Data: {modal_title}</h3>'
+                    f'<span style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:700;">{len(sub_df):,} Tiket</span>'
+                    f'</div>'
+                    f'<button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 8px;" title="Tutup Modal">&times;</button>'
+                    f'</div>'
+                    f'<div style="padding:0; overflow-y:auto; overflow-x:auto; flex:1; background:#0b1120;">'
+                    f'<table style="width:100%; border-collapse:collapse; font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif; text-align:left; font-size:0.82rem; min-width:1400px;">'
+                    f'<thead>'
+                    f'<tr style="background:#0f172a; border-bottom:2px solid #3b82f6;">'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 8px; width:45px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">NO</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">INCIDENT</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:155px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">REPORTED DATE</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:120px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">STATUS</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER TYPE</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 8px; width:150px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">TTR CUSTOMER</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:180px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER NAME</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:100px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SERVICE</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:85px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">WORKZONE</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.12); padding:12px 10px; width:170px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">OWNER GROUP</th>'
+                    f'<th style="position:sticky; top:0; z-index:10; background:#0f172a; border-bottom:2px solid #3b82f6; padding:12px 16px; min-width:320px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SUMMARY TIKET</th>'
+                    f'</tr>'
+                    f'</thead>'
+                    f'<tbody>'
+                    f'{table_body}'
+                    f'</tbody>'
+                    f'</table>'
+                    f'</div>'
+                    f'</div>'
+                )
+                return modal_html
+
+            # 4. Render 6 KPI Grid Cards (zero leading line spaces to prevent Markdown code block interpretation)
+            cards_html = f'''<div class="asr-grid-3">
+<div class="asr-card asr-card-blue">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(59,130,246,0.2); color:#3b82f6;">\U0001F4E5</div>
+<div class="asr-card-title">TIKET MASUK HI</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_masuk_hi), "modal-asr-masuk-hi-total", "TIKET MASUK HI - SEMUA TIKET", df_masuk_hi, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_wzone_rows(df_masuk_hi, "masuk-hi", "TIKET MASUK HI")}</div>
+</div>
+
+<div class="asr-card asr-card-sky">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(14,165,233,0.2); color:#0ea5e9;">\U0001F4C2</div>
+<div class="asr-card-title">ALL TIKET OPEN</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_all_open), "modal-asr-all-open-total", "ALL TIKET OPEN - SEMUA TIKET", df_all_open, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_wzone_rows(df_all_open, "all-open", "ALL TIKET OPEN")}</div>
+</div>
+
+<div class="asr-card asr-card-teal">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(20,184,166,0.2); color:#14b8a6;">\U0001F91D</div>
+<div class="asr-card-title">MANJA</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_manja), "modal-asr-manja-total", "MANJA - SEMUA TIKET", df_manja, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_wzone_rows(df_manja, "manja", "MANJA")}</div>
+</div>
+
+<div class="asr-card asr-card-green">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(16,185,129,0.2); color:#10b981;">\u2705</div>
+<div class="asr-card-title">TIKET CLOSE HI</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_close_hi), "modal-asr-close-hi-total", "TIKET CLOSE HI - SEMUA TIKET", df_close_hi, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_wzone_rows(df_close_hi, "close-hi", "TIKET CLOSE HI")}</div>
+</div>
+
+<div class="asr-card asr-card-amber">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(245,158,11,0.2); color:#f59e0b;">\u23F1\uFE0F</div>
+<div class="asr-card-title">TTR TIKET OPEN</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_ttr_open), "modal-asr-ttr-total", "TTR TIKET OPEN - SEMUA TIKET", df_ttr_open, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 1.8fr 1.1fr 1.1fr 1.1fr;">
+<span></span><span style="text-align:center; color:#34d399;">NOT OSLA</span><span style="text-align:center; color:#f87171;">OSLA</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_ttr_rows(df_ttr_open, "ttr", "TTR TIKET OPEN")}</div>
+</div>
+
+<div class="asr-card asr-card-purple">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(139,92,246,0.2); color:#8b5cf6;">\U0001F465</div>
+<div class="asr-card-title">OWNER GRUP OPEN</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_owner_open), "modal-asr-owner-total", "OWNER GRUP OPEN - SEMUA TIKET", df_owner_open, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2.1fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_owner_rows(df_owner_open, "owner", "OWNER GRUP OPEN")}</div>
+</div>
+</div>'''
+            st.markdown(cards_html, unsafe_allow_html=True)
+
+            # Render All Modals for Clicked Numbers
+            if asr_modals:
+                modals_html_list = [
+                    '<div id="asr-modal-backdrop" class="modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); backdrop-filter:blur(3px); z-index:999998;"></div>'
+                ]
+                for m_id, (m_title, m_df) in asr_modals.items():
+                    modals_html_list.append(build_asr_modal_html(m_id, m_title, m_df))
+                
+                all_asr_modals_html = "".join(modals_html_list).replace('\n', '')
+                st.markdown(all_asr_modals_html, unsafe_allow_html=True)
+
+            # Client-Side Modal Event Handlers
+            import streamlit.components.v1 as components
+            components.html('''
+            <script>
+            setInterval(function() {
+                const parentDoc = window.parent.document;
+                if (!parentDoc) return;
+                
+                // Backdrop element listener
+                const backdrop = parentDoc.getElementById('asr-modal-backdrop');
+                if (backdrop && !backdrop.dataset.listener) {
+                    backdrop.dataset.listener = 'true';
+                    backdrop.addEventListener('click', function() {
+                        const modals = parentDoc.querySelectorAll('.detail-modal');
+                        modals.forEach(m => m.style.display = 'none');
+                        this.style.display = 'none';
+                    });
+                }
+
+                // Open modal triggers
+                const triggers = parentDoc.querySelectorAll('.modal-trigger');
+                triggers.forEach(t => {
+                    if(t.dataset.listener) return;
+                    t.dataset.listener = 'true';
+                    t.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const targetId = this.getAttribute('data-target') || ('modal-' + (this.getAttribute('data-cat')||'').replace(/ /g, '_') + '-' + (this.getAttribute('data-prod')||'').replace(/ /g, '_'));
+                        
+                        const modals = parentDoc.querySelectorAll('.detail-modal');
+                        modals.forEach(m => m.style.display = 'none');
+                        
+                        const target = parentDoc.getElementById(targetId);
+                        if(target) {
+                            target.style.display = 'flex';
+                            if(backdrop) backdrop.style.display = 'block';
+                        }
+                    });
+                });
+                
+                // Close modal buttons
+                const closers = parentDoc.querySelectorAll('.modal-close');
+                closers.forEach(c => {
+                    if(c.dataset.listener) return;
+                    c.dataset.listener = 'true';
+                    c.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const modal = this.closest('.detail-modal');
+                        if(modal) {
+                            modal.style.display = 'none';
+                        }
+                        if(backdrop) backdrop.style.display = 'none';
+                    });
+                });
+
+                // ESC key closes modal
+                if (!parentDoc.dataset.asrEscListener) {
+                    parentDoc.dataset.asrEscListener = 'true';
+                    parentDoc.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            const modals = parentDoc.querySelectorAll('.detail-modal');
+                            modals.forEach(m => m.style.display = 'none');
+                            if(backdrop) backdrop.style.display = 'none';
+                        }
+                    });
+                }
+            }, 400);
+            </script>
+            ''', height=0, width=0)
+
+            # 5. Tabel Detail Interaktif di Bawah Kartu
+            st.markdown('<div class="section-title-wrap" style="margin-top: 20px;"><div class="section-title">\U0001F4CB TABEL RINCIAN TIKET DAILY ASSURANCE</div></div>', unsafe_allow_html=True)
+            
+            detail_filter = st.radio(
+                "Filter Kategori Tampilan:",
+                options=["\U0001F4E5 Tiket Masuk HI", "\U0001F4C2 All Tiket Open", "\U0001F91D MANJA", "\u2705 Tiket Close HI", "\u23F1\uFE0F Tiket OSLA (Lewat Batas SLA)", "\U0001F310 Semua Tiket"],
+                horizontal=True,
+                key="radio_asr_daily_cat"
+            )
+
+            if "Tiket Masuk HI" in detail_filter:
+                df_view_tbl = df_masuk_hi
+            elif "All Tiket Open" in detail_filter:
+                df_view_tbl = df_all_open
+            elif "MANJA" in detail_filter:
+                df_view_tbl = df_manja
+            elif "Tiket Close HI" in detail_filter:
+                df_view_tbl = df_close_hi
+            elif "Tiket OSLA" in detail_filter:
+                df_view_tbl = df_all_open[df_all_open['osla_status'] == 'OSLA']
+            else:
+                df_view_tbl = df_asr
+
+            c_flt1, c_flt2, c_flt3 = st.columns([1, 1, 2])
+            with c_flt1:
+                opt_cust = ["Semua"] + [t[0] for t in tiers_list]
+                sel_cust = st.selectbox("Filter Tipe Pelanggan:", opt_cust, key="sel_daily_cust")
+            with c_flt2:
+                sel_wz = st.selectbox("Filter Workzone:", ["Semua", "ULI", "GMB"], key="sel_daily_wz")
+            with c_flt3:
+                srch_txt = st.text_input("\U0001F50D Cari Tiket / Pelanggan / Summary:", key="txt_daily_search")
+
+            df_tbl_final = df_view_tbl.copy()
+            if sel_cust != "Semua":
+                df_tbl_final = df_tbl_final[df_tbl_final['cust_tier'] == sel_cust]
+            if sel_wz != "Semua":
+                df_tbl_final = df_tbl_final[df_tbl_final['wzone_clean'] == sel_wz]
+            if srch_txt:
+                s_lower = srch_txt.lower()
+                m1 = df_tbl_final[col_map.get('incident', 'INCIDENT')].astype(str).str.lower().str.contains(s_lower, na=False) if 'incident' in col_map else False
+                m2 = df_tbl_final[col_map.get('cust_name', 'CUSTOMER NAME')].astype(str).str.lower().str.contains(s_lower, na=False) if 'cust_name' in col_map else False
+                m3 = df_tbl_final[col_map.get('summary', 'SUMMARY')].astype(str).str.lower().str.contains(s_lower, na=False) if 'summary' in col_map else False
+                df_tbl_final = df_tbl_final[m1 | m2 | m3]
+
+            st.caption(f"Menampilkan **{len(df_tbl_final):,}** tiket dari kategori **{detail_filter}**.")
+
+            if df_tbl_final.empty:
+                st.info("Tidak ada tiket yang cocok dengan filter yang dipilih.")
+            else:
+                cust_badges_daily = {
+                    'HVC GOLD': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_GOLD</span>',
+                    'HVC PLATINUM': '<span style="background: rgba(168,85,247,0.18); border: 1px solid #a855f7; color: #c084fc; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_PLATINUM</span>',
+                    'HVC DIAMOND': '<span style="background: rgba(6,182,212,0.18); border: 1px solid #06b6d4; color: #22d3ee; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_DIAMOND</span>',
+                    'HVC REGULER': '<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">HVC_REGULER</span>',
+                }
+                status_badges_daily = {
+                    'ANALYSIS': '<span style="background: rgba(245,158,11,0.18); border: 1px solid #f59e0b; color: #fbbf24; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">ANALYSIS</span>',
+                    'BACKEND': '<span style="background: rgba(234,179,8,0.18); border: 1px solid #eab308; color: #facc15; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">BACKEND</span>',
+                    'CLOSED': '<span style="background: rgba(16,185,129,0.18); border: 1px solid #10b981; color: #34d399; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">CLOSED</span>',
+                    'RESOLVED': '<span style="background: rgba(16,185,129,0.18); border: 1px solid #10b981; color: #34d399; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">RESOLVED</span>',
+                    'DRAFT': '<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">DRAFT</span>'
+                }
+
+                limit_view = 200
+                df_disp = df_tbl_final.head(limit_view)
+                t_rows = []
+                for idx, row in enumerate(df_disp.to_dict('records')):
+                    bg_tr = "#0f172a" if idx % 2 == 0 else "#0b1120"
+                    inc_val = html_lib.escape(str(row.get(col_map.get('incident', 'INCIDENT'), '-')))
+                    rep_val = html_lib.escape(str(row.get(col_map.get('reported_date', 'REPORTED DATE'), '-')))
+                    
+                    raw_stat = str(row.get(col_map.get('status', 'STATUS'), '-')).upper().strip()
+                    stat_badge = status_badges_daily.get(raw_stat, f'<span style="background: rgba(148,163,184,0.18); border: 1px solid #64748b; color: #cbd5e1; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(raw_stat)}</span>')
+                    
+                    c_tier = row.get('cust_tier', 'HVC REGULER')
+                    cust_badge = cust_badges_daily.get(c_tier, f'<span style="background: rgba(59,130,246,0.18); border: 1px solid #3b82f6; color: #60a5fa; font-size: 0.73rem; padding: 3px 8px; border-radius: 12px; font-weight: 700; display:inline-block;">{html_lib.escape(c_tier)}</span>')
+                    
+                    ttr_val = row.get(col_map.get('ttr_val', 'TTR CUSTOMER'), None)
+                    ttr_badge = compute_ttr_badge(ttr_val, c_tier, row.get(col_map.get('reported_date', 'REPORTED DATE')))
+
+                    cname_val = html_lib.escape(str(row.get(col_map.get('cust_name', 'CUSTOMER NAME'), '-')))
+                    stype_val = html_lib.escape(str(row.get(col_map.get('service', 'SERVICE TYPE'), '-')))
+                    wzone_val = html_lib.escape(str(row.get('wzone_clean', '-')))
+                    summary_val = html_lib.escape(str(row.get(col_map.get('summary', 'SUMMARY'), '-')))
+
+                    r_html = f'''<tr style="background-color: {bg_tr}; border-bottom: 1px solid #1e293b; transition: background 0.15s ease;">
+                        <td style="padding: 12px 8px; text-align: center; color: #64748b; font-weight: 600;">{idx+1}</td>
+                        <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8; white-space: nowrap;">{inc_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap;">{rep_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{stat_badge}</td>
+                        <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{cust_badge}</td>
+                        <td style="padding: 12px 10px; text-align: center; white-space: nowrap;">{ttr_badge}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 600; white-space: nowrap;">{cname_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap;">{stype_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #f8fafc; white-space: nowrap;">{wzone_val}</td>
+                        <td style="padding: 12px 18px; min-width: 500px; max-width: 750px; line-height: 1.5; color: #cbd5e1; font-size: 0.80rem; white-space: normal; word-break: break-word; text-align: justify; text-justify: inter-word;">{summary_val}</td>
+                    </tr>'''
+                    t_rows.append(r_html)
+
+                t_body = "".join(t_rows)
+                tbl_html = f'''
+                <div class="asr-scroll-container">
+                    <table class="asr-table-custom">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px; text-align: center;">NO</th>
+                                <th style="width: 145px; text-align: center;">INCIDENT</th>
+                                <th style="width: 165px; text-align: center;">REPORTED DATE</th>
+                                <th style="width: 130px; text-align: center;">STATUS</th>
+                                <th style="width: 155px; text-align: center;">CUSTOMER TYPE</th>
+                                <th style="width: 165px; text-align: center;">TTR CUSTOMER</th>
+                                <th style="width: 200px; text-align: center;">CUSTOMER NAME</th>
+                                <th style="width: 110px; text-align: center;">SERVICE</th>
+                                <th style="width: 100px; text-align: center;">WORKZONE</th>
+                                <th style="min-width: 500px; text-align: center;">SUMMARY TIKET</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {t_body}
+                        </tbody>
+                    </table>
+                </div>
+                '''
+                st.markdown(tbl_html, unsafe_allow_html=True)
+                if len(df_tbl_final) > limit_view:
+                    st.caption(f"\u26A1 Menampilkan {limit_view:,} dari total {len(df_tbl_final):,} tiket untuk menjaga performa rendering browser.")
     elif menu == "GRAFIK TIKET PERIODE":
         df_asr, asr_source = load_assurance_data(insera_time)
         
@@ -4935,7 +5910,7 @@ if not df.empty:
         
         
         if df_asr.empty:
-            st.warning("⚠️ Data tiket Assurance belum berhasil dimuat.")
+            st.warning("\u26A0\uFE0F **Data tiket Assurance belum berhasil dimuat.**")
             st.info("💡 **Petunjuk untuk Web Public (Streamlit Cloud):**\nPastikan spreadsheet **'SA ULIN - ANTIGRAVITY ASSURANCE'** sudah dibagikan dengan akses **'Siapa saja yang memiliki link: Pelihat'** agar server publik dapat membaca data secara otomatis. Di localhost, data juga dapat ditarik langsung melalui tombol **'🚀 Tarik INSERA ASR'** di sidebar.")
         else:
             # 1. Deteksi Kolom Tanggal Lapor
@@ -5416,7 +6391,20 @@ if not df.empty:
 
                         elapsed_sec = float(elapsed_sec)
                         c_up = str(cust_type_val).upper()
-                        target_sec = 6 * 3600 if 'REGULER' in c_up else 3 * 3600
+                        # Target SLA TTR:
+                        # - HVC DIAMOND : 3 Jam
+                        # - HVC PLATINUM: 6 Jam
+                        # - HVC GOLD    : 12 Jam
+                        # - HVC REGULER : 24 Jam (dan default lainnya)
+                        if 'DIAMOND' in c_up:
+                            target_sec = 3 * 3600
+                        elif 'PLATINUM' in c_up:
+                            target_sec = 6 * 3600
+                        elif 'GOLD' in c_up:
+                            target_sec = 12 * 3600
+                        else:
+                            target_sec = 24 * 3600
+
                         remain_sec = target_sec - elapsed_sec
                         remain_pct = (remain_sec / target_sec) * 100
 
@@ -5433,11 +6421,11 @@ if not df.empty:
                             ic = "\U0001F7E2"
                             lbl = f"({int(round(remain_pct))}%)"
                         elif remain_pct >= 41.0:
-                            # Orange (70% sampai 41%)
-                            bg = "rgba(245, 158, 11, 0.18)"
-                            bd = "#f59e0b"
-                            cl = "#fbbf24"
-                            ic = "\U0001F7E0"
+                            # Kuning (70% sampai 41%)
+                            bg = "rgba(234, 179, 8, 0.18)"
+                            bd = "#eab308"
+                            cl = "#facc15"
+                            ic = "\U0001F7E1"
                             lbl = f"({int(round(remain_pct))}%)"
                         else:
                             # Merah (40% sampai 0% atau minus / OSLA)
@@ -5447,11 +6435,12 @@ if not df.empty:
                             ic = "\U0001F534" if remain_pct >= 0 else "\u26A0\uFE0F"
                             lbl = f"({int(round(max(0, remain_pct)))}%)" if remain_pct >= 0 else "(OSLA)"
 
+                        target_hours = int(target_sec // 3600)
                         return (
                             f'<span style="background: {bg}; border: 1px solid {bd}; color: {cl}; '
                             f'font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; '
                             f'display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;" '
-                            f'title="TTR Berjalan: {time_str} | Sisa Waktu SLA: {lbl}">'
+                            f'title="TTR Berjalan: {time_str} | Sisa Waktu SLA: {lbl} (Target: {target_hours} Jam)">'
                             f'{ic} <span style="font-family: monospace; font-size: 0.82rem;">{time_str}</span> '
                             f'<span style="font-size: 0.69rem; opacity: 0.9;">{lbl}</span>'
                             f'</span>'
@@ -5484,12 +6473,12 @@ if not df.empty:
                         r_html = f'''<tr style="background-color: {bg_tr}; border-bottom: 1px solid #1e293b; transition: background 0.15s ease;">
                             <td style="padding: 12px 8px; text-align: center; color: #64748b; font-weight: 600;">{idx+1}</td>
                             <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #38bdf8; white-space: nowrap;">{inc_val}</td>
-                            <td style="padding: 12px 12px; text-align: center; color: #cbd5e1; white-space: nowrap;">{rep_val}</td>
+                            <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap;">{rep_val}</td>
                             <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{stat_badge}</td>
                             <td style="padding: 12px 12px; text-align: center; white-space: nowrap;">{cust_badge}</td>
                             <td style="padding: 12px 10px; text-align: center; white-space: nowrap;">{ttr_badge}</td>
                             <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 600; white-space: nowrap;">{cname_val}</td>
-                            <td style="padding: 12px 12px; text-align: center; color: #94a3b8; white-space: nowrap;">{stype_val}</td>
+                            <td style="padding: 12px 12px; text-align: center; color: #ffffff; font-weight: 700; white-space: nowrap;">{stype_val}</td>
                             <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #f8fafc; white-space: nowrap;">{wzone_val}</td>
                             <td style="padding: 12px 18px; min-width: 500px; max-width: 750px; line-height: 1.5; color: #cbd5e1; font-size: 0.80rem; white-space: normal; word-break: break-word; text-align: justify; text-justify: inter-word;">{summary_val}</td>
                         </tr>'''
