@@ -442,6 +442,22 @@ def load_assurance_data(sync_time_val):
             content = resp.read().decode('utf-8')
             df_sheet = pd.read_csv(io.StringIO(content)) if (content and not content.strip().startswith("<!DOCTYPE")) else pd.DataFrame()
         if not df_sheet.empty and len(df_sheet.columns) > 5:
+            cloud_insera_sync = None
+            for inc_col in ['INCIDENT', 'incident', 'ID TICKET', 'TICKET ID', 'NO TIKET']:
+                if inc_col in df_sheet.columns:
+                    meta = df_sheet[df_sheet[inc_col] == 'METADATA_SYNC']
+                    if not meta.empty:
+                        for sum_col in ['SUMMARY', 'summary', 'DESCRIPTION']:
+                            if sum_col in meta.columns:
+                                cloud_insera_sync = str(meta.iloc[0][sum_col])
+                                break
+                    df_sheet = df_sheet[df_sheet[inc_col] != 'METADATA_SYNC']
+                    break
+            if cloud_insera_sync:
+                try:
+                    st.session_state['cloud_insera_sync'] = cloud_insera_sync
+                except Exception:
+                    pass
             return df_sheet, "GOOGLE_SHEETS"
     except Exception:
         pass
@@ -460,6 +476,52 @@ def load_assurance_data(sync_time_val):
     except Exception:
         pass
         
+    return pd.DataFrame(), None
+
+@st.cache_data(ttl=120)
+def load_proactive_data(sync_time_val):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 1. Coba baca dari Google Sheets tab 'PROACTIVE TICKET' (membawa kolom rumus ARRAYFORMULA)
+    try:
+        import urllib.parse, urllib.request, io
+        encoded_name = urllib.parse.quote("PROACTIVE TICKET")
+        url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            content = resp.read().decode('utf-8')
+            df_sheet = pd.read_csv(io.StringIO(content)) if (content and not content.strip().startswith("<!DOCTYPE")) else pd.DataFrame()
+        if not df_sheet.empty and len(df_sheet.columns) > 5:
+            try:
+                pq_cache = os.path.join(base_dir, "last_insera_proactive.parquet")
+                df_sheet.astype(str).to_parquet(pq_cache, index=False)
+            except Exception:
+                pass
+            return df_sheet, "GOOGLE_SHEETS"
+    except Exception:
+        pass
+
+    # 2. Prioritaskan baca cache Parquet lokal jika ada
+    try:
+        pq_cache = os.path.join(base_dir, "last_insera_proactive.parquet")
+        if os.path.exists(pq_cache) and os.path.getsize(pq_cache) > 1000:
+            df_pq = pd.read_parquet(pq_cache)
+            if not df_pq.empty:
+                return df_pq, "LOCAL_CACHE"
+    except Exception:
+        pass
+
+    # 3. Fallback: Baca dari file unduhan excel terbaru di folder downloads
+    try:
+        import glob
+        dl_dir = os.path.join(base_dir, "downloads")
+        pro_files = sorted(glob.glob(os.path.join(dl_dir, "insera_proactive_ticket_*.xlsx")), reverse=True)
+        if pro_files:
+            df_excel = pd.read_excel(pro_files[0])
+            return df_excel, "LOCAL_EXCEL"
+    except Exception:
+        pass
+
     return pd.DataFrame(), None
 
 @st.cache_data(ttl=600)
@@ -485,9 +547,19 @@ def load_data(sync_time_val):
                 df = df[df['Workorder'] != 'METADATA_SYNC']
         return df, cloud_sync
     except Exception as e:
+        try:
+            dl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
+            if os.path.exists(dl_dir):
+                wfm_files = [os.path.join(dl_dir, f) for f in os.listdir(dl_dir) if f.startswith("wfm_data_") and f.endswith(".xlsx")]
+                if wfm_files:
+                    latest_wfm = max(wfm_files, key=os.path.getmtime)
+                    df_fb = pd.read_excel(latest_wfm)
+                    if 'Workorder' in df_fb.columns:
+                        return df_fb, None
+        except Exception:
+            pass
         st.error(f"⚠️ Gagal memuat data dari Google Sheet: {e}")
         return pd.DataFrame(), None
-
 
 # Read last_sync.txt to get the actual last pulled time and source
 import os
@@ -558,6 +630,7 @@ insera_time = "Belum Ada Data"
 insera_source = "VIA DASHBOARD"
 insera_all_cnt = 2716
 insera_closed_cnt = 591
+insera_proactive_cnt = 0
 insera_total_cnt = 3307
 
 if os.path.exists(insera_file):
@@ -576,6 +649,7 @@ if os.path.exists(insera_summary_file):
             js = json.load(f)
             insera_all_cnt = js.get("all_count", insera_all_cnt)
             insera_closed_cnt = js.get("closed_count", insera_closed_cnt)
+            insera_proactive_cnt = js.get("proactive_count", 0)
             insera_total_cnt = js.get("total_count", insera_total_cnt)
             if (insera_time == "Belum Ada Data" or not insera_time) and "last_sync" in js:
                 insera_time = js["last_sync"]
@@ -604,6 +678,12 @@ if os.path.exists(parquet_cache_file):
             insera_time = pq_dt.strftime("%d %b %Y | %H:%M:%S")
     except Exception:
         pass
+
+if st.session_state.get('cloud_insera_sync') and not os.path.exists(os.path.join(base_dir, "last_insera_gabungan.parquet")):
+    p = str(st.session_state['cloud_insera_sync']).split(" | VIA ")
+    insera_time = p[0].replace(" WIB", "")
+    if len(p) > 1:
+        insera_source = "VIA " + p[1]
 
 if insera_time == "Belum Ada Data":
     try:
@@ -904,6 +984,14 @@ sync_header_html = f'''
                                 </div>
                                 <span style="color: #10b981; font-weight: bold; font-size: 0.88rem;">{insera_closed_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">data</span></span>
                             </div>
+                            <!-- PROACTIVE TICKET -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">PROACTIVE TICKET</div>
+                                    <div style="color: #94a3b8; font-size: 0.7rem;">Tiket Sumber Proactive</div>
+                                </div>
+                                <span style="color: #a855f7; font-weight: bold; font-size: 0.88rem;">{insera_proactive_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">data</span></span>
+                            </div>
                             <!-- GABUNGAN -->
                             <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -1086,6 +1174,10 @@ if not df.empty:
         if "active_menu" not in st.session_state:
             st.session_state.active_menu = "PS/RE"
 
+        query_menu = st.query_params.get("menu")
+        if query_menu and query_menu in all_opts:
+            st.session_state.active_menu = query_menu
+
         if st.session_state.active_menu not in all_opts:
             st.session_state.active_menu = "PS/RE"
 
@@ -1219,7 +1311,7 @@ if not df.empty:
                         
             # Pilihan Tarik Manual INSERA ASR
             if st.sidebar.button("🚀 Tarik INSERA ASR"):
-                with st.spinner("⏳ Robot menarik data INSERA ASR (ALL & CLOSED)... (Tunggu 1-2 menit)"):
+                with st.spinner("⏳ Robot menarik data INSERA ASR (ALL, CLOSED, & PROACTIVE)... (Tunggu 1-3 menit)"):
                     try:
                         import sys
                         py_exec = sys.executable or "python"
@@ -4518,8 +4610,23 @@ if not df.empty:
             if 'CRM Order Type' in df_ffg.columns:
                 df_ffg = df_ffg[df_ffg['CRM Order Type'].astype(str).str.upper().str.strip() == 'CREATE']
             
+            # Filter Kategori FFG <= 60 hari:
+            # 1. ONLINE tapi UNSPEC (PRIO 1 / PRIO 2)
+            # 2. ðŸ”´ LOS (Loss of Signal)
+            prio_unspec_s = df_ffg['PRIORITAS UNSPEC'].fillna('').astype(str).str.upper().str.strip()
+            onu_status_s = df_ffg['ONU LINK STATUS'].fillna('').astype(str).str.upper().str.strip() if 'ONU LINK STATUS' in df_ffg.columns else pd.Series('', index=df_ffg.index)
+            hasil_ukur_s = df_ffg['HASIL UKUR IBOSSTER'].fillna('').astype(str).str.upper().str.strip() if 'HASIL UKUR IBOSSTER' in df_ffg.columns else pd.Series('', index=df_ffg.index)
+            
+            is_online_unspec = (onu_status_s.isin(['ONLINE', 'UP'])) & prio_unspec_s.str.contains('PRIO 1|PRIO 2', na=False)
+            is_los = (onu_status_s == 'LOS') | (hasil_ukur_s == 'LOS')
+            
+            if 'ONU LINK STATUS' not in df_ffg.columns:
+                cond_ffg = prio_unspec_s.str.contains('PRIO 1|PRIO 2', na=False) | (hasil_ukur_s == 'LOS')
+            else:
+                cond_ffg = is_online_unspec | is_los
+            
             df_ffg = df_ffg[
-                (df_ffg['PRIORITAS UNSPEC'].astype(str).str.upper().str.contains('PRIO 1|PRIO 2', na=False)) &
+                cond_ffg &
                 (df_ffg['Durasi_Num'] <= 60)
             ].copy()
             
@@ -4561,19 +4668,25 @@ if not df.empty:
                     if no_inet.endswith('.0'): no_inet = no_inet[:-2]
                     if no_inet.lower() == 'nan' or not no_inet.strip(): no_inet = '-'
                     
-                    hasil_ukur_raw = str(row.get('HASIL UKUR IBOSSTER', '-')).strip()
-                    if hasil_ukur_raw.lower() == 'nan' or hasil_ukur_raw == '':
-                        hasil_ukur = '-'
-                    elif hasil_ukur_raw == '-':
+                    hasil_raw = str(row.get('HASIL UKUR IBOSSTER', '-')).strip()
+                    onu_raw = str(row.get('ONU LINK STATUS', '-')).strip()
+                    if hasil_raw.lower() == 'nan': hasil_raw = '-'
+                    if onu_raw.lower() == 'nan': onu_raw = '-'
+                    
+                    if onu_raw.upper() == 'LOS' or hasil_raw.upper() == 'LOS':
+                        onu_status = 'LOS'
                         hasil_ukur = 'LOS'
                     else:
-                        hasil_ukur = hasil_ukur_raw
+                        onu_status = 'ONLINE'
+                        hasil_ukur = hasil_raw if hasil_raw not in ['', 'nan'] else '-'
                     
-                    prioritas = str(row.get('PRIORITAS UNSPEC', '-'))
-                    if prioritas.lower() == 'nan': prioritas = '-'
+                    prioritas = str(row.get('PRIORITAS UNSPEC', '-')).strip()
+                    if prioritas.lower() == 'nan' or not prioritas:
+                        prioritas = '-'
                     
-                    durasi = str(row.get('DURASI FFG', '-')).upper()
-                    if durasi.lower() == 'nan': durasi = '-'
+                    durasi = str(row.get('DURASI FFG', '-')).upper().strip()
+                    if durasi.lower() == 'nan' or not durasi:
+                        durasi = '-'
                     
                     ffg_data.append({
                         'NO': idx,
@@ -4583,6 +4696,7 @@ if not df.empty:
                         'WONUM (AO)': wonum_ao_val,
                         'NO INET': no_inet,
                         'HASIL UKUR': hasil_ukur,
+                        'ONU LINK STATUS': onu_status,
                         'PRIORITAS': prioritas,
                         'DURASI FFG': durasi,
                         'Month_Index': month_idx
@@ -4591,8 +4705,15 @@ if not df.empty:
                 df_display = pd.DataFrame(ffg_data)
                 
                 if not df_display.empty:
-                    df_display = df_display.sort_values(by=['Month_Index', 'PRIORITAS'], ascending=[True, True])
-                    df_display = df_display.drop(columns=['Month_Index'])
+                    def get_status_rank(val):
+                        v = str(val).upper()
+                        if 'LOS' in v: return 1
+                        if 'ONLINE' in v: return 2
+                        return 3
+                    
+                    df_display['Status_Rank'] = df_display['ONU LINK STATUS'].apply(get_status_rank)
+                    df_display = df_display.sort_values(by=['Month_Index', 'Status_Rank', 'PRIORITAS'], ascending=[True, True, True])
+                    df_display = df_display.drop(columns=['Month_Index', 'Status_Rank'])
                     df_display['NO'] = range(1, len(df_display) + 1)
                 
                 # 2. Build the HTML Table with Filters
@@ -4645,12 +4766,28 @@ if not df.empty:
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; word-break: break-all;">{row["WONUM (AO)"]}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NO INET"]}</td>'
                     ukur_content = str(row["HASIL UKUR"])
-                    if ukur_content == "LOS":
-                        ukur_content = '<span style="background-color: #7f1d1d; color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444;">LOS</span>'
-                    elif ukur_content != "-":
-                        ukur_content = f'<b><span style="color: #ff3333; font-weight: 900;">{ukur_content}</span></b>'
+                    if ukur_content != "-":
+                        ukur_content = f'<span style="background-color: #b91c1c; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 11px; display: inline-block;">{ukur_content}</span>'
+                    else:
+                        ukur_content = '-'
                     
-                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; font-weight: bold; color: #cbd5e1;">{ukur_content}</td>'
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; text-align: center;">{ukur_content}</td>'
+                    
+                    onu_status_raw = str(row["ONU LINK STATUS"]).strip().upper()
+                    if onu_status_raw in ["ONLINE", "UP"]:
+                        onu_status_content = '<span style="background-color: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #22c55e; font-size: 11px; display: inline-block;">ONLINE</span>'
+                    elif onu_status_raw == "LOS":
+                        onu_status_content = '<span style="background-color: #b91c1c; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 11px; display: inline-block;">LOS</span>'
+                    elif "DYING" in onu_status_raw:
+                        onu_status_content = f'<span style="background-color: #ea580c; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #f97316; font-size: 11px; display: inline-block;">{row["ONU LINK STATUS"]}</span>'
+                    elif onu_status_raw in ["OFFLINE", "DOWN"]:
+                        onu_status_content = '<span style="background-color: #475569; color: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 11px; display: inline-block;">OFFLINE</span>'
+                    elif onu_status_raw != "-":
+                        onu_status_content = f'<span style="background-color: #475569; color: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 11px; display: inline-block;">{row["ONU LINK STATUS"]}</span>'
+                    else:
+                        onu_status_content = '-'
+                    
+                    html_table += f'<td style="padding: 10px; border-right: 1px solid #334155; text-align: center;">{onu_status_content}</td>'
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["PRIORITAS"]}</td>'
                     html_table += f'<td style="padding: 10px;">{row["DURASI FFG"]}</td>'
                     html_table += '</tr>'
@@ -5122,12 +5259,15 @@ if not df.empty:
             flex-direction: column;
             justify-content: space-between;
         }
-        .asr-card-blue   { border-top: 4px solid #3b82f6; }
-        .asr-card-sky    { border-top: 4px solid #0ea5e9; }
-        .asr-card-teal   { border-top: 4px solid #14b8a6; }
-        .asr-card-green  { border-top: 4px solid #10b981; }
-        .asr-card-amber  { border-top: 4px solid #f59e0b; }
-        .asr-card-purple { border-top: 4px solid #8b5cf6; }
+        .asr-card-blue    { border-top: 4px solid #3b82f6; }
+        .asr-card-sky     { border-top: 4px solid #0ea5e9; }
+        .asr-card-teal    { border-top: 4px solid #14b8a6; }
+        .asr-card-green   { border-top: 4px solid #10b981; }
+        .asr-card-emerald { border-top: 4px solid #059669; }
+        .asr-card-amber   { border-top: 4px solid #f59e0b; }
+        .asr-card-indigo  { border-top: 4px solid #6366f1; }
+        .asr-card-violet  { border-top: 4px solid #a855f7; }
+        .asr-card-purple  { border-top: 4px solid #8b5cf6; }
 
         .asr-card-hdr {
             display: flex;
@@ -5293,6 +5433,7 @@ if not df.empty:
         st.markdown('<div class="section-title-wrap"><div class="section-title" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.5px;">\U0001F4CA DAILY REPORT ASSURANCE</div></div>', unsafe_allow_html=True)
         
         df_asr, asr_source = load_assurance_data(insera_time)
+        df_proactive_raw, pro_source = load_proactive_data(insera_time)
         
         if df_asr.empty:
             st.warning("\u26A0\uFE0F **Data tiket Assurance belum berhasil dimuat.**")
@@ -5483,7 +5624,7 @@ if not df.empty:
             else:
                 df_asr['owner_group_clean'] = 'UNASSIGNED'
 
-            # 2. Pemisahan Data untuk 6 Kartu
+            # 2. Pemisahan Data untuk 9 Kartu (Layout 3x3 Sesuai Konsep Baru)
             # Periode terpilih dari sidebar (start_date s/d end_date)
             if start_date and end_date and df_asr['date_rep'].notna().any():
                 df_masuk_hi = df_asr[(df_asr['date_rep'] >= start_date) & (df_asr['date_rep'] <= end_date)].copy()
@@ -5491,20 +5632,127 @@ if not df.empty:
                 df_masuk_hi = df_asr.copy()
 
             df_all_open = df_asr[df_asr['is_open']].copy()
+            df_all_closed = df_asr[df_asr['is_closed']].copy()
             
-            # MANJA: tiket open yang berstatus MANJA (atau seluruh tiket MANJA periode)
-            df_manja = df_asr[df_asr['is_manja'] & df_asr['is_open']].copy()
-            if df_manja.empty and df_asr['is_manja'].any():
-                df_manja = df_asr[df_asr['is_manja'] & (df_asr['date_rep'] >= start_date) & (df_asr['date_rep'] <= end_date)].copy()
+            # MANJA OPEN: tiket open yang berstatus MANJA
+            df_manja_open = df_all_open[df_all_open['is_manja']].copy()
+
+            # Tiket Close dalam periode terpilih (start_date s/d end_date)
+            if start_date and end_date and df_asr['date_status'].notna().any():
+                df_close_filtered = df_asr[df_asr['is_closed'] & (df_asr['date_status'] >= start_date) & (df_asr['date_status'] <= end_date)].copy()
+            else:
+                df_close_filtered = df_all_closed.copy()
 
             # Tiket Close HI: tiket closed yang status date / resolve date nya dalam periode
-            if start_date and end_date and df_asr['date_status'].notna().any():
-                df_close_hi = df_asr[df_asr['is_closed'] & (df_asr['date_status'] >= start_date) & (df_asr['date_status'] <= end_date)].copy()
-            else:
-                df_close_hi = df_asr[df_asr['is_closed']].copy()
+            df_close_hi = df_close_filtered.copy()
+
+            # TTR TIKET CLOSE: tiket closed dalam periode yang dianalisis TTR nya
+            df_ttr_close = df_close_filtered.copy()
+
+            # MANJA CLOSE: tiket closed yang berstatus MANJA dalam periode terpilih
+            df_manja_close = df_close_filtered[df_close_filtered['is_manja']].copy()
 
             df_ttr_open = df_all_open.copy()
             df_owner_open = df_all_open.copy()
+
+            # Normalisasi data PROACTIVE TICKET
+            df_proactive = df_proactive_raw.copy() if not df_proactive_raw.empty else pd.DataFrame()
+            if not df_proactive.empty:
+                col_map_pro = {}
+                for c in df_proactive.columns:
+                    cu = str(c).strip().upper()
+                    if cu in ['REPORTED DATE', 'REPORTED_DATE', 'TANGGAL TIKET', 'TANGGAL']:
+                        col_map_pro['reported_date'] = c
+                    elif cu in ['STATUS', 'STATUS TIKET', 'TICKET STATUS', 'TICKET_STATUS']:
+                        col_map_pro['status'] = c
+                    elif cu in ['CUSTOMER SEGMENT', 'CUSTOMER_SEGMENT', 'SEGMEN']:
+                        col_map_pro['cust_seg'] = c
+                    elif cu in ['JENIS TIKET', 'JENIS_TIKET']:
+                        col_map_pro['jenis_tiket'] = c
+                    elif cu in ['CUSTOMER TYPE', 'CUSTOMER_TYPE']:
+                        col_map_pro['cust_type'] = c
+                    elif cu in ['WORKZONE', 'WORK_ZONE', 'STO', 'ZONE']:
+                        col_map_pro['workzone'] = c
+                    elif cu in ['SUMMARY', 'SUMMARY TIKET', 'DESCRIPTION']:
+                        col_map_pro['summary'] = c
+                    elif cu in ['OWNER GROUP', 'OWNER_GROUP']:
+                        col_map_pro['owner_group'] = c
+                    elif cu in ['TTR CUSTOMER', 'TTR']:
+                        col_map_pro['ttr_val'] = c
+                    elif cu in ['INCIDENT', 'ID TICKET', 'TICKET ID']:
+                        col_map_pro['incident'] = c
+                    elif cu in ['CUSTOMER NAME', 'CUSTOMER_NAME']:
+                        col_map_pro['cust_name'] = c
+                    elif cu in ['SERVICE TYPE', 'SERVICE_TYPE']:
+                        col_map_pro['service'] = c
+                    elif cu in ['ALPRO OK', 'ALPRO']:
+                        col_map_pro['alpro_ok'] = c
+
+                # Normalisasi Kolom Segmen: DGS, DPS, DSS, RBS disederhanakan menjadi HSI (B2B)
+                def parse_proactive_seg(val):
+                    s = str(val).upper().strip()
+                    if 'PL-TSEL' in s or 'TSEL' in s:
+                        return 'PL-TSEL'
+                    return 'HSI (B2B)'
+
+                seg_col = col_map_pro.get('cust_seg', 'CUSTOMER SEGMENT')
+                if seg_col in df_proactive.columns:
+                    df_proactive['seg_clean'] = df_proactive[seg_col].apply(parse_proactive_seg)
+                else:
+                    df_proactive['seg_clean'] = 'HSI (B2B)'
+
+                # Normalisasi Kolom JENIS TIKET (Kolom CD)
+                def parse_proactive_jenis(row):
+                    for k in ['JENIS TIKET', 'JENIS_TIKET', col_map_pro.get('jenis_tiket', '')]:
+                        if k and k in row and pd.notna(row[k]) and str(row[k]).strip():
+                            v = str(row[k]).strip().upper()
+                            if 'PRA SQM GAUL' in v or 'GAUL' in v:
+                                return 'PRA SQM GAUL'
+                            elif 'PRA SQM' in v:
+                                return 'PRA SQM'
+                            elif 'UNSPEC' in v:
+                                return 'UNSPEC'
+                            elif 'SQM' in v:
+                                return 'SQM'
+                    summ = str(row.get('SUMMARY', '')).upper()
+                    symp = str(row.get('SYMPTOM', '')).upper()
+                    if '[PRA SQM GAUL]' in summ or 'PRA SQM INTERNET GAUL' in symp:
+                        return 'PRA SQM GAUL'
+                    elif '[PRA SQM]' in summ or 'PREDICTIVE INTERNET OFFLINE' in symp:
+                        return 'PRA SQM'
+                    elif '[UNSPEC]' in summ or 'PROACTIVE UNSPEC' in symp or 'UNDERSPEC' in symp:
+                        return 'UNSPEC'
+                    elif '[SQM]' in summ or 'SQM' in symp:
+                        return 'SQM'
+                    return 'UNSPEC'
+
+                df_proactive['jenis_clean'] = df_proactive.apply(parse_proactive_jenis, axis=1)
+
+                # Status Open
+                if 'status' in col_map_pro:
+                    s_series = df_proactive[col_map_pro['status']].astype(str).str.upper()
+                    df_proactive['is_open'] = ~s_series.str.contains('CLOSE|RESOLV|CANCEL', na=False)
+                else:
+                    df_proactive['is_open'] = True
+                    
+                if 'cust_type' in col_map_pro:
+                    df_proactive['cust_tier'] = df_proactive[col_map_pro['cust_type']].apply(parse_cust_tier)
+                else:
+                    df_proactive['cust_tier'] = 'REGULER'
+                    
+                if 'workzone' in col_map_pro:
+                    df_proactive['wzone_clean'] = df_proactive[col_map_pro['workzone']].apply(parse_workzone)
+                else:
+                    df_proactive['wzone_clean'] = 'ULI'
+
+                if 'owner_group' in col_map_pro:
+                    df_proactive['owner_group_clean'] = df_proactive[col_map_pro['owner_group']].astype(str).str.strip()
+                else:
+                    df_proactive['owner_group_clean'] = 'UNASSIGNED'
+
+                df_proactive_open = df_proactive[df_proactive['is_open']].copy()
+            else:
+                df_proactive_open = pd.DataFrame()
 
             # 3. Helper Render Tabel Per Kartu & Dynamic Pop-Up Modal
             tiers_list = [
@@ -5534,10 +5782,25 @@ if not df.empty:
 
             def safe_val(row, col_key, default='-'):
                 c = col_map.get(col_key, col_key)
-                v = row.get(c, default)
-                if pd.isna(v) or v is None or str(v).strip().lower() in ['nan', 'none', '<na>', 'nat', '']:
-                    return default
-                return str(v).strip()
+                if c in row:
+                    v = row.get(c, default)
+                    if pd.notna(v) and v is not None and str(v).strip().lower() not in ['nan', 'none', '<na>', 'nat', '']:
+                        return str(v).strip()
+                alt_keys = {
+                    'incident': ['INCIDENT', 'ID TICKET', 'TICKET ID', 'NO TIKET'],
+                    'reported_date': ['REPORTED DATE', 'REPORTED_DATE', 'TANGGAL TIKET', 'TANGGAL'],
+                    'status': ['STATUS', 'STATUS TIKET', 'TICKET STATUS'],
+                    'cust_name': ['CUSTOMER NAME', 'CUSTOMER_NAME'],
+                    'service': ['SERVICE TYPE', 'SERVICE_TYPE', 'SERVICE'],
+                    'summary': ['SUMMARY', 'SUMMARY TIKET', 'DESCRIPTION'],
+                    'owner_group': ['OWNER GROUP', 'OWNER_GROUP']
+                }
+                for alt in alt_keys.get(col_key, []):
+                    if alt in row and pd.notna(row[alt]):
+                        v = str(row[alt]).strip()
+                        if v and v.lower() not in ['nan', 'none', '<na>', 'nat']:
+                            return v
+                return default
 
             asr_modals = {}
 
@@ -5668,6 +5931,36 @@ if not df.empty:
                         )
                 return "".join(html_rows)
 
+            proactive_rows_def = [
+                ('PRA SQM', '#38bdf8'),
+                ('PRA SQM GAUL', '#fbbf24'),
+                ('SQM', '#c084fc'),
+                ('UNSPEC', '#f87171')
+            ]
+
+            def render_proactive_rows(df_sub, card_slug="proactive-open", card_title="TIKET PROACTIVE OPEN"):
+                html_rows = []
+                for jenis_name, color in proactive_rows_def:
+                    sub = df_sub[df_sub['jenis_clean'] == jenis_name] if ('jenis_clean' in df_sub.columns and not df_sub.empty) else pd.DataFrame()
+                    sub_tsel = sub[sub['seg_clean'] == 'PL-TSEL'] if ('seg_clean' in sub.columns and not sub.empty) else pd.DataFrame()
+                    sub_hsi = sub[sub['seg_clean'] == 'HSI (B2B)'] if ('seg_clean' in sub.columns and not sub.empty) else pd.DataFrame()
+                    tot_cnt = len(sub)
+                    jenis_slug = make_slug(jenis_name)
+                    
+                    tsel_str = make_asr_link(len(sub_tsel), f"modal-asr-{card_slug}-{jenis_slug}-tsel", f"{card_title} - {jenis_name} (PL-TSEL)", sub_tsel, underline=False, color="#ffffff")
+                    hsi_str = make_asr_link(len(sub_hsi), f"modal-asr-{card_slug}-{jenis_slug}-hsi", f"{card_title} - {jenis_name} (HSI B2B)", sub_hsi, underline=False, color="#ffffff")
+                    tot_str = make_asr_link(tot_cnt, f"modal-asr-{card_slug}-{jenis_slug}-total", f"{card_title} - {jenis_name} (TOTAL)", sub, underline=False, color="#38bdf8")
+                    
+                    html_rows.append(
+                        f'<div class="asr-card-tbl-row" style="grid-template-columns: 2fr 1fr 1fr 1fr;">'
+                        f'<span style="color:{color}; font-weight:700; font-size:0.96rem; white-space:nowrap;">{jenis_name}</span>'
+                        f'<span style="text-align:center;">{tsel_str}</span>'
+                        f'<span style="text-align:center;">{hsi_str}</span>'
+                        f'<span style="text-align:center;">{tot_str}</span>'
+                        f'</div>'
+                    )
+                return "".join(html_rows)
+
             def build_asr_modal_html(modal_id, modal_title, sub_df):
                 if 'dt_rep' in sub_df.columns:
                     sub_df = sub_df.sort_values(by='dt_rep', ascending=False)
@@ -5752,8 +6045,9 @@ if not df.empty:
                 )
                 return modal_html
 
-            # 4. Render 6 KPI Grid Cards (zero leading line spaces to prevent Markdown code block interpretation)
+            # 4. Render 9 KPI Grid Cards (Layout 3x3 Sesuai Konsep Baru)
             cards_html = f'''<div class="asr-grid-3">
+
 <div class="asr-card asr-card-blue">
 <div class="asr-card-hdr">
 <div class="asr-card-hdr-left">
@@ -5766,6 +6060,34 @@ if not df.empty:
 <span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
 </div>
 <div>{render_wzone_rows(df_masuk_hi, "masuk-hi", "TIKET MASUK HI")}</div>
+</div>
+
+<div class="asr-card asr-card-emerald">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(5,150,105,0.2); color:#10b981;">\u23F1\uFE0F</div>
+<div class="asr-card-title">TTR TIKET CLOSE</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_ttr_close), "modal-asr-ttr-close-total", "TTR TIKET CLOSE - SEMUA TIKET", df_ttr_close, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 1.8fr 1.1fr 1.1fr 1.1fr;">
+<span></span><span style="text-align:center; color:#34d399;">NOT OSLA</span><span style="text-align:center; color:#f87171;">OSLA</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_ttr_rows(df_ttr_close, "ttr-close", "TTR TIKET CLOSE")}</div>
+</div>
+
+<div class="asr-card asr-card-teal">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(20,184,166,0.2); color:#14b8a6;">\U0001F91D</div>
+<div class="asr-card-title">MANJA CLOSE</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_manja_close), "modal-asr-manja-close-total", "MANJA CLOSE - SEMUA TIKET", df_manja_close, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_wzone_rows(df_manja_close, "manja-close", "MANJA CLOSE")}</div>
 </div>
 
 <div class="asr-card asr-card-sky">
@@ -5782,18 +6104,32 @@ if not df.empty:
 <div>{render_wzone_rows(df_all_open, "all-open", "ALL TIKET OPEN")}</div>
 </div>
 
-<div class="asr-card asr-card-teal">
+<div class="asr-card asr-card-amber">
 <div class="asr-card-hdr">
 <div class="asr-card-hdr-left">
-<div class="asr-card-icon" style="background:rgba(20,184,166,0.2); color:#14b8a6;">\U0001F91D</div>
-<div class="asr-card-title">MANJA</div>
+<div class="asr-card-icon" style="background:rgba(245,158,11,0.2); color:#f59e0b;">\u23F3</div>
+<div class="asr-card-title">ALL TTR TIKET OPEN</div>
 </div>
-<div class="asr-card-val">{make_asr_link(len(df_manja), "modal-asr-manja-total", "MANJA - SEMUA TIKET", df_manja, underline=False, is_header=True)}</div>
+<div class="asr-card-val">{make_asr_link(len(df_ttr_open), "modal-asr-ttr-open-total", "ALL TTR TIKET OPEN - SEMUA TIKET", df_ttr_open, underline=False, is_header=True)}</div>
+</div>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 1.8fr 1.1fr 1.1fr 1.1fr;">
+<span></span><span style="text-align:center; color:#34d399;">NOT OSLA</span><span style="text-align:center; color:#f87171;">OSLA</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+</div>
+<div>{render_ttr_rows(df_ttr_open, "ttr-open", "ALL TTR TIKET OPEN")}</div>
+</div>
+
+<div class="asr-card asr-card-indigo">
+<div class="asr-card-hdr">
+<div class="asr-card-hdr-left">
+<div class="asr-card-icon" style="background:rgba(99,102,241,0.2); color:#6366f1;">\U0001F91D</div>
+<div class="asr-card-title">ALL MANJA OPEN</div>
+</div>
+<div class="asr-card-val">{make_asr_link(len(df_manja_open), "modal-asr-manja-open-total", "ALL MANJA OPEN - SEMUA TIKET", df_manja_open, underline=False, is_header=True)}</div>
 </div>
 <div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
 <span></span><span style="text-align:center;">ULI</span><span style="text-align:center;">GMB</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
 </div>
-<div>{render_wzone_rows(df_manja, "manja", "MANJA")}</div>
+<div>{render_wzone_rows(df_manja_open, "manja-open", "ALL MANJA OPEN")}</div>
 </div>
 
 <div class="asr-card asr-card-green">
@@ -5810,18 +6146,18 @@ if not df.empty:
 <div>{render_wzone_rows(df_close_hi, "close-hi", "TIKET CLOSE HI")}</div>
 </div>
 
-<div class="asr-card asr-card-amber">
+<div class="asr-card asr-card-violet">
 <div class="asr-card-hdr">
 <div class="asr-card-hdr-left">
-<div class="asr-card-icon" style="background:rgba(245,158,11,0.2); color:#f59e0b;">\u23F1\uFE0F</div>
-<div class="asr-card-title">TTR TIKET OPEN</div>
+<div class="asr-card-icon" style="background:rgba(168,85,247,0.2); color:#a855f7;">\u26A1</div>
+<div class="asr-card-title">TIKET PROACTIVE OPEN</div>
 </div>
-<div class="asr-card-val">{make_asr_link(len(df_ttr_open), "modal-asr-ttr-total", "TTR TIKET OPEN - SEMUA TIKET", df_ttr_open, underline=False, is_header=True)}</div>
+<div class="asr-card-val">{make_asr_link(len(df_proactive_open), "modal-asr-proactive-open-total", "TIKET PROACTIVE OPEN - SEMUA TIKET", df_proactive_open, underline=False, is_header=True)}</div>
 </div>
-<div class="asr-card-tbl-hdr" style="grid-template-columns: 1.8fr 1.1fr 1.1fr 1.1fr;">
-<span></span><span style="text-align:center; color:#34d399;">NOT OSLA</span><span style="text-align:center; color:#f87171;">OSLA</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
+<div class="asr-card-tbl-hdr" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+<span></span><span style="text-align:center;">PL-TSEL</span><span style="text-align:center;">HSI (B2B)</span><span style="text-align:center; color:#38bdf8;">TOTAL</span>
 </div>
-<div>{render_ttr_rows(df_ttr_open, "ttr", "TTR TIKET OPEN")}</div>
+<div>{render_proactive_rows(df_proactive_open, "proactive-open", "TIKET PROACTIVE OPEN")}</div>
 </div>
 
 <div class="asr-card asr-card-purple">
@@ -5837,6 +6173,7 @@ if not df.empty:
 </div>
 <div>{render_owner_rows(df_owner_open, "owner", "OWNER GRUP OPEN")}</div>
 </div>
+
 </div>'''
             st.markdown(cards_html, unsafe_allow_html=True)
 
@@ -6055,6 +6392,7 @@ if not df.empty:
                     st.caption(f"\u26A1 Menampilkan {limit_view:,} dari total {len(df_tbl_final):,} tiket untuk menjaga performa rendering browser.")
     elif menu == "GRAFIK TIKET PERIODE":
         df_asr, asr_source = load_assurance_data(insera_time)
+        df_proactive_raw, pro_source = load_proactive_data(insera_time)
         
 
         
