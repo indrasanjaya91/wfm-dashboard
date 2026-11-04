@@ -416,7 +416,7 @@ CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:cs
 ASSURANCE_SHEET_ID = "1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o"
 ASSURANCE_SHEET_NAME = "GABUNGAN ALL & CLOSE TIKET"
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_assurance_data(sync_time_val):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -433,12 +433,14 @@ def load_assurance_data(sync_time_val):
     # 2. Coba baca dari Google Sheets (hanya jika cache parquet belum ada, misal di Streamlit Cloud)
     try:
         import urllib.parse
-        encoded_name = urllib.parse.quote(ASSURANCE_SHEET_NAME)
-        url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
         import urllib.request
         import io
+        import time as time_lib
+        encoded_name = urllib.parse.quote(ASSURANCE_SHEET_NAME)
+        cb = int(time_lib.time() // 60)
+        url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}&_cb={cb}"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-        with urllib.request.urlopen(req, timeout=4) as resp:
+        with urllib.request.urlopen(req, timeout=5) as resp:
             content = resp.read().decode('utf-8')
             df_sheet = pd.read_csv(io.StringIO(content)) if (content and not content.strip().startswith("<!DOCTYPE")) else pd.DataFrame()
         if not df_sheet.empty and len(df_sheet.columns) > 5:
@@ -478,15 +480,17 @@ def load_assurance_data(sync_time_val):
         
     return pd.DataFrame(), None
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=60)
 def load_proactive_data(sync_time_val):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
     # 1. Coba baca dari Google Sheets tab 'PROACTIVE TICKET' (membawa kolom rumus ARRAYFORMULA)
     try:
         import urllib.parse, urllib.request, io
+        import time as time_lib
         encoded_name = urllib.parse.quote("PROACTIVE TICKET")
-        url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}"
+        cb = int(time_lib.time() // 60)
+        url = f"https://docs.google.com/spreadsheets/d/{ASSURANCE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet={encoded_name}&_cb={cb}"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
         with urllib.request.urlopen(req, timeout=4) as resp:
             content = resp.read().decode('utf-8')
