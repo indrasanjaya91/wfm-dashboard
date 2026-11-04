@@ -460,6 +460,7 @@ def load_assurance_data(sync_time_val):
                     st.session_state['cloud_insera_sync'] = cloud_insera_sync
                 except Exception:
                     pass
+                return df_sheet, cloud_insera_sync
             return df_sheet, "GOOGLE_SHEETS"
     except Exception:
         pass
@@ -694,13 +695,19 @@ if insera_time == "Belum Ada Data":
         df_asr_probe, asr_probe_src = load_assurance_data("probe")
         if not df_asr_probe.empty:
             insera_total_cnt = len(df_asr_probe)
-            insera_source = "GOOGLE SHEETS LIVE" if asr_probe_src == "GOOGLE_SHEETS" else "CACHE"
-            for col_chk in ['REPORTED DATE', 'REPORTED_DATE', 'STATUS DATE', 'TANGGAL TIKET']:
-                if col_chk in df_asr_probe.columns:
-                    valid_dates = pd.to_datetime(df_asr_probe[col_chk], errors='coerce').dropna()
-                    if not valid_dates.empty:
-                        insera_time = valid_dates.max().strftime("%d %b %Y | %H:%M:%S")
-                        break
+            if asr_probe_src and " | VIA " in str(asr_probe_src):
+                p = str(asr_probe_src).split(" | VIA ")
+                insera_time = p[0].replace(" WIB", "")
+                if len(p) > 1:
+                    insera_source = "VIA " + p[1]
+            else:
+                insera_source = "GOOGLE SHEETS LIVE" if asr_probe_src == "GOOGLE_SHEETS" else "CACHE"
+                for col_chk in ['REPORTED DATE', 'REPORTED_DATE', 'STATUS DATE']:
+                    if col_chk in df_asr_probe.columns:
+                        valid_dates = pd.to_datetime(df_asr_probe[col_chk], errors='coerce').dropna()
+                        if not valid_dates.empty:
+                            insera_time = valid_dates.max().strftime("%d %b %Y | %H:%M:%S")
+                            break
             if insera_time == "Belum Ada Data":
                 insera_time = "LIVE SATELLITE"
     except Exception:
@@ -5447,39 +5454,35 @@ if not df.empty:
             import html as html_lib
 
             # 1. Deteksi Kolom Otomatis
+            # 1. Deteksi Kolom Otomatis dengan Prioritas Terjamin
+            priority_defs = [
+                ('incident', ['INCIDENT', 'ID TICKET', 'TICKET ID', 'NO TIKET']),
+                ('reported_date', ['REPORTED DATE', 'REPORTED_DATE', 'TANGGAL TIKET', 'TANGGAL']),
+                ('status_date', ['STATUS DATE', 'STATUS_DATE', 'DATE MODIFIED', 'DATEMODIFIED', 'RESOLVE DATE', 'RESOLVED DATE']),
+                ('status', ['STATUS TIKET', 'STATUS', 'TICKET STATUS', 'TICKET_STATUS']),
+                ('cust_type', ['CUSTOMER TYPE', 'CUSTOMER_TYPE', 'TIPE CUSTOMER', 'TIPE PELANGGAN']),
+                ('workzone', ['WORKZONE', 'WORK_ZONE', 'STO', 'ZONE']),
+                ('booking_date', ['BOOKING DATE', 'BOOKING_DATE', 'TANGGAL BOOKING', 'TGL BOOKING']),
+                ('summary', ['SUMMARY', 'SUMMARY TIKET', 'DESCRIPTION']),
+                ('owner_group', ['OWNER GROUP', 'OWNER_GROUP', 'C_OWNER_GROUP']),
+                ('ttr_val', ['TTR CUSTOMER', 'TTR_CUSTOMER', 'TTR']),
+                ('incident', ['INCIDENT', 'ID TICKET', 'TICKET ID', 'NO TIKET']),
+                ('cust_name', ['CUSTOMER NAME', 'CUSTOMER_NAME', 'NAMA PELANGGAN']),
+                ('service', ['SERVICE TYPE', 'SERVICE_TYPE', 'SERVICE']),
+                ('alpro_ok', ['ALPRO OK', 'ALPRO_OK', 'ALPRO', 'ODC']),
+                ('rk_info', ['RK INFORMATION', 'RK_INFORMATION']),
+                ('device_name', ['DEVICE NAME', 'DEVICE_NAME']),
+                ('osla_col', ['OSLA', 'OSLA STATUS', 'STATUS OSLA'])
+            ]
             col_map = {}
-            for c in df_asr.columns:
-                cu = str(c).strip().upper()
-                if cu in ['REPORTED DATE', 'REPORTED_DATE', 'TANGGAL TIKET', 'TANGGAL']:
-                    col_map['reported_date'] = c
-                elif cu in ['STATUS DATE', 'STATUS_DATE', 'DATE MODIFIED', 'DATEMODIFIED', 'RESOLVE DATE', 'RESOLVED DATE']:
-                    col_map['status_date'] = c
-                elif cu in ['STATUS', 'STATUS TIKET', 'TICKET STATUS', 'TICKET_STATUS']:
-                    col_map['status'] = c
-                elif cu in ['CUSTOMER TYPE', 'CUSTOMER_TYPE', 'TIPE CUSTOMER', 'TIPE PELANGGAN']:
-                    col_map['cust_type'] = c
-                elif cu in ['WORKZONE', 'WORK_ZONE', 'STO', 'ZONE']:
-                    col_map['workzone'] = c
-                elif cu in ['BOOKING DATE', 'BOOKING_DATE', 'TANGGAL BOOKING', 'TGL BOOKING']:
-                    col_map['booking_date'] = c
-                elif cu in ['SUMMARY', 'SUMMARY TIKET', 'DESCRIPTION']:
-                    col_map['summary'] = c
-                elif cu in ['OWNER GROUP', 'OWNER_GROUP', 'C_OWNER_GROUP']:
-                    col_map['owner_group'] = c
-                elif cu in ['TTR CUSTOMER', 'TTR_CUSTOMER', 'TTR BERJALAN', 'TTR']:
-                    col_map['ttr_val'] = c
-                elif cu in ['INCIDENT', 'ID TICKET', 'TICKET ID', 'NO TIKET']:
-                    col_map['incident'] = c
-                elif cu in ['CUSTOMER NAME', 'CUSTOMER_NAME', 'NAMA PELANGGAN']:
-                    col_map['cust_name'] = c
-                elif cu in ['SERVICE TYPE', 'SERVICE_TYPE', 'SERVICE']:
-                    col_map['service'] = c
-                elif cu in ['ALPRO OK', 'ALPRO_OK', 'ALPRO', 'ODC']:
-                    col_map['alpro_ok'] = c
-                elif cu in ['RK INFORMATION', 'RK_INFORMATION']:
-                    col_map['rk_info'] = c
-                elif cu in ['DEVICE NAME', 'DEVICE_NAME']:
-                    col_map['device_name'] = c
+            for key, candidates in priority_defs:
+                for cand in candidates:
+                    for c in df_asr.columns:
+                        if str(c).strip().upper() == cand:
+                            col_map[key] = c
+                            break
+                    if key in col_map:
+                        break
 
             import re
             def get_alpro_ok(r):
@@ -5528,7 +5531,7 @@ if not df.empty:
             # Normalisasi Status Open vs Close
             if 'status' in col_map:
                 stat_series = df_asr[col_map['status']].astype(str).str.upper().str.strip()
-                is_closed = stat_series.str.contains('CLOSE|RESOLV|CANCEL', na=False)
+                is_closed = stat_series.str.contains('CLOSE|RESOLV|CANCEL|SALAMSIM|MEDIACARE', na=False)
                 df_asr['is_closed'] = is_closed
                 df_asr['is_open'] = ~is_closed
             else:
@@ -5578,6 +5581,14 @@ if not df.empty:
 
             # TTR SLA OSLA vs NOT OSLA Calculation (Diamond: 3 Jam, Platinum: 6 Jam, Gold: 12 Jam, Reguler: 24 Jam)
             def calc_osla_status(row):
+                # 0. Jika ada kolom OSLA langsung dari Google Sheets (ARRAYFORMULA Kolom 90)
+                if 'osla_col' in col_map and pd.notna(row.get(col_map['osla_col'])):
+                    raw_osla = str(row[col_map['osla_col']]).strip().upper()
+                    if 'NOT OSLA' in raw_osla:
+                        return 'NOT OSLA'
+                    elif 'OSLA' in raw_osla:
+                        return 'OSLA'
+
                 tier = row['cust_tier']
                 if 'DIAMOND' in tier:
                     target_sec = 3 * 3600
@@ -5589,7 +5600,7 @@ if not df.empty:
                     target_sec = 24 * 3600
 
                 elapsed_sec = None
-                if 'ttr_val' in col_map and pd.notna(row[col_map['ttr_val']]):
+                if 'ttr_val' in col_map and pd.notna(row.get(col_map['ttr_val'])):
                     s_ttr = str(row[col_map['ttr_val']]).strip()
                     if s_ttr.lower() not in ['nan', 'none', '-', '', '<na>', 'nat']:
                         try:
@@ -5606,7 +5617,7 @@ if not df.empty:
                             pass
 
                 if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
-                    if pd.notna(row['dt_rep']):
+                    if pd.notna(row.get('dt_rep')):
                         try:
                             diff = (datetime.now() - row['dt_rep'].to_pydatetime().replace(tzinfo=None)).total_seconds()
                             if diff >= 0:
