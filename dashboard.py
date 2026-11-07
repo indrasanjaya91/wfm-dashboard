@@ -1174,12 +1174,12 @@ if not df.empty:
         from streamlit_option_menu import option_menu
 
         all_opts = [
-            "PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "MONITORING SERVER",
-            "DAILY REPORT", "GRAFIK TIKET PERIODE"
+            "PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "PROGRESS PROVI", "MONITORING SERVER",
+            "DAILY REPORT", "GRAFIK TIKET PERIODE", "PROGRESS ASSURANCE"
         ]
         all_icons = [
-            "trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "server",
-            "file-earmark-text", "graph-up"
+            "trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "camera", "server",
+            "file-earmark-text", "graph-up", "camera"
         ]
 
         if "active_menu" not in st.session_state:
@@ -1255,7 +1255,7 @@ if not df.empty:
                         if (doc.getElementById('sec-hdr-assurance') && doc.body) {
                             doc.body.style.overflow = 'hidden';
                             iframe.style.overflow = 'hidden';
-                            const neededH = Math.max(doc.body.scrollHeight + 30, 480);
+                            const neededH = Math.max(doc.body.scrollHeight + 30, 575);
                             if (parseInt(iframe.style.height) < neededH) {
                                 iframe.style.height = neededH + 'px';
                             }
@@ -1942,7 +1942,7 @@ if not df.empty:
                             order_bg_css = "background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(220,38,38,0.4);"
                             
                         html_table += f'''
-                        <div style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div class="prov-modal-row" style="display: grid; width: 100%; padding: 0; margin: 0; font-size: 14px; grid-template-columns: 45px 160px 160px 110px 80px minmax(220px, 1.8fr) minmax(150px, 1.5fr) 130px minmax(150px, 1.2fr) minmax(180px, 1.2fr); background: rgba(30,41,59,0.5); border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <div style="padding: 10px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{idx}</span></div>
                             <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_date)}</span></div>
                             <div style="padding: 10px; font-size: 14px; text-align: center; border-right: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center;"><span style="transform: translateY(-3px); display: inline-block; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.9);">{get_val(c_date_mod)}</span></div>
@@ -1961,9 +1961,19 @@ if not df.empty:
                     modal_id = f"modal-{cat.replace(' ', '_')}-{prod.replace(' ', '_')}"
                     all_modals_html += f'''
                     <div id="{modal_id}" class="detail-modal" style="display:none; position:fixed; top:10%; left:5%; right:5%; bottom:10%; background:#0f172a; z-index:999999; border: 2.5px solid #eab308; border-radius:12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); flex-direction:column; overflow:hidden;">
-                        <div style="padding:15px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
-                            <h3 style="margin:0; color:white; font-size:1.2rem;">Detail Data: {cat} - {prod}</h3>
-                            <button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 10px;">&times;</button>
+                        <div style="padding:12px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; gap:16px;">
+                            <div style="display:flex; align-items:center; gap:12px; min-width:0; flex-shrink:1;">
+                                <h3 style="margin:0; color:white; font-size:1.15rem; font-weight:700; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Detail Data: {cat} - {prod}</h3>
+                                <span class="prov-modal-counter-badge" style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; padding:3px 12px; border-radius:12px; font-size:0.8rem; font-weight:700; white-space:nowrap;" data-total="{len(src_df)}">{len(src_df):,} WO</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:14px; flex-shrink:0;">
+                                <div style="position:relative; display:flex; align-items:center;">
+                                    <span style="position:absolute; left:11px; color:#60a5fa; font-size:0.88rem; pointer-events:none;">🔍</span>
+                                    <input type="text" class="prov-modal-search-box" placeholder="Cari WONUM / AO / Pelanggan / Tim..." autocomplete="off" />
+                                    <button type="button" class="prov-modal-search-clear" style="display:none; position:absolute; right:8px; background:none; border:none; color:#94a3b8; font-size:1.15rem; cursor:pointer; padding:0 4px; line-height:1;" title="Hapus Pencarian">&times;</button>
+                                </div>
+                                <button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 6px;" title="Tutup Modal">&times;</button>
+                            </div>
                         </div>
                         <div style="padding:0; overflow-y:auto; flex:1;">
                             {html_table}
@@ -1972,13 +1982,37 @@ if not df.empty:
                     '''
         
         if all_modals_html:
-            st.markdown(all_modals_html.replace('\n', ''), unsafe_allow_html=True)
+            prov_modal_css = '''
+            <style>
+            .prov-modal-search-box {
+                background: #0f172a !important;
+                color: #f8fafc !important;
+                border: 1.8px solid #3b82f6 !important;
+                border-radius: 8px !important;
+                padding: 6px 32px 6px 34px !important;
+                font-size: 0.84rem !important;
+                width: 300px !important;
+                outline: none !important;
+                transition: all 0.2s ease !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.4) !important;
+            }
+            .prov-modal-search-box:focus {
+                border-color: #60a5fa !important;
+                box-shadow: 0 0 10px rgba(96, 165, 250, 0.6) !important;
+            }
+            .prov-modal-search-box::placeholder {
+                color: #94a3b8 !important;
+            }
+            </style>
+            '''
+            st.markdown((prov_modal_css + all_modals_html).replace('\n', ''), unsafe_allow_html=True)
             
         import streamlit.components.v1 as components
         components.html('''
         <script>
         setInterval(function() {
             const parentDoc = window.parent.document;
+            if (!parentDoc) return;
             
             // Open modal listeners
             const triggers = parentDoc.querySelectorAll('.modal-trigger');
@@ -1997,8 +2031,94 @@ if not df.empty:
                     const target = parentDoc.getElementById(targetId);
                     if(target) {
                         target.style.display = 'flex';
+                        const searchInput = target.querySelector('.prov-modal-search-box');
+                        if (searchInput) {
+                            searchInput.value = '';
+                            const clearBtn = target.querySelector('.prov-modal-search-clear');
+                            if (clearBtn) clearBtn.style.display = 'none';
+                            const badge = target.querySelector('.prov-modal-counter-badge');
+                            const totalCount = badge ? parseInt(badge.getAttribute('data-total') || '0') : 0;
+                            if (badge) {
+                                badge.textContent = totalCount.toLocaleString() + ' WO';
+                                badge.style.background = 'rgba(234,179,8,0.2)';
+                                badge.style.borderColor = '#eab308';
+                                badge.style.color = '#facc15';
+                            }
+                            target.querySelectorAll('.prov-modal-row').forEach(r => r.style.display = 'grid');
+                            setTimeout(() => searchInput.focus(), 80);
+                        }
                     }
                 });
+            });
+            
+            // Real-time Search within Provisioning Modal
+            const searchInputs = parentDoc.querySelectorAll('.prov-modal-search-box');
+            searchInputs.forEach(input => {
+                if (input.dataset.listener) return;
+                input.dataset.listener = 'true';
+                
+                const modal = input.closest('.detail-modal');
+                if (!modal) return;
+                const clearBtn = modal.querySelector('.prov-modal-search-clear');
+                const badge = modal.querySelector('.prov-modal-counter-badge');
+                const totalCount = badge ? parseInt(badge.getAttribute('data-total') || '0') : 0;
+                
+                function doProvFilter() {
+                    const val = input.value.toLowerCase().trim();
+                    if (clearBtn) {
+                        clearBtn.style.display = val.length > 0 ? 'block' : 'none';
+                    }
+                    const rows = modal.querySelectorAll('.prov-modal-row');
+                    let matched = 0;
+                    rows.forEach(r => {
+                        const text = (r.textContent || '').toLowerCase();
+                        if (!val || text.indexOf(val) !== -1) {
+                            r.style.display = 'grid';
+                            matched++;
+                        } else {
+                            r.style.display = 'none';
+                        }
+                    });
+                    if (badge) {
+                        if (!val) {
+                            badge.textContent = totalCount.toLocaleString() + ' WO';
+                            badge.style.background = 'rgba(234,179,8,0.2)';
+                            badge.style.borderColor = '#eab308';
+                            badge.style.color = '#facc15';
+                        } else {
+                            badge.textContent = matched.toLocaleString() + ' / ' + totalCount.toLocaleString() + ' WO';
+                            if (matched === 0) {
+                                badge.style.background = 'rgba(239,68,68,0.2)';
+                                badge.style.borderColor = '#ef4444';
+                                badge.style.color = '#f87171';
+                            } else {
+                                badge.style.background = 'rgba(56,189,248,0.2)';
+                                badge.style.borderColor = '#38bdf8';
+                                badge.style.color = '#38bdf8';
+                            }
+                        }
+                    }
+                }
+                
+                input.addEventListener('input', doProvFilter);
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        if (input.value) {
+                            input.value = '';
+                            doProvFilter();
+                            e.stopPropagation();
+                        }
+                    }
+                });
+                
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        input.value = '';
+                        doProvFilter();
+                        input.focus();
+                    });
+                }
             });
             
             // Close modal listeners
@@ -4957,6 +5077,396 @@ if not df.empty:
                 st.markdown('<div style="padding: 20px; color: #94a3b8; text-align: center; border: 1px solid #334155; border-radius: 8px; background: #0f172a;">Tidak ada data FFG yang memenuhi kriteria (PRIO 1/2 dan &le; 60 hari).</div>', unsafe_allow_html=True)
         else:
             st.markdown('<div style="padding: 20px; color: #ef4444; text-align: center; border: 1px solid #334155; border-radius: 8px; background: #0f172a;">Kolom HASIL UKUR IBOSSTER, PRIORITAS UNSPEC, atau DURASI FFG tidak ditemukan di sumber data!</div>', unsafe_allow_html=True)
+
+    elif menu == "PROGRESS PROVI":
+        st.markdown('<div class="section-title-wrap"><div class="section-title">📸 REKAP & GRAFIK HARIAN PROGRESS TEKNISI PROVISIONING</div></div>', unsafe_allow_html=True)
+
+        @st.cache_data(ttl=60, show_spinner=False)
+        def load_rekap_progress_provi():
+            import urllib.parse
+            sheet_id = "1zA5ucYxE9gOSnKZIhEKQyV2rEdV5je__knsS9neA5iA"
+            sheet_name = urllib.parse.quote("REKAP REPORTING PROGRESS TEKNISI")
+            csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+            df_p = pd.read_csv(csv_url)
+            df_p.columns = df_p.columns.astype(str).str.strip().str.upper()
+            return df_p
+
+        try:
+            df_prog_raw = load_rekap_progress_provi()
+        except Exception as e_prog:
+            st.error(f"Gagal memuat sheet REKAP REPORTING PROGRESS TEKNISI: {e_prog}")
+            df_prog_raw = pd.DataFrame()
+
+        if not df_prog_raw.empty:
+            tgl_col = next((c for c in df_prog_raw.columns if 'TANGGAL' in c), None)
+            jam_col = next((c for c in df_prog_raw.columns if 'JAM' in c), None)
+            tek_col = next((c for c in df_prog_raw.columns if 'TEKNISI' in c), None)
+            wo_col = next((c for c in df_prog_raw.columns if 'WONUM' in c), None)
+            notes_col = next((c for c in df_prog_raw.columns if 'NOTE' in c), None)
+            wita_col = next((c for c in df_prog_raw.columns if 'WITA' in c), None)
+            stat_col = next((c for c in df_prog_raw.columns if 'STATUS' in c), None)
+
+            if tgl_col and jam_col and wo_col:
+                # Bersihkan baris kosong (seperti nomor urut 1..1000 tanpa data WONUM / TANGGAL)
+                df_prog = df_prog_raw[
+                    df_prog_raw[wo_col].notna() &
+                    (df_prog_raw[wo_col].astype(str).str.strip() != '') &
+                    (df_prog_raw[wo_col].astype(str).str.strip().str.upper() != 'NAN') &
+                    df_prog_raw[tgl_col].notna() &
+                    (df_prog_raw[tgl_col].astype(str).str.strip() != '') &
+                    (df_prog_raw[tgl_col].astype(str).str.strip().str.upper() != 'NAN')
+                ].copy()
+
+                # Parse tanggal dan filter sesuai periode di sidebar
+                df_prog['Parsed_Date'] = pd.to_datetime(df_prog[tgl_col].astype(str).str.strip(), errors='coerce').dt.date
+                df_prog_period = df_prog[
+                    (df_prog['Parsed_Date'] >= start_date) &
+                    (df_prog['Parsed_Date'] <= end_date)
+                ].copy()
+
+                # Parse Jam Kirim Progress (HH:MM:SS -> Hour 0..23 & label HH:00)
+                def extract_hour_int(val):
+                    s = str(val).strip()
+                    if ':' in s:
+                        p = s.split(':')[0].strip()
+                        if p.isdigit():
+                            h = int(p)
+                            if 0 <= h <= 23:
+                                return h
+                    return -1
+
+                df_prog_period['Hour_Int'] = df_prog_period[jam_col].apply(extract_hour_int)
+                df_prog_period = df_prog_period[df_prog_period['Hour_Int'] >= 0].copy()
+                df_prog_period['Jam'] = df_prog_period['Hour_Int'].apply(lambda h: f"{int(h):02d}:00")
+
+                # Klasifikasi 4 Pembagian Progress:
+                # - Progress Pagi  : 07:00 s/d 10:00 (Hour 7..10, termasuk <7 bila ada kiriman dini hari)
+                # - Progress Siang : 11:00 s/d 14:00 (Hour 11..14)
+                # - Progress Sore  : 15:00 s/d 18:00 (Hour 15..18)
+                # - Progress Malam : 19:00 s/d 23:59 (Hour 19..23)
+                def classify_sesi_progress(h):
+                    if 7 <= h <= 10 or h < 7:
+                        return 'PROGRESS PAGI'
+                    elif 11 <= h <= 14:
+                        return 'PROGRESS SIANG'
+                    elif 15 <= h <= 18:
+                        return 'PROGRESS SORE'
+                    else:
+                        return 'PROGRESS MALAM'
+
+                df_prog_period['Kategori_Sesi'] = df_prog_period['Hour_Int'].apply(classify_sesi_progress)
+
+                # Bersihkan nama teknisi (tanpa / PROV agar rapi di rekap)
+                if tek_col:
+                    df_prog_period['Teknisi_Clean'] = (
+                        df_prog_period[tek_col].astype(str).str.strip()
+                        .str.replace(r'(?i)\s*/\s*PROV.*$', '', regex=True)
+                        .str.strip().str.upper()
+                    )
+                else:
+                    df_prog_period['Teknisi_Clean'] = 'UNKNOWN'
+
+                tot_all_prog = len(df_prog_period)
+                tot_uniq_wo = df_prog_period[wo_col].astype(str).str.strip().nunique() if not df_prog_period.empty else 0
+                tot_active_tek = df_prog_period['Teknisi_Clean'].nunique() if not df_prog_period.empty else 0
+
+                tot_pagi = int((df_prog_period['Kategori_Sesi'] == 'PROGRESS PAGI').sum())
+                tot_siang = int((df_prog_period['Kategori_Sesi'] == 'PROGRESS SIANG').sum())
+                tot_sore = int((df_prog_period['Kategori_Sesi'] == 'PROGRESS SORE').sum())
+                tot_malam = int((df_prog_period['Kategori_Sesi'] == 'PROGRESS MALAM').sum())
+
+                # Top Metric Cards
+                mc_c1, mc_c2, mc_c3, mc_c4, mc_c5 = st.columns(5)
+                with mc_c1:
+                    st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 18px;"><div class="mc-title">📸 TOTAL PROGRESS</div><div class="mc-value">{tot_all_prog} <span style="font-size:0.95rem; color:#94a3b8">FOTO ({tot_uniq_wo} WO)</span></div></div>', unsafe_allow_html=True)
+                with mc_c2:
+                    st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 18px; border-left-color:#38bdf8;"><div class="mc-title">🌅 PROGRESS PAGI (07-10)</div><div class="mc-value" style="color:#38bdf8;">{tot_pagi} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+                with mc_c3:
+                    st.markdown(f'<div class="metric-container mc-green" style="margin-bottom: 18px;"><div class="mc-title">☀️ PROGRESS SIANG (11-14)</div><div class="mc-value" style="color:#22c55e;">{tot_siang} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+                with mc_c4:
+                    st.markdown(f'<div class="metric-container mc-orange" style="margin-bottom: 18px;"><div class="mc-title">🌇 PROGRESS SORE (15-18)</div><div class="mc-value" style="color:#f59e0b;">{tot_sore} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+                with mc_c5:
+                    st.markdown(f'<div class="metric-container" style="margin-bottom: 18px; border-left: 4px solid #8b5cf6;"><div class="mc-title">🌙 PROGRESS MALAM (19-23)</div><div class="mc-value" style="color:#a78bfa;">{tot_malam} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+
+                # Container Grafik Utama (Gaya identik dengan DETAIL RE PERIODE pada Gambar 2)
+                prog_chart_container = st.container()
+                with prog_chart_container:
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div class="section-title-wrap"><div class="section-title">📈 DISTRIBUSI JAM LAPORAN FOTO PROGRESS TEKNISI (PAGI / SIANG / SORE / MALAM)</div></div>', unsafe_allow_html=True)
+
+                all_hours_prog = pd.DataFrame({'Jam': [f"{i:02d}:00" for i in range(24)]})
+                sesi_list = ['PROGRESS PAGI', 'PROGRESS SIANG', 'PROGRESS SORE', 'PROGRESS MALAM']
+                frames_prog = []
+                for sesi_name in sesi_list:
+                    df_sub_sesi = df_prog_period[df_prog_period['Kategori_Sesi'] == sesi_name]
+                    cnt_df = pd.merge(
+                        all_hours_prog,
+                        df_sub_sesi.groupby('Jam').size().reset_index(name='Jumlah'),
+                        on='Jam',
+                        how='left'
+                    ).fillna(0)
+                    cnt_df['Kategori'] = sesi_name
+                    frames_prog.append(cnt_df)
+
+                chart_prog_df = pd.concat(frames_prog, ignore_index=True)
+                chart_prog_df['Text'] = chart_prog_df['Jumlah'].apply(lambda x: str(int(x)) if x > 0 else '')
+
+                ch_p1, ch_p2 = prog_chart_container.columns([3, 1])
+
+                with ch_p1:
+                    fig_prog = px.line(
+                        chart_prog_df,
+                        x='Jam',
+                        y='Jumlah',
+                        color='Kategori',
+                        text='Text',
+                        markers=True,
+                        color_discrete_map={
+                            'PROGRESS PAGI': '#3b82f6',
+                            'PROGRESS SIANG': '#22c55e',
+                            'PROGRESS SORE': '#f59e0b',
+                            'PROGRESS MALAM': '#8b5cf6'
+                        }
+                    )
+                    fig_prog.update_traces(
+                        line=dict(width=3, shape='spline'),
+                        fill='tozeroy',
+                        marker=dict(size=8),
+                        textposition='top center',
+                        textfont=dict(color='#ffffff')
+                    )
+
+                    fill_colors_prog = {
+                        'PROGRESS PAGI': 'rgba(59, 130, 246, 0.16)',
+                        'PROGRESS SIANG': 'rgba(34, 197, 94, 0.16)',
+                        'PROGRESS SORE': 'rgba(245, 158, 11, 0.16)',
+                        'PROGRESS MALAM': 'rgba(139, 92, 246, 0.16)'
+                    }
+                    for trace in fig_prog.data:
+                        if trace.name in fill_colors_prog:
+                            trace.fillcolor = fill_colors_prog[trace.name]
+                        trace.name = f'<b><span style="color:white; text-shadow:2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{trace.name}</span></b>'
+
+                    # Area background shading seperti pada contoh grafik Gambar 2
+                    fig_prog.add_vrect(x0="00:00", x1="07:00", fillcolor="rgba(160, 160, 160, 0.25)", layer="below", line_width=0)
+                    fig_prog.add_vrect(x0="18:00", x1="23:00", fillcolor="rgba(160, 160, 160, 0.25)", layer="below", line_width=0)
+
+                    max_y_prog = chart_prog_df['Jumlah'].max() if not chart_prog_df.empty else 5
+                    fig_prog.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#cbd5e1'),
+                        xaxis_title="Waktu (Jam)",
+                        yaxis_title="Jumlah Progress",
+                        margin=dict(t=10, b=40, l=50, r=10),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
+                        hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
+                        xaxis=dict(fixedrange=True, dtick=2, range=[-0.5, 23.5], showgrid=True, gridwidth=1, gridcolor='#334155'),
+                        yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155', range=[0, max(max_y_prog * 1.22, 4)])
+                    )
+                    fig_prog.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_prog.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_prog.update_traces(cliponaxis=False)
+                    st.plotly_chart(fig_prog, use_container_width=True, config={'displayModeBar': False}, theme=None)
+
+                with ch_p2:
+                    pct_pagi = f"{(tot_pagi / tot_all_prog) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog > 0 else "0"
+                    pct_siang = f"{(tot_siang / tot_all_prog) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog > 0 else "0"
+                    pct_sore = f"{(tot_sore / tot_all_prog) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog > 0 else "0"
+                    pct_malam = f"{(tot_malam / tot_all_prog) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog > 0 else "0"
+
+                    html_summary_prog = (
+                        '<div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
+                        '<div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 18px; letter-spacing: 0.5px;">GRAND TOTAL PROGRESS PROVI</div>'
+                        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 22px 10px; margin-bottom: 18px;">'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_pagi}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PAGI (07-10)</div><div style="font-size: 11px; color: #94a3b8;">{pct_pagi}%</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_siang}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">SIANG (11-14)</div><div style="font-size: 11px; color: #94a3b8;">{pct_siang}%</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_sore}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">SORE (15-18)</div><div style="font-size: 11px; color: #94a3b8;">{pct_sore}%</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #8b5cf6; line-height: 1;">{tot_malam}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">MALAM (19-23)</div><div style="font-size: 11px; color: #94a3b8;">{pct_malam}%</div></div>'
+                        '</div>'
+                        f'<div style="border-top: 1px dashed #334155; padding-top: 16px; margin-top: auto; font-size: 0.92rem; font-weight: bold; color: #94a3b8; text-align: left;">'
+                        f'<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>TOTAL PROGRESS</span> <span style="color:#38bdf8;">{tot_all_prog} FOTO</span></div>'
+                        f'<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>WO UNIK</span> <span style="color:#22c55e;">{tot_uniq_wo} WO</span></div>'
+                        f'<div style="display:flex; justify-content:space-between;"><span>TEKNISI AKTIF</span> <span style="color:white;">{tot_active_tek} TIM</span></div>'
+                        '</div>'
+                        '</div>'
+                    )
+                    st.markdown(html_summary_prog, unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                # --- 4 MINI SPARKLINE CHARTS (PAGI, SIANG, SORE, MALAM) ---
+                mini_p_cols = st.columns(4)
+                prog_categories_meta = [
+                    ('PROGRESS PAGI', 'PROGRESS PAGI (07:00 - 10:00)', '#3b82f6', 'rgba(59, 130, 246, 0.16)'),
+                    ('PROGRESS SIANG', 'PROGRESS SIANG (11:00 - 14:00)', '#22c55e', 'rgba(34, 197, 94, 0.16)'),
+                    ('PROGRESS SORE', 'PROGRESS SORE (15:00 - 18:00)', '#f59e0b', 'rgba(245, 158, 11, 0.16)'),
+                    ('PROGRESS MALAM', 'PROGRESS MALAM (19:00 - 23:59)', '#8b5cf6', 'rgba(139, 92, 246, 0.16)')
+                ]
+                for idx_m, (cat_key, cat_title, cat_color, cat_fill) in enumerate(prog_categories_meta):
+                    df_cat_p = chart_prog_df[chart_prog_df['Kategori'] == cat_key]
+                    max_y_m = df_cat_p['Jumlah'].max() if not df_cat_p.empty else 4
+                    fig_m_prog = px.line(df_cat_p, x='Jam', y='Jumlah', text='Text', markers=True)
+                    fig_m_prog.update_traces(
+                        line=dict(width=2.2, color=cat_color, shape='spline'),
+                        fill='tozeroy',
+                        fillcolor=cat_fill,
+                        marker=dict(size=5, color=cat_color),
+                        textposition='top center',
+                        textfont=dict(color='#ffffff'),
+                        cliponaxis=False
+                    )
+                    fig_m_prog.update_layout(
+                        title=dict(text=cat_title, font=dict(color=cat_color, size=12), x=0.5, xanchor='center'),
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='#0f172a',
+                        margin=dict(t=40, b=45, l=45, r=10),
+                        xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=6, title="Waktu (Jam)"),
+                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Progress", range=[0, max(max_y_m * 1.28, 2)]),
+                        hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
+                        height=260
+                    )
+                    fig_m_prog.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_m_prog.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    with mini_p_cols[idx_m]:
+                        st.plotly_chart(fig_m_prog, use_container_width=True, config={'displayModeBar': False}, theme=None)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                # --- TABEL REKAP PER TEKNISI (ATAS) & DETAIL PROGRESS (BAWAH) ---
+                st.markdown('<div class="section-title-wrap"><div class="section-title" style="font-size: 1.15rem;">👷 REKAP PROGRESS PER TEKNISI</div></div>', unsafe_allow_html=True)
+                if not df_prog_period.empty:
+                    piv_tek = (
+                        df_prog_period.groupby(['Teknisi_Clean', 'Kategori_Sesi'])
+                        .size()
+                        .unstack(fill_value=0)
+                        .reset_index()
+                    )
+                    for s_col in ['PROGRESS PAGI', 'PROGRESS SIANG', 'PROGRESS SORE', 'PROGRESS MALAM']:
+                        if s_col not in piv_tek.columns:
+                            piv_tek[s_col] = 0
+                    piv_tek['TOTAL'] = (
+                        piv_tek['PROGRESS PAGI'] +
+                        piv_tek['PROGRESS SIANG'] +
+                        piv_tek['PROGRESS SORE'] +
+                        piv_tek['PROGRESS MALAM']
+                    )
+                    piv_tek = piv_tek.sort_values(by=['TOTAL', 'Teknisi_Clean'], ascending=[False, True]).reset_index(drop=True)
+
+                    rows_tek_html = ""
+                    for idx_t, r_t in piv_tek.iterrows():
+                        rows_tek_html += (
+                            f'<tr style="border-bottom: 1px solid #1e293b;">'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#ffffff; font-weight:bold; font-size:1.05rem;">{idx_t + 1}</td>'
+                            f'<td style="padding: 12px 16px; text-align:left; color:#ffffff; font-weight:800; font-size:1.05rem;">{r_t["Teknisi_Clean"]}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#38bdf8; font-weight:800; font-size:1.1rem;">{int(r_t["PROGRESS PAGI"])}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#22c55e; font-weight:800; font-size:1.1rem;">{int(r_t["PROGRESS SIANG"])}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#f59e0b; font-weight:800; font-size:1.1rem;">{int(r_t["PROGRESS SORE"])}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#a78bfa; font-weight:800; font-size:1.1rem;">{int(r_t["PROGRESS MALAM"])}</td>'
+                            f'<td style="padding: 12px 14px; text-align:center;"><span style="background:rgba(59,130,246,0.2); color:#ffffff; border:1px solid #3b82f6; padding:4px 15px; border-radius:999px; font-weight:800; font-size:1.05rem;">{int(r_t["TOTAL"])}</span></td>'
+                            f'</tr>'
+                        )
+
+                    tek_table_html = (
+                        '<div style="border: 1px solid #334155; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 28px;">'
+                        '<table style="width: 100%; border-collapse: collapse; font-size: 1.05rem;">'
+                        '<thead>'
+                        '<tr style="background: #1e293b; color: #ffffff; text-transform: uppercase; font-size: 0.96rem;">'
+                        '<th style="padding: 14px 12px; text-align:center; width: 70px; color:#ffffff;">NO</th>'
+                        '<th style="padding: 14px 16px; text-align:center; color:#ffffff;">TEKNISI</th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#38bdf8;">PAGI<br><span style="font-size:12.5px;color:#ffffff;">07:00 - 10:00</span></th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#22c55e;">SIANG<br><span style="font-size:12.5px;color:#ffffff;">11:00 - 14:00</span></th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#f59e0b;">SORE<br><span style="font-size:12.5px;color:#ffffff;">15:00 - 18:00</span></th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#a78bfa;">MALAM<br><span style="font-size:12.5px;color:#ffffff;">19:00 - 23:59</span></th>'
+                        '<th style="padding: 14px 14px; text-align:center; color:#ffffff;">TOTAL</th>'
+                        '</tr>'
+                        '</thead>'
+                        f'<tbody>{rows_tek_html}</tbody>'
+                        '</table>'
+                        '</div>'
+                    )
+                    st.markdown(tek_table_html, unsafe_allow_html=True)
+                else:
+                    st.info("Belum ada data teknisi yang melapor pada periode tanggal ini.")
+
+                st.markdown('<div class="section-title-wrap"><div class="section-title">📋 DETAIL LOG FOTO PROGRESS TEKNISI</div></div>', unsafe_allow_html=True)
+                search_prog_q = st.text_input("🔍 Cari Teknisi / Wonum / Notes / Status BIMA / Sesi Waktu:", "", key="search_prog_provi_detail", placeholder="Ketik nama teknisi, AO/WONUM, ODP, STARTWORK, PAGI, SIANG...")
+                if not df_prog_period.empty:
+                    df_det_p = df_prog_period.sort_values(by=['Parsed_Date', jam_col], ascending=[False, False]).copy()
+                    if search_prog_q.strip():
+                        q_low = search_prog_q.strip().lower()
+                        mask_q = (
+                            df_det_p['Teknisi_Clean'].astype(str).str.lower().str.contains(q_low, na=False) |
+                            df_det_p[wo_col].astype(str).str.lower().str.contains(q_low, na=False) |
+                            df_det_p['Kategori_Sesi'].astype(str).str.lower().str.contains(q_low, na=False) |
+                            (df_det_p[notes_col].astype(str).str.lower().str.contains(q_low, na=False) if notes_col else False) |
+                            (df_det_p[stat_col].astype(str).str.lower().str.contains(q_low, na=False) if stat_col else False)
+                        )
+                        df_det_p = df_det_p[mask_q]
+
+                    sesi_badge_map = {
+                        'PROGRESS PAGI': ('#38bdf8', 'rgba(56,189,248,0.15)', 'PAGI (07-10)'),
+                        'PROGRESS SIANG': ('#22c55e', 'rgba(34,197,94,0.15)', 'SIANG (11-14)'),
+                        'PROGRESS SORE': ('#f59e0b', 'rgba(245,158,11,0.15)', 'SORE (15-18)'),
+                        'PROGRESS MALAM': ('#a78bfa', 'rgba(167,139,250,0.15)', 'MALAM (19-23)')
+                    }
+
+                    rows_det_html = ""
+                    for idx_d, (_, r_d) in enumerate(df_det_p.iterrows(), 1):
+                        tgl_v = str(r_d.get(tgl_col, '-')).strip()
+                        jam_v = str(r_d.get(jam_col, '-')).strip()
+                        tek_v = str(r_d.get('Teknisi_Clean', '-')).strip()
+                        wo_v = str(r_d.get(wo_col, '-')).strip()
+                        note_v = str(r_d.get(notes_col, '-')).strip() if notes_col and pd.notna(r_d.get(notes_col)) else '-'
+                        wita_v = str(r_d.get(wita_col, '-')).strip() if wita_col and pd.notna(r_d.get(wita_col)) else '-'
+                        stat_v = str(r_d.get(stat_col, '-')).strip() if stat_col and pd.notna(r_d.get(stat_col)) else '-'
+                        sesi_v = str(r_d.get('Kategori_Sesi', 'PROGRESS PAGI'))
+                        b_col, b_bg, b_lbl = sesi_badge_map.get(sesi_v, ('#38bdf8', 'rgba(56,189,248,0.15)', sesi_v))
+
+                        stat_color = '#22c55e' if stat_v.upper() in ['COMPLETE', 'COMPWORK', 'ACTCOMP'] else ('#ef4444' if stat_v.upper() in ['WORKFAIL', 'CANCLWORK'] else '#38bdf8')
+
+                        rows_det_html += (
+                            f'<tr style="border-bottom: 1px solid #1e293b;">'
+                            f'<td style="padding: 10px 8px; text-align:center; color:#94a3b8; font-weight:bold;">{idx_d}</td>'
+                            f'<td style="padding: 10px 10px; text-align:center; color:#e2e8f0; white-space:nowrap;">{tgl_v} &bull; <span style="color:#38bdf8; font-weight:700;">{jam_v}</span></td>'
+                            f'<td style="padding: 10px 10px; text-align:center;"><span style="background:{b_bg}; color:{b_col}; border:1px solid {b_col}; padding:3px 10px; border-radius:6px; font-size:0.74rem; font-weight:700; white-space:nowrap;">{b_lbl}</span></td>'
+                            f'<td style="padding: 10px 12px; text-align:left; color:#f8fafc; font-weight:700; white-space:nowrap;">{tek_v}</td>'
+                            f'<td style="padding: 10px 12px; text-align:left; color:#fbbf24; font-family:monospace; font-size:0.84rem; white-space:nowrap;">{wo_v}</td>'
+                            f'<td style="padding: 10px 12px; text-align:left; color:#cbd5e1;">{note_v}</td>'
+                            f'<td style="padding: 10px 10px; text-align:center; color:#94a3b8; white-space:nowrap;">{wita_v}</td>'
+                            f'<td style="padding: 10px 10px; text-align:center;"><span style="color:{stat_color}; font-weight:700; font-size:0.78rem;">{stat_v}</span></td>'
+                            f'</tr>'
+                        )
+
+                    det_table_html = (
+                        '<div style="border: 1px solid #334155; border-radius: 10px; overflow: hidden; background: #0f172a; max-height: 550px; overflow-y: auto;">'
+                        '<table style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">'
+                        '<thead>'
+                        '<tr style="background: #1e293b; color: #cbd5e1; text-transform: uppercase; font-size: 0.76rem; position: sticky; top: 0; z-index: 2;">'
+                        '<th style="padding: 12px 8px; text-align:center; width: 55px;">NO</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">TANGGAL & JAM KIRIM</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">SESI PROGRESS</th>'
+                        '<th style="padding: 12px 12px; text-align:left;">TEKNISI</th>'
+                        '<th style="padding: 12px 12px; text-align:left;">NOMER WONUM</th>'
+                        '<th style="padding: 12px 12px; text-align:left;">NOTES</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">DATE MODIFIED WITA</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">STATUS BIMA</th>'
+                        '</tr>'
+                        '</thead>'
+                        f'<tbody>{rows_det_html}</tbody>'
+                        '</table>'
+                        '</div>'
+                    )
+                    st.markdown(det_table_html, unsafe_allow_html=True)
+                else:
+                    st.info("Tidak ada detail log foto progress pada rentang tanggal yang dipilih.")
+            else:
+                st.warning("Kolom TANGGAL, JAM KIRIM PROGRESS, atau NOMER WONUM tidak ditemukan pada sheet REKAP REPORTING PROGRESS TEKNISI.")
+        else:
+            st.info("Data REKAP REPORTING PROGRESS TEKNISI belum tersedia atau kosong.")
+
     elif menu == "MONITORING SERVER":
         st.markdown('<div class="section-title-wrap"><div class="section-title">🖥️ SYSTEM MONITORING SERVER</div></div>', unsafe_allow_html=True)
         
@@ -5379,31 +5889,50 @@ if not df.empty:
         /* Modal & Table Sticky Header & Custom Scrollbars */
         .asr-modal-scroll {
             width: 100%;
-            overflow-x: auto !important;
+            overflow-x: scroll !important;
             overflow-y: auto !important;
-            scrollbar-width: thin;
-            scrollbar-color: #3b82f6 #0b1120;
+            scrollbar-color: #3b82f6 #090d16;
+            scrollbar-width: auto;
         }
-        .asr-modal-scroll::-webkit-scrollbar,
-        .asr-scroll-container::-webkit-scrollbar {
-            height: 12px;
-            width: 10px;
+        .asr-modal-scroll::-webkit-scrollbar {
+            height: 14px !important;
+            width: 12px !important;
         }
-        .asr-modal-scroll::-webkit-scrollbar-track,
-        .asr-scroll-container::-webkit-scrollbar-track {
-            background: #0b1120;
-            border-top: 1px solid #1e293b;
-            border-radius: 6px;
+        .asr-modal-scroll::-webkit-scrollbar-track {
+            background: #090d16 !important;
+            border-top: 2px solid #1e3a8a !important;
+            border-radius: 6px !important;
         }
-        .asr-modal-scroll::-webkit-scrollbar-thumb,
-        .asr-scroll-container::-webkit-scrollbar-thumb {
-            background: #2563eb;
-            border-radius: 6px;
-            border: 2px solid #0b1120;
+        .asr-modal-scroll::-webkit-scrollbar-thumb {
+            background: #2563eb !important;
+            border-radius: 6px !important;
+            border: 2px solid #090d16 !important;
         }
-        .asr-modal-scroll::-webkit-scrollbar-thumb:hover,
-        .asr-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #3b82f6;
+        .asr-modal-scroll::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6 !important;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.9) !important;
+        }
+        .asr-modal-scroll::-webkit-scrollbar-corner {
+            background: #090d16 !important;
+        }
+        .asr-modal-search-box {
+            background: #0f172a !important;
+            color: #f8fafc !important;
+            border: 1.8px solid #3b82f6 !important;
+            border-radius: 8px !important;
+            padding: 6px 32px 6px 34px !important;
+            font-size: 0.84rem !important;
+            width: 300px !important;
+            outline: none !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4) !important;
+        }
+        .asr-modal-search-box:focus {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.6) !important;
+        }
+        .asr-modal-search-box::placeholder {
+            color: #94a3b8 !important;
         }
         .asr-modal-table th,
         .asr-table-custom th {
@@ -6017,7 +6546,7 @@ if not df.empty:
                         f'<td style="padding:10px 10px; text-align:center; font-weight:700; color:#f8fafc; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{wzone_val}</td>'
                         f'<td style="padding:10px 10px; text-align:center; color:#cbd5e1; font-size:0.82rem; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{owner_val}</td>'
                         f'<td style="padding:10px 10px; text-align:center; font-family:monospace; font-size:0.83rem; font-weight:700; color:#38bdf8; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{alpro_val}</td>'
-                        f'<td style="padding:10px 16px; min-width:380px; max-width:650px; line-height:1.5; color:#cbd5e1; font-size:0.80rem; white-space:normal; word-break:break-word; text-align:justify; text-justify:inter-word;">{summary_val}</td>'
+                        f'<td style="padding:10px 16px; min-width:700px; max-width:900px; line-height:1.5; color:#cbd5e1; font-size:0.80rem; white-space:normal; word-break:break-word; text-align:justify; text-justify:inter-word;">{summary_val}</td>'
                         f'</tr>'
                     )
                     rows_html.append(r)
@@ -6026,29 +6555,36 @@ if not df.empty:
                 
                 modal_html = (
                     f'<div id="{modal_id}" class="detail-modal asr-modal-box" style="display:none; position:fixed; top:6%; left:3%; right:3%; bottom:6%; background:#0f172a; z-index:999999; border:2.5px solid #eab308; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.95); flex-direction:column; overflow:hidden;">'
-                    f'<div style="padding:14px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #334155; flex-shrink:0;">'
-                    f'<div style="display:flex; align-items:center; gap:10px;">'
-                    f'<h3 style="margin:0; color:#ffffff; font-size:1.15rem; font-weight:700; letter-spacing:0.5px;">Detail Data: {modal_title}</h3>'
-                    f'<span style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:700;">{len(sub_df):,} Tiket</span>'
+                    f'<div style="padding:12px 20px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #334155; flex-shrink:0; gap:16px;">'
+                    f'<div style="display:flex; align-items:center; gap:12px; min-width:0; flex-shrink:1;">'
+                    f'<h3 style="margin:0; color:#ffffff; font-size:1.15rem; font-weight:700; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Detail Data: {modal_title}</h3>'
+                    f'<span class="asr-modal-counter-badge" style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; padding:3px 12px; border-radius:12px; font-size:0.8rem; font-weight:700; white-space:nowrap;" data-total="{len(sub_df)}">{len(sub_df):,} Tiket</span>'
                     f'</div>'
-                    f'<button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 8px;" title="Tutup Modal">&times;</button>'
+                    f'<div style="display:flex; align-items:center; gap:14px; flex-shrink:0;">'
+                    f'<div style="position:relative; display:flex; align-items:center;">'
+                    f'<span style="position:absolute; left:11px; color:#60a5fa; font-size:0.88rem; pointer-events:none;">🔍</span>'
+                    f'<input type="text" class="asr-modal-search-box" placeholder="Cari Tiket / Pelanggan / Summary..." autocomplete="off" />'
+                    f'<button type="button" class="asr-modal-search-clear" style="display:none; position:absolute; right:8px; background:none; border:none; color:#94a3b8; font-size:1.15rem; cursor:pointer; padding:0 4px; line-height:1;" title="Hapus Pencarian">&times;</button>'
                     f'</div>'
-                    f'<div class="asr-modal-scroll" style="padding:0; overflow-y:auto; overflow-x:auto; flex:1; background:#0b1120;">'
-                    f'<table class="asr-modal-table" style="width:100%; border-collapse:separate; border-spacing:0; font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif; text-align:left; font-size:0.82rem; min-width:1750px;">'
+                    f'<button class="modal-close" style="background:none; border:none; color:#cbd5e1; font-size:2rem; cursor:pointer; line-height:1; padding:0 6px;" title="Tutup Modal">&times;</button>'
+                    f'</div>'
+                    f'</div>'
+                    f'<div class="asr-modal-scroll" style="padding:0; overflow-y:auto; overflow-x:scroll !important; flex:1; min-height:0; background:#0b1120;">'
+                    f'<table class="asr-modal-table" style="width:100%; border-collapse:separate; border-spacing:0; font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif; text-align:left; font-size:0.82rem; min-width:2350px;">'
                     f'<thead>'
                     f'<tr>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 8px; width:45px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">NO</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">INCIDENT</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:155px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">REPORTED DATE</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:120px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">STATUS</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER TYPE</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 8px; width:150px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">TTR CUSTOMER</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:180px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER NAME</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:100px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SERVICE</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:85px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">WORKZONE</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:170px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">OWNER GROUP</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:135px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">ALPRO OK</th>'
-                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; padding:12px 16px; min-width:380px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SUMMARY TIKET</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 8px; width:50px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">NO</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:150px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">INCIDENT</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:165px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">REPORTED DATE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:130px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">STATUS</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:150px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER TYPE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 8px; width:160px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">TTR CUSTOMER</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:220px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">CUSTOMER NAME</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:120px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SERVICE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:95px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">WORKZONE</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:240px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">OWNER GROUP</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:160px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">ALPRO OK</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; padding:12px 16px; min-width:700px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SUMMARY TIKET</th>'
                     f'</tr>'
                     f'</thead>'
                     f'<tbody>'
@@ -6238,10 +6774,119 @@ if not df.empty:
                         if(target) {
                             target.style.display = 'flex';
                             if(backdrop) backdrop.style.display = 'block';
+
+                            // Reset and focus search input on open
+                            const searchInput = target.querySelector('.asr-modal-search-box');
+                            if (searchInput) {
+                                searchInput.value = '';
+                                const clearBtn = target.querySelector('.asr-modal-search-clear');
+                                if (clearBtn) clearBtn.style.display = 'none';
+                                const badge = target.querySelector('.asr-modal-counter-badge');
+                                const totalCount = badge ? parseInt(badge.getAttribute('data-total') || '0') : 0;
+                                if (badge) {
+                                    badge.textContent = totalCount.toLocaleString() + ' Tiket';
+                                    badge.style.background = 'rgba(234,179,8,0.2)';
+                                    badge.style.borderColor = '#eab308';
+                                    badge.style.color = '#facc15';
+                                }
+                                const tableBody = target.querySelector('.asr-modal-table tbody');
+                                if (tableBody) {
+                                    tableBody.querySelectorAll('tr').forEach(r => r.style.display = '');
+                                }
+                                setTimeout(() => searchInput.focus(), 80);
+                            }
                         }
                     });
                 });
                 
+                // Real-time Search within Modal
+                const searchInputs = parentDoc.querySelectorAll('.asr-modal-search-box');
+                searchInputs.forEach(input => {
+                    if (input.dataset.listener) return;
+                    input.dataset.listener = 'true';
+                    
+                    const modal = input.closest('.detail-modal');
+                    if (!modal) return;
+                    const clearBtn = modal.querySelector('.asr-modal-search-clear');
+                    const badge = modal.querySelector('.asr-modal-counter-badge');
+                    const tableBody = modal.querySelector('.asr-modal-table tbody');
+                    const totalCount = badge ? parseInt(badge.getAttribute('data-total') || '0') : 0;
+                    
+                    function doFilter() {
+                        const val = input.value.toLowerCase().trim();
+                        if (clearBtn) {
+                            clearBtn.style.display = val.length > 0 ? 'block' : 'none';
+                        }
+                        if (!tableBody) return;
+                        const rows = tableBody.querySelectorAll('tr');
+                        let matched = 0;
+                        rows.forEach(r => {
+                            const text = (r.textContent || '').toLowerCase();
+                            if (!val || text.indexOf(val) !== -1) {
+                                r.style.display = '';
+                                matched++;
+                            } else {
+                                r.style.display = 'none';
+                            }
+                        });
+                        if (badge) {
+                            if (!val) {
+                                badge.textContent = totalCount.toLocaleString() + ' Tiket';
+                                badge.style.background = 'rgba(234,179,8,0.2)';
+                                badge.style.borderColor = '#eab308';
+                                badge.style.color = '#facc15';
+                            } else {
+                                badge.textContent = matched.toLocaleString() + ' / ' + totalCount.toLocaleString() + ' Tiket';
+                                if (matched === 0) {
+                                    badge.style.background = 'rgba(239,68,68,0.2)';
+                                    badge.style.borderColor = '#ef4444';
+                                    badge.style.color = '#f87171';
+                                } else {
+                                    badge.style.background = 'rgba(56,189,248,0.2)';
+                                    badge.style.borderColor = '#38bdf8';
+                                    badge.style.color = '#38bdf8';
+                                }
+                            }
+                        }
+                    }
+                    
+                    input.addEventListener('input', doFilter);
+                    input.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            if (input.value) {
+                                input.value = '';
+                                doFilter();
+                                e.stopPropagation();
+                            }
+                        }
+                    });
+                    
+                    if (clearBtn) {
+                        clearBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            input.value = '';
+                            doFilter();
+                            input.focus();
+                        });
+                    }
+                });
+
+                // Horizontal wheel scroll helper for modal table
+                const scrollContainers = parentDoc.querySelectorAll('.asr-modal-scroll');
+                scrollContainers.forEach(sc => {
+                    if (sc.dataset.wheelListener) return;
+                    sc.dataset.wheelListener = 'true';
+                    sc.addEventListener('wheel', function(e) {
+                        const rect = sc.getBoundingClientRect();
+                        if (e.shiftKey || (e.clientY >= rect.bottom - 45 && e.clientY <= rect.bottom)) {
+                            if (e.deltaY !== 0) {
+                                sc.scrollLeft += (e.deltaY * 1.5);
+                                e.preventDefault();
+                            }
+                        }
+                    }, { passive: false });
+                });
+
                 // Close modal buttons
                 const closers = parentDoc.querySelectorAll('.modal-close');
                 closers.forEach(c => {
@@ -7020,6 +7665,404 @@ if not df.empty:
                         st.caption(f"Menampilkan seluruh {len(df_table):,} tiket.")
                 
                 st.markdown('</div>', unsafe_allow_html=True)
+
+    elif menu == "PROGRESS ASSURANCE":
+        st.markdown('<div class="section-title-wrap"><div class="section-title">📸 REKAP & GRAFIK HARIAN PROGRESS TEKNISI ASSURANCE</div></div>', unsafe_allow_html=True)
+
+        @st.cache_data(ttl=60, show_spinner=False)
+        def load_rekap_progress_asr():
+            import urllib.parse
+            sheet_id = "1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o"
+            sheet_name = urllib.parse.quote("REKAP PROGRESS TEKNISI ASR")
+            csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+            try:
+                df_a = pd.read_csv(csv_url)
+                df_a.columns = df_a.columns.astype(str).str.strip().str.upper()
+                return df_a
+            except Exception:
+                local_csv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rekap_progress_asr.csv")
+                if os.path.exists(local_csv):
+                    df_a = pd.read_csv(local_csv)
+                    df_a.columns = df_a.columns.astype(str).str.strip().str.upper()
+                    return df_a
+                raise
+
+        try:
+            df_asr_prog_raw = load_rekap_progress_asr()
+        except Exception as e_asr_prog:
+            st.error(f"Gagal memuat sheet REKAP PROGRESS TEKNISI ASR: {e_asr_prog}")
+            df_asr_prog_raw = pd.DataFrame()
+
+        if not df_asr_prog_raw.empty:
+            tgl_col_a = next((c for c in df_asr_prog_raw.columns if 'TANGGAL' in c), None)
+            jam_col_a = next((c for c in df_asr_prog_raw.columns if 'JAM' in c), None)
+            tek_col_a = next((c for c in df_asr_prog_raw.columns if 'TEKNISI' in c), None)
+            inc_col_a = next((c for c in df_asr_prog_raw.columns if 'INCIDENT' in c or 'TIKET' in c or 'WONUM' in c), None)
+            notes_col_a = next((c for c in df_asr_prog_raw.columns if 'NOTE' in c), None)
+            wita_col_a = next((c for c in df_asr_prog_raw.columns if 'WITA' in c), None)
+            stat_col_a = next((c for c in df_asr_prog_raw.columns if 'STATUS' in c), None)
+
+            if tgl_col_a and jam_col_a and inc_col_a:
+                # Bersihkan baris kosong (seperti nomor urut 1..1000 tanpa data NOMER INCIDENT / TANGGAL)
+                df_asr_p = df_asr_prog_raw[
+                    df_asr_prog_raw[inc_col_a].notna() &
+                    (df_asr_prog_raw[inc_col_a].astype(str).str.strip() != '') &
+                    (df_asr_prog_raw[inc_col_a].astype(str).str.strip().str.upper() != 'NAN') &
+                    df_asr_prog_raw[tgl_col_a].notna() &
+                    (df_asr_prog_raw[tgl_col_a].astype(str).str.strip() != '') &
+                    (df_asr_prog_raw[tgl_col_a].astype(str).str.strip().str.upper() != 'NAN')
+                ].copy()
+
+                # Parse tanggal dan filter sesuai periode di sidebar
+                df_asr_p['Parsed_Date'] = pd.to_datetime(df_asr_p[tgl_col_a].astype(str).str.strip(), errors='coerce').dt.date
+                df_asr_period = df_asr_p[
+                    (df_asr_p['Parsed_Date'] >= start_date) &
+                    (df_asr_p['Parsed_Date'] <= end_date)
+                ].copy()
+
+                # Parse Jam Kirim Progress (HH:MM:SS -> Hour 0..23 & label HH:00)
+                def extract_hour_int_asr(val):
+                    s = str(val).strip()
+                    if ':' in s:
+                        p = s.split(':')[0].strip()
+                        if p.isdigit():
+                            h = int(p)
+                            if 0 <= h <= 23:
+                                return h
+                    return -1
+
+                df_asr_period['Hour_Int'] = df_asr_period[jam_col_a].apply(extract_hour_int_asr)
+                df_asr_period = df_asr_period[df_asr_period['Hour_Int'] >= 0].copy()
+                df_asr_period['Jam'] = df_asr_period['Hour_Int'].apply(lambda h: f"{int(h):02d}:00")
+
+                # Klasifikasi 4 Pembagian Progress:
+                # - Progress Pagi  : 07:00 s/d 10:00 (Hour 7..10, termasuk <7 bila ada kiriman dini hari)
+                # - Progress Siang : 11:00 s/d 14:00 (Hour 11..14)
+                # - Progress Sore  : 15:00 s/d 18:00 (Hour 15..18)
+                # - Progress Malam : 19:00 s/d 23:59 (Hour 19..23)
+                def classify_sesi_progress_asr(h):
+                    if 7 <= h <= 10 or h < 7:
+                        return 'PROGRESS PAGI'
+                    elif 11 <= h <= 14:
+                        return 'PROGRESS SIANG'
+                    elif 15 <= h <= 18:
+                        return 'PROGRESS SORE'
+                    else:
+                        return 'PROGRESS MALAM'
+
+                df_asr_period['Kategori_Sesi'] = df_asr_period['Hour_Int'].apply(classify_sesi_progress_asr)
+
+                # Bersihkan nama teknisi (tanpa / ASR atau / A agar rapi di rekap)
+                if tek_col_a:
+                    df_asr_period['Teknisi_Clean'] = (
+                        df_asr_period[tek_col_a].astype(str).str.strip()
+                        .str.replace(r'(?i)\s*/\s*ASR.*$', '', regex=True)
+                        .str.replace(r'(?i)\s*/\s*A\s*$', '', regex=True)
+                        .str.strip().str.upper()
+                    )
+                else:
+                    df_asr_period['Teknisi_Clean'] = 'UNKNOWN'
+
+                tot_all_prog_a = len(df_asr_period)
+                tot_uniq_inc_a = df_asr_period[inc_col_a].astype(str).str.strip().nunique() if not df_asr_period.empty else 0
+                tot_active_tek_a = df_asr_period['Teknisi_Clean'].nunique() if not df_asr_period.empty else 0
+
+                tot_pagi_a = int((df_asr_period['Kategori_Sesi'] == 'PROGRESS PAGI').sum())
+                tot_siang_a = int((df_asr_period['Kategori_Sesi'] == 'PROGRESS SIANG').sum())
+                tot_sore_a = int((df_asr_period['Kategori_Sesi'] == 'PROGRESS SORE').sum())
+                tot_malam_a = int((df_asr_period['Kategori_Sesi'] == 'PROGRESS MALAM').sum())
+
+                # Top Metric Cards
+                mc_a1, mc_a2, mc_a3, mc_a4, mc_a5 = st.columns(5)
+                with mc_a1:
+                    st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 18px;"><div class="mc-title">📸 TOTAL PROGRESS</div><div class="mc-value">{tot_all_prog_a} <span style="font-size:0.95rem; color:#94a3b8">FOTO ({tot_uniq_inc_a} TIKET)</span></div></div>', unsafe_allow_html=True)
+                with mc_a2:
+                    st.markdown(f'<div class="metric-container mc-blue" style="margin-bottom: 18px; border-left-color:#38bdf8;"><div class="mc-title">🌅 PROGRESS PAGI (07-10)</div><div class="mc-value" style="color:#38bdf8;">{tot_pagi_a} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+                with mc_a3:
+                    st.markdown(f'<div class="metric-container mc-green" style="margin-bottom: 18px;"><div class="mc-title">☀️ PROGRESS SIANG (11-14)</div><div class="mc-value" style="color:#22c55e;">{tot_siang_a} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+                with mc_a4:
+                    st.markdown(f'<div class="metric-container mc-orange" style="margin-bottom: 18px;"><div class="mc-title">🌇 PROGRESS SORE (15-18)</div><div class="mc-value" style="color:#f59e0b;">{tot_sore_a} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+                with mc_a5:
+                    st.markdown(f'<div class="metric-container" style="margin-bottom: 18px; border-left: 4px solid #8b5cf6;"><div class="mc-title">🌙 PROGRESS MALAM (19-23)</div><div class="mc-value" style="color:#a78bfa;">{tot_malam_a} <span style="font-size:0.95rem; color:#94a3b8">PROGRESS</span></div></div>', unsafe_allow_html=True)
+
+                # Container Grafik Utama (Identik dengan PROGRESS PROVI)
+                asr_prog_chart_container = st.container()
+                with asr_prog_chart_container:
+                    st.markdown("<div class='custom-border-target'></div>", unsafe_allow_html=True)
+                    st.markdown('<div class="section-title-wrap"><div class="section-title">📈 DISTRIBUSI JAM LAPORAN FOTO PROGRESS TEKNISI (PAGI / SIANG / SORE / MALAM)</div></div>', unsafe_allow_html=True)
+
+                all_hours_asr_p = pd.DataFrame({'Jam': [f"{i:02d}:00" for i in range(24)]})
+                sesi_list_a = ['PROGRESS PAGI', 'PROGRESS SIANG', 'PROGRESS SORE', 'PROGRESS MALAM']
+                frames_asr_p = []
+                for sesi_name_a in sesi_list_a:
+                    df_sub_sesi_a = df_asr_period[df_asr_period['Kategori_Sesi'] == sesi_name_a]
+                    cnt_df_a = pd.merge(
+                        all_hours_asr_p,
+                        df_sub_sesi_a.groupby('Jam').size().reset_index(name='Jumlah'),
+                        on='Jam',
+                        how='left'
+                    ).fillna(0)
+                    cnt_df_a['Kategori'] = sesi_name_a
+                    frames_asr_p.append(cnt_df_a)
+
+                chart_asr_prog_df = pd.concat(frames_asr_p, ignore_index=True)
+                chart_asr_prog_df['Text'] = chart_asr_prog_df['Jumlah'].apply(lambda x: str(int(x)) if x > 0 else '')
+
+                ch_a1, ch_a2 = asr_prog_chart_container.columns([3, 1])
+
+                with ch_a1:
+                    fig_asr_prog = px.line(
+                        chart_asr_prog_df,
+                        x='Jam',
+                        y='Jumlah',
+                        color='Kategori',
+                        text='Text',
+                        markers=True,
+                        color_discrete_map={
+                            'PROGRESS PAGI': '#3b82f6',
+                            'PROGRESS SIANG': '#22c55e',
+                            'PROGRESS SORE': '#f59e0b',
+                            'PROGRESS MALAM': '#8b5cf6'
+                        }
+                    )
+                    fig_asr_prog.update_traces(
+                        line=dict(width=3, shape='spline'),
+                        fill='tozeroy',
+                        marker=dict(size=8),
+                        textposition='top center',
+                        textfont=dict(color='#ffffff')
+                    )
+
+                    fill_colors_asr_p = {
+                        'PROGRESS PAGI': 'rgba(59, 130, 246, 0.16)',
+                        'PROGRESS SIANG': 'rgba(34, 197, 94, 0.16)',
+                        'PROGRESS SORE': 'rgba(245, 158, 11, 0.16)',
+                        'PROGRESS MALAM': 'rgba(139, 92, 246, 0.16)'
+                    }
+                    for trace in fig_asr_prog.data:
+                        if trace.name in fill_colors_asr_p:
+                            trace.fillcolor = fill_colors_asr_p[trace.name]
+                        trace.name = f'<b><span style="color:white; text-shadow:2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">{trace.name}</span></b>'
+
+                    fig_asr_prog.add_vrect(x0="00:00", x1="07:00", fillcolor="rgba(160, 160, 160, 0.25)", layer="below", line_width=0)
+                    fig_asr_prog.add_vrect(x0="18:00", x1="23:00", fillcolor="rgba(160, 160, 160, 0.25)", layer="below", line_width=0)
+
+                    max_y_asr_p = chart_asr_prog_df['Jumlah'].max() if not chart_asr_prog_df.empty else 5
+                    fig_asr_prog.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#cbd5e1'),
+                        xaxis_title="Waktu (Jam)",
+                        yaxis_title="Jumlah Progress",
+                        margin=dict(t=10, b=40, l=50, r=10),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
+                        hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
+                        xaxis=dict(fixedrange=True, dtick=2, range=[-0.5, 23.5], showgrid=True, gridwidth=1, gridcolor='#334155'),
+                        yaxis=dict(fixedrange=True, showgrid=True, gridwidth=1, gridcolor='#334155', range=[0, max(max_y_asr_p * 1.22, 4)])
+                    )
+                    fig_asr_prog.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_asr_prog.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_asr_prog.update_traces(cliponaxis=False)
+                    st.plotly_chart(fig_asr_prog, use_container_width=True, config={'displayModeBar': False}, theme=None)
+
+                with ch_a2:
+                    pct_pagi_a = f"{(tot_pagi_a / tot_all_prog_a) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog_a > 0 else "0"
+                    pct_siang_a = f"{(tot_siang_a / tot_all_prog_a) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog_a > 0 else "0"
+                    pct_sore_a = f"{(tot_sore_a / tot_all_prog_a) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog_a > 0 else "0"
+                    pct_malam_a = f"{(tot_malam_a / tot_all_prog_a) * 100:.1f}".rstrip('0').rstrip('.') if tot_all_prog_a > 0 else "0"
+
+                    html_summary_asr_prog = (
+                        '<div style="border: 1px solid #334155; border-radius: 8px; padding: 20px; text-align: center; background-color: #0f172a; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">'
+                        '<div style="font-size: 0.9rem; font-weight: bold; color: #cbd5e1; margin-bottom: 18px; letter-spacing: 0.5px;">GRAND TOTAL PROGRESS ASSURANCE</div>'
+                        '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 22px 10px; margin-bottom: 18px;">'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #3b82f6; line-height: 1;">{tot_pagi_a}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PAGI (07-10)</div><div style="font-size: 11px; color: #94a3b8;">{pct_pagi_a}%</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #22c55e; line-height: 1;">{tot_siang_a}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">SIANG (11-14)</div><div style="font-size: 11px; color: #94a3b8;">{pct_siang_a}%</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_sore_a}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">SORE (15-18)</div><div style="font-size: 11px; color: #94a3b8;">{pct_sore_a}%</div></div>'
+                        f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #8b5cf6; line-height: 1;">{tot_malam_a}</div><div style="font-size: 11px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">MALAM (19-23)</div><div style="font-size: 11px; color: #94a3b8;">{pct_malam_a}%</div></div>'
+                        '</div>'
+                        f'<div style="border-top: 1px dashed #334155; padding-top: 16px; margin-top: auto; font-size: 0.92rem; font-weight: bold; color: #94a3b8; text-align: left;">'
+                        f'<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>TOTAL PROGRESS</span> <span style="color:#38bdf8;">{tot_all_prog_a} FOTO</span></div>'
+                        f'<div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>TIKET UNIK</span> <span style="color:#22c55e;">{tot_uniq_inc_a} TIKET</span></div>'
+                        f'<div style="display:flex; justify-content:space-between;"><span>TEKNISI AKTIF</span> <span style="color:white;">{tot_active_tek_a} TIM</span></div>'
+                        '</div>'
+                        '</div>'
+                    )
+                    st.markdown(html_summary_asr_prog, unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                # --- 4 MINI SPARKLINE CHARTS (PAGI, SIANG, SORE, MALAM) ---
+                mini_a_cols = st.columns(4)
+                asr_prog_categories_meta = [
+                    ('PROGRESS PAGI', 'PROGRESS PAGI (07:00 - 10:00)', '#3b82f6', 'rgba(59, 130, 246, 0.16)'),
+                    ('PROGRESS SIANG', 'PROGRESS SIANG (11:00 - 14:00)', '#22c55e', 'rgba(34, 197, 94, 0.16)'),
+                    ('PROGRESS SORE', 'PROGRESS SORE (15:00 - 18:00)', '#f59e0b', 'rgba(245, 158, 11, 0.16)'),
+                    ('PROGRESS MALAM', 'PROGRESS MALAM (19:00 - 23:59)', '#8b5cf6', 'rgba(139, 92, 246, 0.16)')
+                ]
+                for idx_ma, (cat_key_a, cat_title_a, cat_color_a, cat_fill_a) in enumerate(asr_prog_categories_meta):
+                    df_cat_a = chart_asr_prog_df[chart_asr_prog_df['Kategori'] == cat_key_a]
+                    max_y_ma = df_cat_a['Jumlah'].max() if not df_cat_a.empty else 4
+                    fig_m_asr = px.line(df_cat_a, x='Jam', y='Jumlah', text='Text', markers=True)
+                    fig_m_asr.update_traces(
+                        line=dict(width=2.2, color=cat_color_a, shape='spline'),
+                        fill='tozeroy',
+                        fillcolor=cat_fill_a,
+                        marker=dict(size=5, color=cat_color_a),
+                        textposition='top center',
+                        textfont=dict(color='#ffffff'),
+                        cliponaxis=False
+                    )
+                    fig_m_asr.update_layout(
+                        title=dict(text=cat_title_a, font=dict(color=cat_color_a, size=12), x=0.5, xanchor='center'),
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='#0f172a',
+                        margin=dict(t=40, b=45, l=45, r=10),
+                        xaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, dtick=6, title="Waktu (Jam)"),
+                        yaxis=dict(showgrid=True, gridcolor='#334155', fixedrange=True, showticklabels=True, title="Progress", range=[0, max(max_y_ma * 1.28, 2)]),
+                        hovermode="x unified",
+                        hoverlabel=dict(bgcolor='#1e293b', font=dict(color='#ffffff')),
+                        height=260
+                    )
+                    fig_m_asr.update_xaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    fig_m_asr.update_yaxes(showline=True, linewidth=1, linecolor='#334155', mirror=True)
+                    with mini_a_cols[idx_ma]:
+                        st.plotly_chart(fig_m_asr, use_container_width=True, config={'displayModeBar': False}, theme=None)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                # --- TABEL REKAP PER TEKNISI (ATAS) & DETAIL PROGRESS (BAWAH) ---
+                st.markdown('<div class="section-title-wrap"><div class="section-title" style="font-size: 1.15rem;">👷 REKAP PROGRESS PER TEKNISI</div></div>', unsafe_allow_html=True)
+                if not df_asr_period.empty:
+                    piv_tek_a = (
+                        df_asr_period.groupby(['Teknisi_Clean', 'Kategori_Sesi'])
+                        .size()
+                        .unstack(fill_value=0)
+                        .reset_index()
+                    )
+                    for s_col_a in ['PROGRESS PAGI', 'PROGRESS SIANG', 'PROGRESS SORE', 'PROGRESS MALAM']:
+                        if s_col_a not in piv_tek_a.columns:
+                            piv_tek_a[s_col_a] = 0
+                    piv_tek_a['TOTAL'] = (
+                        piv_tek_a['PROGRESS PAGI'] +
+                        piv_tek_a['PROGRESS SIANG'] +
+                        piv_tek_a['PROGRESS SORE'] +
+                        piv_tek_a['PROGRESS MALAM']
+                    )
+                    piv_tek_a = piv_tek_a.sort_values(by=['TOTAL', 'Teknisi_Clean'], ascending=[False, True]).reset_index(drop=True)
+
+                    rows_tek_a_html = ""
+                    for idx_ta, r_ta in piv_tek_a.iterrows():
+                        rows_tek_a_html += (
+                            f'<tr style="border-bottom: 1px solid #1e293b;">'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#ffffff; font-weight:bold; font-size:1.05rem;">{idx_ta + 1}</td>'
+                            f'<td style="padding: 12px 16px; text-align:left; color:#ffffff; font-weight:800; font-size:1.05rem;">{r_ta["Teknisi_Clean"]}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#38bdf8; font-weight:800; font-size:1.1rem;">{int(r_ta["PROGRESS PAGI"])}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#22c55e; font-weight:800; font-size:1.1rem;">{int(r_ta["PROGRESS SIANG"])}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#f59e0b; font-weight:800; font-size:1.1rem;">{int(r_ta["PROGRESS SORE"])}</td>'
+                            f'<td style="padding: 12px 12px; text-align:center; color:#a78bfa; font-weight:800; font-size:1.1rem;">{int(r_ta["PROGRESS MALAM"])}</td>'
+                            f'<td style="padding: 12px 14px; text-align:center;"><span style="background:rgba(59,130,246,0.2); color:#ffffff; border:1px solid #3b82f6; padding:4px 15px; border-radius:999px; font-weight:800; font-size:1.05rem;">{int(r_ta["TOTAL"])}</span></td>'
+                            f'</tr>'
+                        )
+
+                    tek_a_table_html = (
+                        '<div style="border: 1px solid #334155; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 28px;">'
+                        '<table style="width: 100%; border-collapse: collapse; font-size: 1.05rem;">'
+                        '<thead>'
+                        '<tr style="background: #1e293b; color: #ffffff; text-transform: uppercase; font-size: 0.96rem;">'
+                        '<th style="padding: 14px 12px; text-align:center; width: 70px; color:#ffffff;">NO</th>'
+                        '<th style="padding: 14px 16px; text-align:center; color:#ffffff;">TEKNISI</th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#38bdf8;">PAGI<br><span style="font-size:12.5px;color:#ffffff;">07:00 - 10:00</span></th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#22c55e;">SIANG<br><span style="font-size:12.5px;color:#ffffff;">11:00 - 14:00</span></th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#f59e0b;">SORE<br><span style="font-size:12.5px;color:#ffffff;">15:00 - 18:00</span></th>'
+                        '<th style="padding: 14px 12px; text-align:center; color:#a78bfa;">MALAM<br><span style="font-size:12.5px;color:#ffffff;">19:00 - 23:59</span></th>'
+                        '<th style="padding: 14px 14px; text-align:center; color:#ffffff;">TOTAL</th>'
+                        '</tr>'
+                        '</thead>'
+                        f'<tbody>{rows_tek_a_html}</tbody>'
+                        '</table>'
+                        '</div>'
+                    )
+                    st.markdown(tek_a_table_html, unsafe_allow_html=True)
+                else:
+                    st.info("Belum ada data teknisi Assurance yang melapor pada periode tanggal ini.")
+
+                st.markdown('<div class="section-title-wrap"><div class="section-title">📋 DETAIL LOG FOTO PROGRESS TEKNISI</div></div>', unsafe_allow_html=True)
+                search_prog_qa = st.text_input("🔍 Cari Teknisi / Incident / Notes / Status Insera / Sesi Waktu:", "", key="search_prog_asr_detail", placeholder="Ketik nama teknisi, INC..., notes, CLOSED, BACKEND, PAGI, SIANG...")
+                if not df_asr_period.empty:
+                    df_det_a = df_asr_period.sort_values(by=['Parsed_Date', 'Hour_Int', jam_col_a], ascending=[False, False, False]).copy()
+                    if search_prog_qa.strip():
+                        q_low_a = search_prog_qa.strip().lower()
+                        mask_qa = (
+                            df_det_a['Teknisi_Clean'].astype(str).str.lower().str.contains(q_low_a, na=False) |
+                            df_det_a[inc_col_a].astype(str).str.lower().str.contains(q_low_a, na=False) |
+                            df_det_a['Kategori_Sesi'].astype(str).str.lower().str.contains(q_low_a, na=False) |
+                            (df_det_a[notes_col_a].astype(str).str.lower().str.contains(q_low_a, na=False) if notes_col_a else False) |
+                            (df_det_a[stat_col_a].astype(str).str.lower().str.contains(q_low_a, na=False) if stat_col_a else False)
+                        )
+                        df_det_a = df_det_a[mask_qa]
+
+                    sesi_badge_map_a = {
+                        'PROGRESS PAGI': ('#38bdf8', 'rgba(56,189,248,0.15)', 'PAGI (07-10)'),
+                        'PROGRESS SIANG': ('#22c55e', 'rgba(34,197,94,0.15)', 'SIANG (11-14)'),
+                        'PROGRESS SORE': ('#f59e0b', 'rgba(245,158,11,0.15)', 'SORE (15-18)'),
+                        'PROGRESS MALAM': ('#a78bfa', 'rgba(167,139,250,0.15)', 'MALAM (19-23)')
+                    }
+
+                    rows_det_a_html = ""
+                    for idx_da, (_, r_da) in enumerate(df_det_a.iterrows(), 1):
+                        tgl_va = str(r_da.get(tgl_col_a, '-')).strip()
+                        jam_va = str(r_da.get(jam_col_a, '-')).strip()
+                        tek_va = str(r_da.get('Teknisi_Clean', '-')).strip()
+                        inc_va = str(r_da.get(inc_col_a, '-')).strip()
+                        note_va = str(r_da.get(notes_col_a, '-')).strip() if notes_col_a and pd.notna(r_da.get(notes_col_a)) else '-'
+                        wita_va = str(r_da.get(wita_col_a, '-')).strip() if wita_col_a and pd.notna(r_da.get(wita_col_a)) else '-'
+                        stat_va = str(r_da.get(stat_col_a, '-')).strip() if stat_col_a and pd.notna(r_da.get(stat_col_a)) else '-'
+                        sesi_va = str(r_da.get('Kategori_Sesi', 'PROGRESS PAGI'))
+                        b_col_a, b_bg_a, b_lbl_a = sesi_badge_map_a.get(sesi_va, ('#38bdf8', 'rgba(56,189,248,0.15)', sesi_va))
+
+                        stat_up_a = stat_va.upper()
+                        stat_color_a = '#22c55e' if 'CLOSE' in stat_up_a or 'RESOLV' in stat_up_a else ('#f59e0b' if 'BACKEND' in stat_up_a or 'PENDING' in stat_up_a else '#38bdf8')
+
+                        rows_det_a_html += (
+                            f'<tr style="border-bottom: 1px solid #1e293b;">'
+                            f'<td style="padding: 10px 8px; text-align:center; color:#94a3b8; font-weight:bold;">{idx_da}</td>'
+                            f'<td style="padding: 10px 10px; text-align:center; color:#e2e8f0; white-space:nowrap;">{tgl_va} &bull; <span style="color:#38bdf8; font-weight:700;">{jam_va}</span></td>'
+                            f'<td style="padding: 10px 10px; text-align:center;"><span style="background:{b_bg_a}; color:{b_col_a}; border:1px solid {b_col_a}; padding:3px 10px; border-radius:6px; font-size:0.74rem; font-weight:700; white-space:nowrap;">{b_lbl_a}</span></td>'
+                            f'<td style="padding: 10px 12px; text-align:left; color:#f8fafc; font-weight:700; white-space:nowrap;">{tek_va}</td>'
+                            f'<td style="padding: 10px 12px; text-align:left; color:#fbbf24; font-family:monospace; font-size:0.84rem; white-space:nowrap;">{inc_va}</td>'
+                            f'<td style="padding: 10px 12px; text-align:left; color:#cbd5e1;">{note_va}</td>'
+                            f'<td style="padding: 10px 10px; text-align:center; color:#94a3b8; white-space:nowrap;">{wita_va}</td>'
+                            f'<td style="padding: 10px 10px; text-align:center;"><span style="color:{stat_color_a}; font-weight:700; font-size:0.78rem;">{stat_va}</span></td>'
+                            f'</tr>'
+                        )
+
+                    det_a_table_html = (
+                        '<div style="border: 1px solid #334155; border-radius: 10px; overflow: hidden; background: #0f172a; max-height: 550px; overflow-y: auto;">'
+                        '<table style="width: 100%; border-collapse: collapse; font-size: 0.83rem;">'
+                        '<thead>'
+                        '<tr style="background: #1e293b; color: #cbd5e1; text-transform: uppercase; font-size: 0.76rem; position: sticky; top: 0; z-index: 2;">'
+                        '<th style="padding: 12px 8px; text-align:center; width: 55px;">NO</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">TANGGAL & JAM KIRIM</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">SESI PROGRESS</th>'
+                        '<th style="padding: 12px 12px; text-align:left;">TEKNISI</th>'
+                        '<th style="padding: 12px 12px; text-align:left;">NOMER INCIDENT</th>'
+                        '<th style="padding: 12px 12px; text-align:left;">NOTES</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">DATE MODIFIED WITA</th>'
+                        '<th style="padding: 12px 10px; text-align:center;">STATUS INSERA</th>'
+                        '</tr>'
+                        '</thead>'
+                        f'<tbody>{rows_det_a_html}</tbody>'
+                        '</table>'
+                        '</div>'
+                    )
+                    st.markdown(det_a_table_html, unsafe_allow_html=True)
+                else:
+                    st.info("Tidak ada detail log foto progress Assurance pada rentang tanggal yang dipilih.")
+            else:
+                st.warning("Kolom TANGGAL, JAM KIRIM PROGRESS, atau NOMER INCIDENT tidak ditemukan pada sheet REKAP PROGRESS TEKNISI ASR.")
+        else:
+            st.info("Data REKAP PROGRESS TEKNISI ASR belum tersedia atau kosong.")
 
 else:
     st.warning("⚠️ **Data satelit belum dapat ditampilkan atau terjadi pembatasan jam ekspor oleh Google Sheets.**")
