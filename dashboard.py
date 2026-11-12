@@ -23,6 +23,8 @@ def get_auto_puller():
     import random
     import time
     import subprocess
+    import sys
+    import os
     
     class AutoPuller:
         def __init__(self):
@@ -44,16 +46,19 @@ def get_auto_puller():
                     self.next_run_time = None
                     return
                     
-                # Menjalankan perintah penarikan data
+                # Menjalankan perintah penarikan data (dengan timeout 600 detik agar thread tidak pernah macet selamanya)
                 try:
-                    subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING", "Otomatis"], capture_output=True, text=True)
+                    py_exec = sys.executable or "python"
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    script_path = os.path.join(base_dir, "main.py")
+                    subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "WFM_MORNING", "Otomatis"], cwd=base_dir, capture_output=True, text=True, timeout=600)
                 except Exception:
                     pass
                     
         def start(self):
-            if not self.running:
+            if not self.running or self.thread is None or not self.thread.is_alive():
                 import time, random
-                self.next_run_time = time.time() + (29 * 60) + random.randint(30, 59)
+                self.next_run_time = time.time() + random.randint(1200, 1260)
                 self.running = True
                 self.thread = threading.Thread(target=self._loop, daemon=True)
                 self.thread.start()
@@ -77,6 +82,8 @@ def get_ibooster_auto_puller():
     import random
     import time
     import subprocess
+    import sys
+    import os
     
     class IboosterAutoPuller:
         def __init__(self):
@@ -87,8 +94,6 @@ def get_ibooster_auto_puller():
         def _loop(self):
             while self.running:
                 # 02:55:30 to 02:56:30
-                # 2 hours, 55 minutes = 10500 seconds + 30 = 10530
-                # 2 hours, 56 minutes = 10560 seconds + 30 = 10590
                 sleep_time = random.randint(8700, 9000)
                 self.next_run_time = time.time() + sleep_time
                 
@@ -100,14 +105,17 @@ def get_ibooster_auto_puller():
                     return
                     
                 try:
-                    subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "IBOOSTER", "Otomatis"], capture_output=True, text=True)
+                    py_exec = sys.executable or "python"
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    script_path = os.path.join(base_dir, "main.py")
+                    subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "IBOOSTER", "Otomatis"], cwd=base_dir, capture_output=True, text=True, timeout=3600)
                 except Exception:
                     pass
                     
         def start(self):
-            if not self.running:
+            if not self.running or self.thread is None or not self.thread.is_alive():
                 import time, random
-                self.next_run_time = time.time() + random.randint(10530, 10590)
+                self.next_run_time = time.time() + random.randint(8700, 9000)
                 self.running = True
                 self.thread = threading.Thread(target=self._loop, daemon=True)
                 self.thread.start()
@@ -182,6 +190,63 @@ def get_insera_auto_puller():
     return InseraAutoPuller()
 
 insera_auto_puller = get_insera_auto_puller()
+
+@st.cache_resource
+def get_ibooster_asgar_auto_puller():
+    import threading
+    import random
+    import time
+    import subprocess
+    import sys
+    import os
+    
+    class IboosterAsgarAutoPuller:
+        def __init__(self):
+            self.running = False
+            self.thread = None
+            self.next_run_time = None
+            
+        def _loop(self):
+            while self.running:
+                # Interval 2.5 jam (8700 - 9000 detik)
+                sleep_time = random.randint(8700, 9000)
+                self.next_run_time = time.time() + sleep_time
+                
+                while self.running and self.next_run_time and time.time() < self.next_run_time:
+                    time.sleep(1)
+                    
+                if not self.running:
+                    self.next_run_time = None
+                    return
+                    
+                try:
+                    py_exec = sys.executable or "python"
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    script_path = os.path.join(base_dir, "main.py")
+                    subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "IBOOSTER_ASR", "Otomatis"], cwd=base_dir, capture_output=True, text=True, timeout=3600)
+                except Exception:
+                    pass
+                    
+        def start(self):
+            if not self.running or self.thread is None or not self.thread.is_alive():
+                import time, random
+                self.next_run_time = time.time() + random.randint(8700, 9000)
+                self.running = True
+                self.thread = threading.Thread(target=self._loop, daemon=True)
+                self.thread.start()
+                
+        def stop(self):
+            self.running = False
+            self.thread = None
+            
+        def reset_timer(self):
+            if self.running:
+                sleep_time = random.randint(8700, 9000)
+                self.next_run_time = time.time() + sleep_time
+            
+    return IboosterAsgarAutoPuller()
+
+ibooster_asgar_auto_puller = get_ibooster_asgar_auto_puller()
 
 
 # --- CUSTOM CSS (PREMIUM DARK THEME) ---
@@ -426,6 +491,23 @@ def load_assurance_data(sync_time_val):
         if os.path.exists(parquet_cache) and os.path.getsize(parquet_cache) > 1000:
             df_pq = pd.read_parquet(parquet_cache)
             if not df_pq.empty:
+                # Merge ADING Teknisi jika belum ada di parquet
+                if 'NAMA TEKNISI' not in df_pq.columns:
+                    try:
+                        ading_p = os.path.join(base_dir, "last_ading_assr.parquet")
+                        if os.path.exists(ading_p):
+                            df_ad = pd.read_parquet(ading_p)
+                            if 'NO TIKET' in df_ad.columns and 'NAMA TIM' in df_ad.columns:
+                                ad_map = {}
+                                for _, r_ad in df_ad.iterrows():
+                                    t_no = str(r_ad.get('NO TIKET', '')).strip()
+                                    t_nm = str(r_ad.get('NAMA TIM', '')).strip()
+                                    if t_no and t_nm and t_no != 'nan':
+                                        clean_nm = t_nm.split('/')[0].strip().upper() if '/' in t_nm else t_nm.strip().upper()
+                                        ad_map[t_no] = clean_nm
+                                df_pq['NAMA TEKNISI'] = df_pq['INCIDENT'].map(ad_map).fillna('-')
+                    except Exception:
+                        pass
                 return df_pq, "LOCAL_CACHE"
     except Exception:
         pass
@@ -637,6 +719,7 @@ insera_all_cnt = 2716
 insera_closed_cnt = 591
 insera_proactive_cnt = 0
 insera_total_cnt = 3307
+insera_ading_cnt = 0
 
 if os.path.exists(insera_file):
     try:
@@ -655,6 +738,7 @@ if os.path.exists(insera_summary_file):
             insera_all_cnt = js.get("all_count", insera_all_cnt)
             insera_closed_cnt = js.get("closed_count", insera_closed_cnt)
             insera_proactive_cnt = js.get("proactive_count", 0)
+            insera_ading_cnt = js.get("ading_count", 0)
             insera_total_cnt = js.get("total_count", insera_total_cnt)
             if (insera_time == "Belum Ada Data" or not insera_time) and "last_sync" in js:
                 insera_time = js["last_sync"]
@@ -681,6 +765,14 @@ if os.path.exists(parquet_cache_file):
             
         if is_newer:
             insera_time = pq_dt.strftime("%d %b %Y | %H:%M:%S")
+    except Exception:
+        pass
+
+ading_cache_file = os.path.join(base_dir, "last_ading_assr.parquet")
+if os.path.exists(ading_cache_file) and insera_ading_cnt == 0:
+    try:
+        df_ad_pq = pd.read_parquet(ading_cache_file)
+        insera_ading_cnt = len(df_ad_pq)
     except Exception:
         pass
 
@@ -728,9 +820,37 @@ def extract_time_short(t_str):
         return f"{parts[0].strip()}:{sec}:00"
     return clean
 
+# 4. Segmentasi Penarikan IBOOSTER ASGAR (Assurance Gangguan Ulang)
+ibooster_asgar_file = os.path.join(base_dir, "last_ibooster_ASR.txt")
+ibooster_asgar_parquet = os.path.join(base_dir, "last_ibooster_asr.parquet")
+ibooster_asgar_time = "Belum Ada Data"
+ibooster_asgar_source = "VIA DASHBOARD"
+ibooster_asgar_cnt = 0
+
+if os.path.exists(ibooster_asgar_file):
+    try:
+        with open(ibooster_asgar_file, "r", encoding="utf-8") as f:
+            c = f.read().strip().replace(" WIB", "")
+            p = c.split(" | VIA ")
+            ibooster_asgar_time = p[0]
+            if len(p) > 1: ibooster_asgar_source = "VIA " + p[1]
+    except Exception:
+        pass
+
+if os.path.exists(ibooster_asgar_parquet):
+    try:
+        df_ib_p = pd.read_parquet(ibooster_asgar_parquet)
+        ibooster_asgar_cnt = len(df_ib_p)
+        if ibooster_asgar_time == "Belum Ada Data":
+            pq_mtime = os.path.getmtime(ibooster_asgar_parquet)
+            ibooster_asgar_time = datetime.fromtimestamp(pq_mtime).strftime("%d %b %Y | %H:%M:%S")
+    except Exception:
+        pass
+
 wfm_short_time = extract_time_short(last_sync_time)
 ibooster_short_time = extract_time_short(ibooster_ao_time)
 insera_short_time = extract_time_short(insera_time)
+ibooster_asgar_short_time = extract_time_short(ibooster_asgar_time)
 
 # Hitung rincian order WFM dari df
 wfm_order_col = None
@@ -753,7 +873,7 @@ if not df.empty and wfm_order_col:
     wfm_ind_cnt = counts_wfm.get('INDIBIZ', 0)
     wfm_vula_cnt = counts_wfm.get('ISP VULA', 0)
 
-# --- HEADER BERSAMA & POP-UP SINKRONISASI 3 SEGMENTASI DATA ---
+# --- HEADER BERSAMA & POP-UP SINKRONISASI 4 SEGMENTASI DATA ---
 sync_header_html = f'''
 <div class="header-container">
     <div class="header-left">
@@ -762,8 +882,8 @@ sync_header_html = f'''
     </div>
     <div class="header-right">
         
-        <!-- PILL SINKRONISASI 3 DATA (MEMANJANG & INTERAKTIF) -->
-        <div id="btn-open-sync-modal" class="sync-status-pill" title="Klik untuk membuka rincian lengkap 3 segmentasi data penarikan" style="position: fixed; top: 12px; right: 170px; z-index: 999990; border: 1.5px solid #eab308; border-radius: 24px; padding: 5px 14px; display: flex; align-items: center; gap: 11px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25); cursor: pointer; transition: all 0.2s ease; white-space: nowrap;">
+        <!-- PILL SINKRONISASI 4 DATA (MEMANJANG & INTERAKTIF) -->
+        <div id="btn-open-sync-modal" class="sync-status-pill" title="Klik untuk membuka rincian lengkap 4 segmentasi data penarikan" style="position: fixed; top: 12px; right: 140px; z-index: 999990; border: 1.5px solid #eab308; border-radius: 24px; padding: 5px 13px; display: flex; align-items: center; gap: 10px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(234, 179, 8, 0.25); cursor: pointer; transition: all 0.2s ease; white-space: nowrap;">
             
             <!-- Live Pulse Status -->
             <div style="display: flex; align-items: center; gap: 6px;">
@@ -792,6 +912,13 @@ sync_header_html = f'''
                 <span style="font-size: 0.78rem; color: #f8fafc; font-weight: bold;">{insera_short_time}</span>
             </div>
 
+            <!-- 4. IBOOSTER ASGAR -->
+            <div style="display: flex; align-items: center; gap: 5px; border-left: 1px solid rgba(255,255,255,0.15); padding-left: 9px;" title="IBOOSTER ASGAR: {ibooster_asgar_time} ({ibooster_asgar_source})">
+                <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background-color: #f59e0b;"></span>
+                <span style="font-size: 0.74rem; color: #94a3b8; font-weight: 600;">IBOOSTER ASGAR :</span>
+                <span style="font-size: 0.78rem; color: #f8fafc; font-weight: bold;">{ibooster_asgar_short_time}</span>
+            </div>
+
             <!-- Badge Buka Pop-up -->
             <div style="background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.5); color: #fef08a; font-size: 0.68rem; padding: 2px 8px; border-radius: 12px; font-weight: bold; display: flex; align-items: center; gap: 4px; margin-left: 2px;">
                 <span>Detail</span>
@@ -804,9 +931,9 @@ sync_header_html = f'''
     </div>
 </div>
 
-<!-- POP-UP MODAL DETAIL 3 SEGMENTASI DATA PENARIKAN (MEMANJANG) -->
+<!-- POP-UP MODAL DETAIL 4 SEGMENTASI DATA PENARIKAN (MEMANJANG) -->
 <div id="modal-sync-summary" class="sync-summary-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px); z-index: 9999999; justify-content: center; align-items: center;">
-    <div style="background: #0f172a; width: 95%; max-width: 1060px; max-height: 88vh; border: 2px solid #eab308; border-radius: 16px; box-shadow: 0 25px 60px -15px rgba(0,0,0,0.9), 0 0 25px rgba(234, 179, 8, 0.3); display: flex; flex-direction: column; overflow: hidden;">
+    <div style="background: #0f172a; width: 96%; max-width: 1280px; max-height: 88vh; border: 2px solid #eab308; border-radius: 16px; box-shadow: 0 25px 60px -15px rgba(0,0,0,0.9), 0 0 25px rgba(234, 179, 8, 0.3); display: flex; flex-direction: column; overflow: hidden;">
         
         <!-- Header Pop-Up -->
         <div style="padding: 16px 24px; background: linear-gradient(90deg, #1e293b, #0f172a); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
@@ -816,19 +943,19 @@ sync_header_html = f'''
                 </div>
                 <div>
                     <h2 style="margin: 0; color: #f8fafc; font-size: 1.22rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
-                        DETAIL 3 SEGMENTASI DATA PENARIKAN OPERASIONAL
+                        DETAIL 4 SEGMENTASI DATA PENARIKAN OPERASIONAL
                     </h2>
                     <p style="margin: 2px 0 0 0; color: #94a3b8; font-size: 0.8rem;">
-                        Status &amp; Rincian Lengkap Penarikan: <b>WFM &amp; ADING</b> &bull; <b>IBOOSTER FFG</b> &bull; <b>INSERA ASR</b>
+                        Status &amp; Rincian Lengkap Penarikan: <b>WFM &amp; ADING</b> &bull; <b>IBOOSTER FFG</b> &bull; <b>INSERA ASR</b> &bull; <b>IBOOSTER ASGAR</b>
                     </p>
                 </div>
             </div>
             <button id="btn-close-sync-modal" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #cbd5e1; font-size: 1.6rem; cursor: pointer; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; line-height: 1; transition: all 0.2s;">&times;</button>
         </div>
 
-        <!-- Body Pop-Up (3 Kolom Memanjang Side-by-Side) -->
+        <!-- Body Pop-Up (4 Kolom Memanjang Side-by-Side) -->
         <div style="padding: 20px 24px; overflow-y: auto; flex: 1;">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;">
                 
                 <!-- KOLOM 1: WFM & ADING -->
                 <div style="background: rgba(30, 41, 59, 0.6); border: 1.5px solid #0284c7; border-top: 4px solid #38bdf8; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 12px;">
@@ -1003,6 +1130,14 @@ sync_header_html = f'''
                                 </div>
                                 <span style="color: #a855f7; font-weight: bold; font-size: 0.88rem;">{insera_proactive_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">data</span></span>
                             </div>
+                            <!-- ADING ASSR -->
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">ADING ASSR</div>
+                                    <div style="color: #ec4899; font-size: 0.7rem;">Assurance Productivity</div>
+                                </div>
+                                <span style="color: #ec4899; font-weight: bold; font-size: 0.88rem;">{insera_ading_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">data</span></span>
+                            </div>
                             <!-- GABUNGAN -->
                             <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
@@ -1017,6 +1152,55 @@ sync_header_html = f'''
                     <!-- Filter Insera -->
                     <div style="font-size: 0.72rem; color: #64748b; margin-top: -2px;">
                         Filter: Segmen <b style="color:#94a3b8;">DCS, PL-TSEL</b> &bull; Zone <b style="color:#94a3b8;">GMB, ULI</b> &bull; <b style="color:#94a3b8;">TECHNICAL</b>
+                    </div>
+                </div>
+
+                <!-- KOLOM 4: IBOOSTER ASGAR -->
+                <div style="background: rgba(30, 41, 59, 0.6); border: 1.5px solid #d97706; border-top: 4px solid #f59e0b; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                        <div>
+                            <div style="color: #f59e0b; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">SEGMENTASI 4: ASSURANCE QUALITY</div>
+                            <div style="color: #ffffff; font-size: 1.05rem; font-weight: bold; margin-top: 2px;">IBOOSTER ASGAR</div>
+                        </div>
+                        <span style="background: #d97706; color: white; font-size: 0.68rem; padding: 3px 8px; border-radius: 10px; font-weight: bold;">ASR 30 HARI</span>
+                    </div>
+
+                    <!-- Waktu & Info -->
+                    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: #94a3b8;">Terakhir Sinkron:</span>
+                            <span style="color: #f8fafc; font-weight: bold;">{ibooster_asgar_time}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color: #94a3b8;">Metode:</span>
+                            <span style="color: #f59e0b; font-weight: 600;">{ibooster_asgar_source}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #94a3b8;">Spreadsheet:</span>
+                            <span style="color: #fef08a; font-weight: 600;">UKUR IBOOSTER ASR</span>
+                        </div>
+                    </div>
+
+                    <!-- Detail Segmentasi Target -->
+                    <div>
+                        <div style="color: #cbd5e1; font-size: 0.78rem; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📌 Target Pengukuran:
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 7px 10px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="color: #f1f5f9; font-weight: 600; font-size: 0.82rem;">TIKET CLOSE ≤ 30 HARI</div>
+                                    <div style="color: #94a3b8; font-size: 0.7rem;">Evaluasi Gangguan Ulang</div>
+                                </div>
+                                <span style="color: #f59e0b; font-weight: bold; font-size: 0.88rem;">{ibooster_asgar_cnt:,} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: normal;">nomor</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Fitur -->
+                    <div style="background: rgba(15, 23, 42, 0.4); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; font-size: 0.75rem; color: #94a3b8; line-height: 1.4;">
+                        <div style="color: #cbd5e1; font-weight: 600; margin-bottom: 2px;">🎯 Kegunaan Data:</div>
+                        Validasi kualitas redaman Rx dBm, status ONU (LOS/ONLINE), dan identifikasi potensi gangguan ulang (ASGAR) pada pelanggan yang tiketnya telah diselesaikan teknisi.
                     </div>
                 </div>
 
@@ -1175,17 +1359,22 @@ if not df.empty:
 
         all_opts = [
             "PS/RE", "KENDALA", "DETAIL RE PERIODE", "DETAIL MANJA", "WO ODS PERIODE", "TRIAL & FFG 60 HARI", "PROGRESS PROVI", "MONITORING SERVER",
-            "DAILY REPORT", "GRAFIK TIKET PERIODE", "PROGRESS ASSURANCE"
+            "DAILY REPORT", "IBOOSTER ASGAR", "GRAFIK TIKET PERIODE", "PROGRESS ASSURANCE"
         ]
         all_icons = [
             "trophy", "exclamation-triangle", "card-list", "hourglass-split", "clipboard-data", "pie-chart", "camera", "server",
-            "file-earmark-text", "graph-up", "camera"
+            "file-earmark-text", "speedometer2", "graph-up", "camera"
         ]
 
         if "active_menu" not in st.session_state:
             st.session_state.active_menu = "PS/RE"
 
+        if st.session_state.active_menu == "IBOOSTER GAUL":
+            st.session_state.active_menu = "IBOOSTER ASGAR"
+
         query_menu = st.query_params.get("menu")
+        if query_menu == "IBOOSTER GAUL":
+            query_menu = "IBOOSTER ASGAR"
         if query_menu and query_menu in all_opts:
             st.session_state.active_menu = query_menu
 
@@ -1255,7 +1444,7 @@ if not df.empty:
                         if (doc.getElementById('sec-hdr-assurance') && doc.body) {
                             doc.body.style.overflow = 'hidden';
                             iframe.style.overflow = 'hidden';
-                            const neededH = Math.max(doc.body.scrollHeight + 30, 575);
+                            const neededH = Math.max(doc.body.scrollHeight + 30, 625);
                             if (parseInt(iframe.style.height) < neededH) {
                                 iframe.style.height = neededH + 'px';
                             }
@@ -1300,7 +1489,11 @@ if not df.empty:
             if st.sidebar.button("🚀 Tarik WFM & ADING"):
                 with st.spinner("⏳ Robot sedang bekerja... (Tunggu 1-2 menit)"):
                     try:
-                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "WFM_MORNING", "Manual"], capture_output=True, text=True, check=True)
+                        import sys
+                        py_exec = sys.executable or "python"
+                        base_dir = os.path.dirname(os.path.abspath(__file__))
+                        script_path = os.path.join(base_dir, "main.py")
+                        subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "WFM_MORNING", "Manual"], cwd=base_dir, capture_output=True, text=True, check=True, timeout=600)
                         st.cache_data.clear()
                         if auto_puller.running:
                             auto_puller.reset_timer()
@@ -1314,15 +1507,37 @@ if not df.empty:
             if st.sidebar.button("🚀 Tarik IBOOSTER FFG"):
                 with st.spinner("⏳ Robot menarik data Ibooster (AO & INDIBIZ)... (Tunggu agak lama)"):
                     try:
-                        subprocess.run(["python", "main.py", "DASHBOARD", "Admin Web", "IBOOSTER", "Manual"], capture_output=True, text=True, check=True)
+                        import sys
+                        py_exec = sys.executable or "python"
+                        base_dir = os.path.dirname(os.path.abspath(__file__))
+                        script_path = os.path.join(base_dir, "main.py")
+                        subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "IBOOSTER", "Manual"], cwd=base_dir, capture_output=True, text=True, check=True, timeout=3600)
                         st.sidebar.success("✅ Berhasil menarik data Ibooster gabungan!")
                         time.sleep(2)
                     except Exception as e:
                         st.sidebar.error("❌ Robot Gagal menarik data.")
+
+            # Pilihan Tarik Manual IBOOSTER ASGAR (ASSURANCE)
+            if st.sidebar.button("🚀 Tarik IBOOSTER ASGAR"):
+                with st.spinner("⏳ Robot menarik data Ibooster Assurance (CLOSE <= 30 Hari)... (Tunggu agak lama)"):
+                    try:
+                        import sys
+                        py_exec = sys.executable or "python"
+                        base_dir = os.path.dirname(os.path.abspath(__file__))
+                        script_path = os.path.join(base_dir, "main.py")
+                        subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "IBOOSTER_ASR", "Manual"], cwd=base_dir, capture_output=True, text=True, check=True, timeout=3600)
+                        if ibooster_asgar_auto_puller.running:
+                            ibooster_asgar_auto_puller.reset_timer()
+                        st.cache_data.clear()
+                        st.sidebar.success("✅ Berhasil menarik data Ibooster ASGAR (Assurance)!")
+                        time.sleep(2)
+                        st.rerun()
+                    except Exception as e:
+                        st.sidebar.error("❌ Robot Gagal menarik data Ibooster ASGAR.")
                         
-            # Pilihan Tarik Manual INSERA ASR
-            if st.sidebar.button("🚀 Tarik INSERA ASR"):
-                with st.spinner("⏳ Robot menarik data INSERA ASR (ALL, CLOSED, & PROACTIVE)... (Tunggu 1-3 menit)"):
+            # Pilihan Tarik Manual INSERA & ADING ASSR
+            if st.sidebar.button("🚀 Tarik INSERA & ADING ASSR"):
+                with st.spinner("⏳ Robot menarik data ASSURANCE (INSERA ALL, CLOSED, PROACTIVE & ADING ASSR)... (Tunggu 1-3 menit)"):
                     try:
                         import sys
                         py_exec = sys.executable or "python"
@@ -1331,7 +1546,7 @@ if not df.empty:
                         subprocess.run([py_exec, script_path, "DASHBOARD", "Admin Web", "Manual"], cwd=base_dir, capture_output=True, text=True, check=True)
                         if insera_auto_puller.running:
                             insera_auto_puller.reset_timer()
-                        st.sidebar.success("✅ Berhasil menarik data INSERA ASR ke Google Sheets!")
+                        st.sidebar.success("✅ Berhasil menarik data INSERA & ADING ASSR ke Google Sheets!")
                         time.sleep(2)
                         st.rerun()
                     except subprocess.CalledProcessError as e:
@@ -1339,157 +1554,291 @@ if not df.empty:
                     except Exception as e:
                         st.sidebar.error(f"❌ Terjadi kesalahan: {e}")
 
-            # Pilihan Tarik Otomatis menggunakan Toggle Gulir
-            st.sidebar.markdown("---")
-            is_auto = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (WFM)", value=auto_puller.running)
-            
-            if is_auto and not auto_puller.running:
-                auto_puller.start()
-            elif not is_auto and auto_puller.running:
-                auto_puller.stop()
-                
-            if auto_puller.running:
-                if auto_puller.next_run_time:
-                    import streamlit.components.v1 as components
-                    
-                    countdown_html = f'''
-                    <div id="countdown" style="
-                        background-color: rgba(6, 182, 212, 0.1);
-                        border-left: 4px solid #06b6d4;
-                        padding: 10px;
-                        border-radius: 5px;
-                        color: #06b6d4;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        font-size: 13px;
-                        font-weight: 600;
-                    ">
-                        ⏳ Menghitung waktu...
-                    </div>
-                    <script>
-                        var targetTime = {auto_puller.next_run_time} * 1000;
-                        var elem = document.getElementById("countdown");
-                        setInterval(function() {{
-                            var now = new Date().getTime();
-                            var distance = targetTime - now;
-                            if (distance < 0) {{
-                                elem.innerHTML = "⏳ Menarik data WFM...";
-                                return;
-                            }}
-                            var m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            var s = Math.floor((distance % (1000 * 60)) / 1000);
-                            elem.innerHTML = "⏳ WFM otomatis: " + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-                        }}, 1000);
-                    </script>
-                    '''
-                    with st.sidebar:
-                        components.html(countdown_html, height=45)
-                else:
-                    import time
-                    st.sidebar.info("⏳ Menyiapkan jadwal WFM...")
-                    time.sleep(0.5)
-                    st.rerun()
+            # =====================================================================
+            # MENU TARIK DATA OTOMATIS (DESAIN KARTU MODERN KHUSUS TEMA GELAP)
+            # =====================================================================
+            import streamlit.components.v1 as components
 
-            st.sidebar.markdown("---")
-            is_auto_ibooster = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (IBOOSTER)", value=ibooster_auto_puller.running)
-            
-            if is_auto_ibooster and not ibooster_auto_puller.running:
-                ibooster_auto_puller.start()
-            elif not is_auto_ibooster and ibooster_auto_puller.running:
-                ibooster_auto_puller.stop()
-                
-            if ibooster_auto_puller.running:
-                if ibooster_auto_puller.next_run_time:
-                    import streamlit.components.v1 as components
-                    
-                    countdown_html2 = f'''
-                    <div id="countdown2" style="
-                        background-color: rgba(139, 92, 246, 0.1);
-                        border-left: 4px solid #8b5cf6;
-                        padding: 10px;
-                        border-radius: 5px;
-                        color: #8b5cf6;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        font-size: 13px;
-                        font-weight: 600;
-                    ">
-                        ⏳ Menghitung waktu...
+            # Helper generator HTML baris konten otomatis (Icon, Title, Chevron, Pill Badge)
+            def _gen_auto_pull_card_html(icon, title, pill_prefix, target_ts, pill_bg, pill_border, pill_text_color, pill_val_color, is_hms=False, is_active=True):
+                is_hms_js = "true" if is_hms else "false"
+                target_ts_val = target_ts or 0
+
+                if is_active and target_ts:
+                    prefix_html = f"{pill_prefix}: " if pill_prefix else ""
+                    badge_html = f'''
+                    <div class="pill" style="background: {pill_bg}; border: 1px solid {pill_border}; color: {pill_text_color};">
+                        <span style="font-size: 11px;">⏱️</span>
+                        <span>{prefix_html}<span id="timer_val" style="font-weight: 700; color: {pill_val_color};">--:--</span></span>
                     </div>
                     <script>
-                        var targetTime = {ibooster_auto_puller.next_run_time} * 1000;
-                        var elem = document.getElementById("countdown2");
-                        setInterval(function() {{
+                        var target = {target_ts_val} * 1000;
+                        var elem = document.getElementById("timer_val");
+                        function updateTimer() {{
                             var now = new Date().getTime();
-                            var distance = targetTime - now;
-                            if (distance < 0) {{
-                                elem.innerHTML = "⏳ Menarik data IBooster...";
+                            var diff = target - now;
+                            if (diff < 0) {{
+                                elem.innerHTML = "Menarik data...";
                                 return;
                             }}
-                            var h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                            var m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            var s = Math.floor((distance % (1000 * 60)) / 1000);
-                            elem.innerHTML = "⏳ IBooster otomatis: " + (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-                        }}, 1000);
+                            var h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            var m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                            var s = Math.floor((diff % (1000 * 60)) / 1000);
+                            if ({is_hms_js}) {{
+                                elem.innerHTML = (h < 10 ? "0" + h : h) + ":" + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                            }} else {{
+                                elem.innerHTML = (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+                            }}
+                        }}
+                        updateTimer();
+                        setInterval(updateTimer, 1000);
                     </script>
                     '''
-                    with st.sidebar:
-                        components.html(countdown_html2, height=45)
                 else:
-                    import time
-                    st.sidebar.info("⏳ Menyiapkan jadwal IBooster...")
-                    time.sleep(0.5)
-                    st.rerun()
-                
-            st.sidebar.markdown("---")
-            is_auto_insera = st.sidebar.toggle("⚡ Aktifkan Tarik Otomatis (INSERA ASR)", value=insera_auto_puller.running)
-            
-            if is_auto_insera and not insera_auto_puller.running:
-                insera_auto_puller.start()
-            elif not is_auto_insera and insera_auto_puller.running:
-                insera_auto_puller.stop()
-                
-            if insera_auto_puller.running:
-                import time
-                if insera_auto_puller.next_run_time and (insera_auto_puller.next_run_time - time.time() > 900):
-                    insera_auto_puller.reset_timer()
-                if insera_auto_puller.next_run_time:
-                    import streamlit.components.v1 as components
-                    
-                    countdown_html3 = f'''
-                    <div id="countdown3" style="
-                        background-color: rgba(16, 185, 129, 0.1);
-                        border-left: 4px solid #10b981;
-                        padding: 10px;
-                        border-radius: 5px;
-                        color: #10b981;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        font-size: 13px;
-                        font-weight: 600;
-                    ">
-                        ⏳ Menghitung waktu...
+                    badge_html = '''
+                    <div class="pill" style="background: rgba(100, 116, 139, 0.12); border: 1px solid rgba(100, 116, 139, 0.25); color: #94a3b8;">
+                        <span style="font-size: 7px; opacity: 0.7;">⚪</span>
+                        <span style="font-size: 10.5px;">Nonaktif</span>
                     </div>
-                    <script>
-                        var targetTime = {insera_auto_puller.next_run_time} * 1000;
-                        var elem = document.getElementById("countdown3");
-                        setInterval(function() {{
-                            var now = new Date().getTime();
-                            var distance = targetTime - now;
-                            if (distance < 0) {{
-                                elem.innerHTML = "⏳ Menarik data INSERA ASR...";
-                                return;
-                            }}
-                            var m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            var s = Math.floor((distance % (1000 * 60)) / 1000);
-                            elem.innerHTML = "⏳ INSERA otomatis: " + (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
-                        }}, 1000);
-                    </script>
                     '''
-                    with st.sidebar:
-                        components.html(countdown_html3, height=45)
-                else:
-                    import time
-                    st.sidebar.info("⏳ Menyiapkan jadwal INSERA ASR...")
-                    time.sleep(0.5)
-                    st.rerun()
+
+                return f'''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    * {{ box-sizing: border-box; }}
+    body {{
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+        user-select: none;
+    }}
+    .row-card {{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3.5px;
+        height: 50px;
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        padding-left: 9px;
+    }}
+    .top-line {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }}
+    .title-wrap {{
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #f1f5f9;
+        font-size: 12.5px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }}
+    .chevron {{
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+        margin-right: 2px;
+    }}
+    .pill {{
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 12px;
+        padding: 1.5px 8px;
+        font-size: 10.5px;
+        font-weight: 600;
+        width: fit-content;
+        white-space: nowrap;
+    }}
+</style>
+</head>
+<body>
+    <div class="row-card">
+        <div class="top-line">
+            <div class="title-wrap">
+                <span>{icon}</span>
+                <span>{title}</span>
+            </div>
+            <span class="chevron">&#10095;</span>
+        </div>
+        <div>
+            {badge_html}
+        </div>
+    </div>
+</body>
+</html>'''
+
+            # CSS Custom styling khusus sidebar card container
+            st.sidebar.markdown("""
+            <style>
+            /* Card wrapper container auto pull */
+            [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {
+                background: #141f36 !important;
+                border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                border-radius: 12px !important;
+                padding: 3px 6px !important;
+                margin-bottom: 7px !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+                transition: all 0.2s ease !important;
+            }
+            [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"]:hover {
+                border-color: rgba(56, 189, 248, 0.3) !important;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+            }
+            /* Centering the toggle switch */
+            [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stToggle"] {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                height: 50px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stToggle"] label {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            /* Toggle Switch Active: Emerald Green */
+            [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stToggle"] input[type="checkbox"]:checked + span {
+                background-color: #10b981 !important;
+            }
+            /* Toggle Switch Inactive: Red */
+            [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stToggle"] input[type="checkbox"]:not(:checked) + span {
+                background-color: #ef4444 !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+            # Header Kartu "Menu Tarik Data Otomatis" (Sesuai Gambar 2 versi Dark Theme)
+            st.sidebar.markdown("""
+            <div style="background: linear-gradient(180deg, #0f172a 0%, #0d1527 100%); border: 1.5px solid #1e293b; border-radius: 14px; padding: 12px 14px 10px 14px; margin-top: 15px; margin-bottom: 10px; box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 4px; height: 18px; background: linear-gradient(180deg, #06b6d4 0%, #38bdf8 100%); border-radius: 4px; box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);"></div>
+                        <span style="font-size: 14.2px; font-weight: 800; color: #f8fafc; letter-spacing: 0.3px;">Menu Tarik Data Otomatis</span>
+                    </div>
+                    <div style="color: #64748b; font-size: 16px; font-weight: bold; letter-spacing: 2px; line-height: 1;">•••</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # --- 1. ROW WFM (Icon Petir ⚡) ---
+            with st.sidebar.container(border=True):
+                col_wfm_tog, col_wfm_info = st.columns([0.85, 3.15])
+                with col_wfm_tog:
+                    is_auto = st.toggle("", value=auto_puller.running, key="is_auto_wfm", label_visibility="collapsed")
+                    if is_auto and not auto_puller.running:
+                        auto_puller.start()
+                    elif not is_auto and auto_puller.running:
+                        auto_puller.stop()
+
+                with col_wfm_info:
+                    html_wfm = _gen_auto_pull_card_html(
+                        icon="⚡",
+                        title="WFM",
+                        pill_prefix="",
+                        target_ts=auto_puller.next_run_time,
+                        pill_bg="rgba(6, 182, 212, 0.15)",
+                        pill_border="rgba(6, 182, 212, 0.35)",
+                        pill_text_color="#22d3ee",
+                        pill_val_color="#67e8f9",
+                        is_hms=False,
+                        is_active=auto_puller.running
+                    )
+                    components.html(html_wfm, height=50)
+
+            # --- 2. ROW IBOOSTER / FFG (Icon Jam Pasir ⌛) ---
+            with st.sidebar.container(border=True):
+                col_ib_tog, col_ib_info = st.columns([0.85, 3.15])
+                with col_ib_tog:
+                    is_auto_ibooster = st.toggle("", value=ibooster_auto_puller.running, key="is_auto_ibooster", label_visibility="collapsed")
+                    if is_auto_ibooster and not ibooster_auto_puller.running:
+                        ibooster_auto_puller.start()
+                    elif not is_auto_ibooster and ibooster_auto_puller.running:
+                        ibooster_auto_puller.stop()
+
+                with col_ib_info:
+                    html_ib = _gen_auto_pull_card_html(
+                        icon="⌛",
+                        title="iBOOSTER FFG",
+                        pill_prefix="",
+                        target_ts=ibooster_auto_puller.next_run_time,
+                        pill_bg="rgba(168, 85, 247, 0.15)",
+                        pill_border="rgba(168, 85, 247, 0.35)",
+                        pill_text_color="#c084fc",
+                        pill_val_color="#ddd6fe",
+                        is_hms=True,
+                        is_active=ibooster_auto_puller.running
+                    )
+                    components.html(html_ib, height=50)
+
+            # --- 3. ROW INSERA ASR (Icon Gear ⚙️) ---
+            if insera_auto_puller.running and insera_auto_puller.next_run_time and (insera_auto_puller.next_run_time - time.time() > 900):
+                insera_auto_puller.reset_timer()
+
+            with st.sidebar.container(border=True):
+                col_ins_tog, col_ins_info = st.columns([0.85, 3.15])
+                with col_ins_tog:
+                    is_auto_insera = st.toggle("", value=insera_auto_puller.running, key="is_auto_insera", label_visibility="collapsed")
+                    if is_auto_insera and not insera_auto_puller.running:
+                        insera_auto_puller.start()
+                    elif not is_auto_insera and insera_auto_puller.running:
+                        insera_auto_puller.stop()
+
+                with col_ins_info:
+                    html_ins = _gen_auto_pull_card_html(
+                        icon="⚙️",
+                        title="INSERA ASR",
+                        pill_prefix="",
+                        target_ts=insera_auto_puller.next_run_time,
+                        pill_bg="rgba(16, 185, 129, 0.15)",
+                        pill_border="rgba(16, 185, 129, 0.35)",
+                        pill_text_color="#34d399",
+                        pill_val_color="#6ee7b7",
+                        is_hms=False,
+                        is_active=insera_auto_puller.running
+                    )
+                    components.html(html_ins, height=50)
+
+            # --- 4. ROW IBOOSTER ASGAR (Icon Roket 🚀) ---
+            with st.sidebar.container(border=True):
+                col_asg_tog, col_asg_info = st.columns([0.85, 3.15])
+                with col_asg_tog:
+                    is_auto_asgar = st.toggle("", value=ibooster_asgar_auto_puller.running, key="is_auto_asgar", label_visibility="collapsed")
+                    if is_auto_asgar and not ibooster_asgar_auto_puller.running:
+                        ibooster_asgar_auto_puller.start()
+                    elif not is_auto_asgar and ibooster_asgar_auto_puller.running:
+                        ibooster_asgar_auto_puller.stop()
+
+                with col_asg_info:
+                    html_asg = _gen_auto_pull_card_html(
+                        icon="🚀",
+                        title="IBOOSTER ASGAR",
+                        pill_prefix="",
+                        target_ts=ibooster_asgar_auto_puller.next_run_time,
+                        pill_bg="rgba(245, 158, 11, 0.15)",
+                        pill_border="rgba(245, 158, 11, 0.35)",
+                        pill_text_color="#fbbf24",
+                        pill_val_color="#fef08a",
+                        is_hms=True,
+                        is_active=ibooster_asgar_auto_puller.running
+                    )
+                    components.html(html_asg, height=50)
+
+            # Aksen gelombang modern di bagian bawah kartu (Sesuai Gambar 2)
+            st.sidebar.markdown("""
+            <div style="height: 4px; width: 100%; background: linear-gradient(90deg, rgba(6, 182, 212, 0.25) 0%, rgba(56, 189, 248, 0.45) 50%, rgba(139, 92, 246, 0.3) 100%); border-radius: 4px; margin-top: 4px; margin-bottom: 12px; box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);"></div>
+            """, unsafe_allow_html=True)
 
             st.sidebar.markdown("---")
             
@@ -1632,7 +1981,7 @@ if not df.empty:
             except Exception:
                 elapsed_sec = None
 
-        # 2. Fallback hitung otomatis dari selisih REPORTED DATE ke saat ini
+        # 2. Fallback hitung otomatis dari selisih REPORTED DATE (WIB -> WITA +1 jam) ke saat ini
         if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
             if rep_val:
                 try:
@@ -1640,7 +1989,8 @@ if not df.empty:
                     if pd.notna(dt_rep):
                         from datetime import datetime as dt_cls
                         now_dt = dt_cls.now()
-                        diff = (now_dt - dt_rep.to_pydatetime()).total_seconds()
+                        dt_rep_wita = dt_rep + pd.Timedelta(hours=1)
+                        diff = (now_dt - dt_rep_wita.to_pydatetime()).total_seconds()
                         if diff >= 0:
                             elapsed_sec = diff
                 except Exception:
@@ -1671,28 +2021,30 @@ if not df.empty:
         h = int(elapsed_sec // 3600)
         m = int((elapsed_sec % 3600) // 60)
         s = int(elapsed_sec % 60)
-        time_str = f"{h:02d}:{m:02d}:{s:02d}"
+        # Menghilangkan detik pada display utama agar seragam (hh:mm), detik tetap ada di tooltip
+        time_str = f"{h:02d}:{m:02d}"
+        time_str_full = f"{h:02d}:{m:02d}:{s:02d}"
 
         if remain_pct >= 71.0:
             # Hijau (100% sampai 71%)
             bg = "rgba(16, 185, 129, 0.18)"
             bd = "#10b981"
             cl = "#34d399"
-            ic = "\U0001F7E2"
+            ic = "🟢"
             lbl = f"({int(round(remain_pct))}%)"
         elif remain_pct >= 41.0:
             # Kuning (70% sampai 41%)
             bg = "rgba(234, 179, 8, 0.18)"
             bd = "#eab308"
             cl = "#facc15"
-            ic = "\U0001F7E1"
+            ic = "🟡"
             lbl = f"({int(round(remain_pct))}%)"
         else:
             # Merah (40% sampai 0% atau minus / OSLA)
             bg = "rgba(239, 68, 68, 0.18)"
             bd = "#ef4444"
             cl = "#f87171"
-            ic = "\U0001F534" if remain_pct >= 0 else "\u26A0\uFE0F"
+            ic = "🔴" if remain_pct >= 0 else "⚠️"
             lbl = f"({int(round(max(0, remain_pct)))}%)" if remain_pct >= 0 else "(OSLA)"
 
         target_hours = int(target_sec // 3600)
@@ -1700,7 +2052,7 @@ if not df.empty:
             f'<span style="background: {bg}; border: 1px solid {bd}; color: {cl}; '
             f'font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; '
             f'display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;" '
-            f'title="TTR Berjalan: {time_str} | Sisa Waktu SLA: {lbl} (Target: {target_hours} Jam)">'
+            f'title="TTR Berjalan: {time_str_full} | Sisa Waktu SLA: {lbl} (Target: {target_hours} Jam)">'
             f'{ic} <span style="font-family: monospace; font-size: 0.82rem;">{time_str}</span> '
             f'<span style="font-size: 0.69rem; opacity: 0.9;">{lbl}</span>'
             f'</span>'
@@ -1781,7 +2133,7 @@ if not df.empty:
                     </div>
                     <div class="dc-value">{make_link(len(df_re_today), "RE MASUK HI", "ALL")}</div>
                 </div>
-                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.15rem; font-weight: bold;"><span style="color: #cbd5e1; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.25rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);"><span style="color:white; font-weight:bold; font-size:1.25rem; margin-right:12px;">{re_hi_ao}/{ps_hi_ao}</span>{ps_re_pct}</span></div></div>
+                <div class="dc-breakdown">{bd_html(brk_re, "RE MASUK HI").strip()}<div class="dc-row" style="border-top: 3px dashed #334155; margin-top: 8px; padding-top: 8px; font-size: 1.15rem; font-weight: bold;"><span style="color: #cbd5e1; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);">PS/RE</span><span></span><span style="color:{ps_re_color}; font-size: 1.25rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.8);"><span style="color:white; font-weight:bold; font-size:1.25rem; margin-right:12px;">{ps_hi_ao}/{re_hi_ao}</span>{ps_re_pct}</span></div></div>
             </div>
             <!-- CARD 2: WO VALIDASI -->
             <div class="d-card c-indigo">
@@ -3079,13 +3431,46 @@ if not df.empty:
                     
                     if 'JAM KERJA' in df_re_today.columns:
                         tot_jk = len(df_re_today[df_re_today['JAM KERJA'].astype(str).str.upper() == 'JAM KERJA'])
-                        tot_djk = len(df_re_today[df_re_today['JAM KERJA'].astype(str).str.upper() != 'JAM KERJA'])
+                        df_djk = df_re_today[df_re_today['JAM KERJA'].astype(str).str.upper() != 'JAM KERJA']
+                        tot_djk = len(df_djk)
                     else:
                         tot_jk = tot_re
+                        df_djk = pd.DataFrame()
                         tot_djk = 0
                         
                     pct_jk = f"{(tot_jk/tot_re)*100:.1f}".rstrip('0').rstrip('.') if tot_re > 0 else "0"
                     pct_djk = f"{(tot_djk/tot_re)*100:.1f}".rstrip('0').rstrip('.') if tot_re > 0 else "0"
+
+                    # Detail RE DILUAR JAM KERJA: DINI HARI (< 12:00) & SORE-MALAM (>= 12:00)
+                    tot_dini = 0
+                    tot_sore = 0
+                    if not df_djk.empty:
+                        def _extract_h_re(row):
+                            for col in ['Jam_RE', 'JAM RE MASUK REAL', 'JAM RE MASUK', 'JAM RE', 'Jam']:
+                                if col in row and pd.notna(row[col]):
+                                    s = str(row[col]).strip()
+                                    if ':' in s:
+                                        try:
+                                            return int(s.split(':')[0])
+                                        except Exception:
+                                            pass
+                                    elif len(s) >= 2 and s[:2].isdigit():
+                                        try:
+                                            return int(s[:2])
+                                        except Exception:
+                                            pass
+                            return None
+
+                        h_series = df_djk.apply(_extract_h_re, axis=1)
+                        tot_dini = int((h_series.fillna(0) < 12).sum())
+                        tot_sore = int(tot_djk - tot_dini)
+                        if tot_sore < 0:
+                            tot_sore = 0
+
+                    pct_dini = f"{(tot_dini/tot_re)*100:.1f}".rstrip('0').rstrip('.') if tot_re > 0 else "0"
+                    pct_sore = f"{(tot_sore/tot_re)*100:.1f}".rstrip('0').rstrip('.') if tot_re > 0 else "0"
+                    pct_dini_djk = f"{(tot_dini/tot_djk)*100:.1f}".rstrip('0').rstrip('.') if tot_djk > 0 else "0"
+                    pct_sore_djk = f"{(tot_sore/tot_djk)*100:.1f}".rstrip('0').rstrip('.') if tot_djk > 0 else "0"
                     
                     ps_re_val = (tot_ps/tot_re)*100 if tot_re > 0 else 0
                     ps_re_pct = f"{ps_re_val:.2f}"
@@ -3100,9 +3485,15 @@ if not df.empty:
                         f'<div><div style="font-size: 2.0rem; font-weight: bold; color: #f59e0b; line-height: 1;">{tot_ken}</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">Kendala</div></div>'
                         f'<div><div style="font-size: 2.0rem; font-weight: bold; color: {ps_re_color}; line-height: 1;">{ps_re_pct}%</div><div style="font-size: 12px; color: white; font-weight: bold; text-transform: uppercase; margin-top:8px;">PS/RE</div></div>'
                         '</div>'
-                        f'<div style="border-top: 1px dashed #334155; padding-top: 20px; margin-top: auto; font-size: 1.05rem; font-weight: bold; color: #94a3b8; text-align: left;">'
+                        f'<div style="border-top: 1px dashed #334155; padding-top: 16px; margin-top: auto; font-size: 1.05rem; font-weight: bold; color: #94a3b8; text-align: left;">'
                         f'<div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>RE JAM KERJA</span> <span style="color:white;">{tot_jk} ({pct_jk}%)</span></div>'
-                        f'<div style="display:flex; justify-content:space-between;"><span>RE DILUAR JAM KERJA</span> <span style="color:white;">{tot_djk} ({pct_djk}%)</span></div>'
+                        f'<div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>RE DILUAR JAM KERJA</span> <span style="color:white;">{tot_djk} ({pct_djk}%)</span></div>'
+                        f'<div style="display:flex; justify-content:space-between; padding-left:14px; margin-bottom:4px; font-size:0.90rem; font-weight:bold; color:#a78bfa;" title="{pct_dini}% dari Total RE ({pct_dini_djk}% dari RE Diluar Jam Kerja)">'
+                        f'<span>&bull; DINI HARI</span> <span style="color:#f1f5f9; font-weight:600;">{tot_dini} ({pct_dini}%)</span>'
+                        f'</div>'
+                        f'<div style="display:flex; justify-content:space-between; padding-left:14px; font-size:0.90rem; font-weight:bold; color:#a78bfa;" title="{pct_sore}% dari Total RE ({pct_sore_djk}% dari RE Diluar Jam Kerja)">'
+                        f'<span>&bull; SORE-MALAM</span> <span style="color:#f1f5f9; font-weight:600;">{tot_sore} ({pct_sore}%)</span>'
+                        f'</div>'
                         '</div>'
                         '</div>'
                     )
@@ -4898,7 +5289,7 @@ if not df.empty:
                     html_table += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row["NO INET"]}</td>'
                     ukur_content = str(row["HASIL UKUR"])
                     if ukur_content != "-":
-                        ukur_content = f'<span style="background-color: #b91c1c; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 11px; display: inline-block;">{ukur_content}</span>'
+                        ukur_content = f'<span style="background-color: #b91c1c; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 12.5px; display: inline-block;">{ukur_content}</span>'
                     else:
                         ukur_content = '-'
                     
@@ -4906,15 +5297,15 @@ if not df.empty:
                     
                     onu_status_raw = str(row["ONU LINK STATUS"]).strip().upper()
                     if onu_status_raw in ["ONLINE", "UP"]:
-                        onu_status_content = '<span style="background-color: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #22c55e; font-size: 11px; display: inline-block;">ONLINE</span>'
+                        onu_status_content = '<span style="background-color: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #22c55e; font-size: 12.5px; display: inline-block;">ONLINE</span>'
                     elif onu_status_raw == "LOS":
-                        onu_status_content = '<span style="background-color: #b91c1c; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 11px; display: inline-block;">LOS</span>'
+                        onu_status_content = '<span style="background-color: #b91c1c; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 12.5px; display: inline-block;">LOS</span>'
                     elif "DYING" in onu_status_raw:
-                        onu_status_content = f'<span style="background-color: #ea580c; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #f97316; font-size: 11px; display: inline-block;">{row["ONU LINK STATUS"]}</span>'
+                        onu_status_content = f'<span style="background-color: #ea580c; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #f97316; font-size: 12.5px; display: inline-block;">{row["ONU LINK STATUS"]}</span>'
                     elif onu_status_raw in ["OFFLINE", "DOWN"]:
-                        onu_status_content = '<span style="background-color: #475569; color: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 11px; display: inline-block;">OFFLINE</span>'
+                        onu_status_content = '<span style="background-color: #475569; color: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 12.5px; display: inline-block;">OFFLINE</span>'
                     elif onu_status_raw != "-":
-                        onu_status_content = f'<span style="background-color: #475569; color: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 11px; display: inline-block;">{row["ONU LINK STATUS"]}</span>'
+                        onu_status_content = f'<span style="background-color: #475569; color: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 12.5px; display: inline-block;">{row["ONU LINK STATUS"]}</span>'
                     else:
                         onu_status_content = '-'
                     
@@ -5368,6 +5759,23 @@ if not df.empty:
                             f'<td style="padding: 12px 14px; text-align:center;"><span style="background:rgba(59,130,246,0.2); color:#ffffff; border:1px solid #3b82f6; padding:4px 15px; border-radius:999px; font-weight:800; font-size:1.05rem;">{int(r_t["TOTAL"])}</span></td>'
                             f'</tr>'
                         )
+
+                    gt_pagi = int(piv_tek["PROGRESS PAGI"].sum())
+                    gt_siang = int(piv_tek["PROGRESS SIANG"].sum())
+                    gt_sore = int(piv_tek["PROGRESS SORE"].sum())
+                    gt_malam = int(piv_tek["PROGRESS MALAM"].sum())
+                    gt_total = int(piv_tek["TOTAL"].sum())
+
+                    rows_tek_html += (
+                        f'<tr style="background: #1e293b; border-top: 2px solid #eab308;">'
+                        f'<td colspan="2" style="padding: 14px 16px; text-align:center; color:#ffffff; font-weight:900; font-size:1.1rem; letter-spacing:1px;">GRAND TOTAL</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#38bdf8; font-weight:900; font-size:1.15rem;">{gt_pagi}</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#22c55e; font-weight:900; font-size:1.15rem;">{gt_siang}</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#f59e0b; font-weight:900; font-size:1.15rem;">{gt_sore}</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#a78bfa; font-weight:900; font-size:1.15rem;">{gt_malam}</td>'
+                        f'<td style="padding: 14px 14px; text-align:center;"><span style="background:rgba(234,179,8,0.25); color:#ffffff; border:1.5px solid #eab308; padding:4px 16px; border-radius:999px; font-weight:900; font-size:1.1rem;">{gt_total}</span></td>'
+                        f'</tr>'
+                    )
 
                     tek_table_html = (
                         '<div style="border: 1px solid #334155; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 28px;">'
@@ -6001,7 +6409,8 @@ if not df.empty:
                 ('alpro_ok', ['ALPRO OK', 'ALPRO_OK', 'ALPRO', 'ODC']),
                 ('rk_info', ['RK INFORMATION', 'RK_INFORMATION']),
                 ('device_name', ['DEVICE NAME', 'DEVICE_NAME']),
-                ('osla_col', ['OSLA', 'OSLA STATUS', 'STATUS OSLA'])
+                ('osla_col', ['OSLA', 'OSLA STATUS', 'STATUS OSLA']),
+                ('teknisi', ['NAMA TEKNISI', 'TEKNISI ADING', 'TEKNISI', 'NAMA TIM'])
             ]
             col_map = {}
             for key, candidates in priority_defs:
@@ -6019,26 +6428,31 @@ if not df.empty:
                 for k in ['alpro_ok', 'ALPRO OK', 'ALPRO', 'alpro']:
                     val = safe_val(r, col_map.get(k, k))
                     if val and val.strip() not in ['-', '', 'nan', 'None', 'null', '0']:
-                        return val.strip()
+                        cleaned = val.strip()
+                        if cleaned.startswith('ODC-'):
+                            cleaned = cleaned[4:]
+                        return cleaned
                 # 2. Derive from RK INFORMATION
                 rk = safe_val(r, col_map.get('rk_info', 'RK INFORMATION'))
                 if rk and rk.strip() not in ['-', '', 'nan', 'None', 'null', '0']:
                     token = rk.strip().split()[0]
                     cleaned = token.replace('mODC-', 'ODC-').replace('ODC-ULN-', 'ODC-ULI-')
-                    if 'ODC-' in cleaned or 'ODP-' in cleaned:
-                        return cleaned
-                    return token
+                    if cleaned.startswith('ODC-'):
+                        cleaned = cleaned[4:]
+                    return cleaned
                 # 3. Derive from DEVICE NAME (ODP -> ODC)
                 dev = safe_val(r, col_map.get('device_name', 'DEVICE NAME'))
                 if dev and 'ODP-' in dev:
                     odp_part = dev.split('/')[0].split()[0]
-                    return odp_part.replace('ODP-', 'ODC-').replace('ODC-ULN-', 'ODC-ULI-')
+                    cleaned = odp_part.replace('ODP-', '')
+                    return cleaned
                 # 4. Search in SUMMARY
                 summ = safe_val(r, col_map.get('summary', 'SUMMARY'))
                 if summ:
                     m = re.search(r'\b(OD[CP]-[A-Z]{3}-[A-Z0-9]+)', summ)
                     if m:
-                        return m.group(1).replace('ODP-', 'ODC-').replace('ODC-ULN-', 'ODC-ULI-')
+                        cleaned = m.group(1).replace('ODP-', '').replace('ODC-', '')
+                        return cleaned
                 return '-'
 
             # Parsed Reported Date
@@ -6148,7 +6562,9 @@ if not df.empty:
                 if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
                     if pd.notna(row.get('dt_rep')):
                         try:
-                            diff = (datetime.now() - row['dt_rep'].to_pydatetime().replace(tzinfo=None)).total_seconds()
+                            # Konversi REPORTED DATE dari WIB ke WITA (+1 jam)
+                            dt_wita = row['dt_rep'] + pd.Timedelta(hours=1)
+                            diff = (datetime.now() - dt_wita.to_pydatetime().replace(tzinfo=None)).total_seconds()
                             if diff >= 0:
                                 elapsed_sec = diff
                         except Exception:
@@ -6531,6 +6947,9 @@ if not df.empty:
                     wzone_val = html_lib.escape(str(row.get('wzone_clean', '-')))
                     owner_val = html_lib.escape(safe_val(row, 'owner_group', str(row.get('owner_group_clean', '-'))))
                     alpro_val = html_lib.escape(get_alpro_ok(row))
+                    tek_val = html_lib.escape(safe_val(row, 'teknisi', safe_val(row, 'NAMA TEKNISI', safe_val(row, 'TEKNISI ADING', '-'))))
+                    if tek_val.startswith('['):
+                        tek_val = '-'
                     summary_val = html_lib.escape(safe_val(row, 'summary'))
                     
                     r = (
@@ -6546,6 +6965,7 @@ if not df.empty:
                         f'<td style="padding:10px 10px; text-align:center; font-weight:700; color:#f8fafc; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{wzone_val}</td>'
                         f'<td style="padding:10px 10px; text-align:center; color:#cbd5e1; font-size:0.82rem; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{owner_val}</td>'
                         f'<td style="padding:10px 10px; text-align:center; font-family:monospace; font-size:0.83rem; font-weight:700; color:#38bdf8; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{alpro_val}</td>'
+                        f'<td style="padding:10px 10px; text-align:center; font-weight:700; color:#facc15; white-space:nowrap; border-right:1px solid rgba(255,255,255,0.08);">{tek_val}</td>'
                         f'<td style="padding:10px 16px; min-width:700px; max-width:900px; line-height:1.5; color:#cbd5e1; font-size:0.80rem; white-space:normal; word-break:break-word; text-align:justify; text-justify:inter-word;">{summary_val}</td>'
                         f'</tr>'
                     )
@@ -6584,6 +7004,7 @@ if not df.empty:
                     f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:95px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">WORKZONE</th>'
                     f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:240px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">OWNER GROUP</th>'
                     f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:160px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">ALPRO OK</th>'
+                    f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; border-right:1px solid rgba(255,255,255,0.15); padding:12px 10px; width:140px; text-align:center; font-weight:900; color:#facc15; font-size:0.82rem; letter-spacing:0.5px;">TEKNISI ADING</th>'
                     f'<th style="position:sticky; top:0; z-index:50; background:#1e3a8a; border-bottom:2.5px solid #3b82f6; padding:12px 16px; min-width:700px; text-align:center; font-weight:900; color:#ffffff; font-size:0.82rem; letter-spacing:0.5px;">SUMMARY TIKET</th>'
                     f'</tr>'
                     f'</thead>'
@@ -7003,6 +7424,9 @@ if not df.empty:
                     wzone_val = html_lib.escape(str(row.get('wzone_clean', '-')))
                     owner_val = html_lib.escape(safe_val(row, 'owner_group', str(row.get('owner_group_clean', '-'))))
                     alpro_val = html_lib.escape(get_alpro_ok(row))
+                    tek_val = html_lib.escape(safe_val(row, 'teknisi', safe_val(row, 'NAMA TEKNISI', safe_val(row, 'TEKNISI ADING', '-'))))
+                    if tek_val.startswith('['):
+                        tek_val = '-'
                     summary_val = html_lib.escape(str(row.get(col_map.get('summary', 'SUMMARY'), '-')))
 
                     r_html = f'''<tr style="background-color: {bg_tr}; border-bottom: 1px solid #1e293b; transition: background 0.15s ease;">
@@ -7017,6 +7441,7 @@ if not df.empty:
                         <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #f8fafc; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{wzone_val}</td>
                         <td style="padding: 12px 12px; text-align: center; color: #cbd5e1; font-size: 0.82rem; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{owner_val}</td>
                         <td style="padding: 12px 12px; text-align: center; font-family: monospace; font-size: 0.83rem; font-weight: 700; color: #38bdf8; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{alpro_val}</td>
+                        <td style="padding: 12px 12px; text-align: center; font-weight: 700; color: #facc15; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.08);">{tek_val}</td>
                         <td style="padding: 12px 18px; min-width: 450px; max-width: 750px; line-height: 1.5; color: #cbd5e1; font-size: 0.80rem; white-space: normal; word-break: break-word; text-align: justify; text-justify: inter-word;">{summary_val}</td>
                     </tr>'''
                     t_rows.append(r_html)
@@ -7038,6 +7463,7 @@ if not df.empty:
                                 <th style="width: 90px; text-align: center;">WORKZONE</th>
                                 <th style="width: 170px; text-align: center;">OWNER GROUP</th>
                                 <th style="width: 135px; text-align: center;">ALPRO OK</th>
+                                <th style="width: 140px; text-align: center; color: #facc15;">TEKNISI ADING</th>
                                 <th style="min-width: 450px; text-align: center;">SUMMARY TIKET</th>
                             </tr>
                         </thead>
@@ -7050,6 +7476,657 @@ if not df.empty:
                 st.markdown(tbl_html, unsafe_allow_html=True)
                 if len(df_tbl_final) > limit_view:
                     st.caption(f"\u26A1 Menampilkan {limit_view:,} dari total {len(df_tbl_final):,} tiket untuk menjaga performa rendering browser.")
+
+    elif menu in ["IBOOSTER ASGAR", "IBOOSTER GAUL"]:
+        import os
+        import re as regex
+
+        base_dir_gaul = os.path.dirname(os.path.abspath(__file__))
+        ibooster_asr_sync_time = "Belum Ada Data"
+        for sync_candidate in ["last_ibooster_ASR.txt", "last_ibooster_AO_TSEL.txt"]:
+            cand_path = os.path.join(base_dir_gaul, sync_candidate)
+            if os.path.exists(cand_path):
+                try:
+                    with open(cand_path, "r", encoding="utf-8") as f_ib:
+                        c_txt = f_ib.read().strip()
+                        if c_txt:
+                            ibooster_asr_sync_time = c_txt.split(" | VIA ")[0].replace(" WIB", "")
+                            break
+                except Exception:
+                    pass
+
+        @st.cache_data(ttl=120, show_spinner=False)
+        def load_ibooster_gaul_dataset(insera_key, ibooster_key):
+            # 1. Muat data GABUNGAN ALL & CLOSE TIKET (utamakan Google Sheets agar kolom CR / FORMAT IBOOSTER & DURASI PELAPORAN TIKET terbaca)
+            df_gab = pd.DataFrame()
+            gs_gab_url = "https://docs.google.com/spreadsheets/d/1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o/gviz/tq?tqx=out:csv&sheet=GABUNGAN%20ALL%20%26%20CLOSE%20TIKET"
+            try:
+                import io
+                headers_gs = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'}
+                resp_gs = requests.get(gs_gab_url, headers=headers_gs, timeout=25)
+                if resp_gs.status_code == 200 and not resp_gs.text.strip().startswith("<!DOCTYPE"):
+                    df_gab = pd.read_csv(io.StringIO(resp_gs.text), low_memory=False)
+                else:
+                    df_gab = pd.read_csv(gs_gab_url, low_memory=False)
+                if 'INCIDENT' in df_gab.columns:
+                    df_gab = df_gab[df_gab['INCIDENT'].astype(str) != 'METADATA_SYNC']
+            except Exception:
+                df_gab, _ = load_assurance_data(insera_key)
+
+            if df_gab is None or df_gab.empty:
+                df_gab, _ = load_assurance_data(insera_key)
+
+            # 2. Muat data hasil ukur dari UKUR IBOOSTER ASR (cache parquet lokal -> Google Sheets UKUR IBOOSTER ASR -> fallback UKUR IBOOSTER)
+            ib_map = {}
+            local_ib_parquet = os.path.join(base_dir_gaul, "last_ibooster_asr.parquet")
+            if os.path.exists(local_ib_parquet):
+                try:
+                    df_ib_loc = pd.read_parquet(local_ib_parquet)
+                    for _, r_ib in df_ib_loc.iterrows():
+                        nd_k = ''.join(ch for ch in str(r_ib.get('ND', '')).split('.')[0] if ch.isdigit())
+                        if nd_k:
+                            ib_map[nd_k] = (
+                                str(r_ib.get('ONU LINK STATUS', '')).strip().upper(),
+                                str(r_ib.get('HASIL UKUR IBOSSTER', '')).strip()
+                            )
+                except Exception:
+                    pass
+
+            if not ib_map:
+                for sheet_ib_url in [
+                    "https://docs.google.com/spreadsheets/d/1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o/export?format=csv&gid=1551994456",
+                    "https://docs.google.com/spreadsheets/d/1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o/gviz/tq?tqx=out:csv&sheet=UKUR%20IBOOSTER%20ASR",
+                    "https://docs.google.com/spreadsheets/d/1zA5ucYxE9gOSnKZIhEKQyV2rEdV5je__knsS9neA5iA/gviz/tq?tqx=out:csv&sheet=UKUR%20IBOOSTER"
+                ]:
+                    try:
+                        df_ib_gs = pd.read_csv(sheet_ib_url, header=None, low_memory=False)
+                        if not df_ib_gs.empty and df_ib_gs.shape[1] > 13:
+                            for _, r_ib in df_ib_gs.iterrows():
+                                raw_nd = str(r_ib.iloc[1]).strip().split('.')[0]
+                                nd_k = ''.join(ch for ch in raw_nd if ch.isdigit())
+                                if len(nd_k) >= 9:
+                                    onu_v = str(r_ib.iloc[7]).strip().upper()
+                                    rx_v = str(r_ib.iloc[13]).strip()
+                                    if onu_v == 'LOS':
+                                        rx_v = 'LOS'
+                                    if nd_k not in ib_map:
+                                        ib_map[nd_k] = (onu_v, rx_v)
+                            if ib_map:
+                                break
+                    except Exception:
+                        pass
+
+            # 3. Muat mapping NIK & Nama Teknisi ke NAMA ALIAS (dari sheet TEKNISI ASSURANCE)
+            FALLBACK_TEKNISI_ALIAS = {
+                '26960116': 'HADINATA',
+                '25920087': 'FAJRI',
+                '25940110': 'IRWANSYAH',
+                '25910103': 'HARIS',
+                '25940111': 'FADEL',
+                '25980159': 'EURO',
+                '25030188': 'FIRDAUS',
+                '25030187': 'RISKY',
+                '25730020': 'BAMBANG',
+                '25960168': 'DANI',
+                '25020227': 'ALIMIN',
+                '25980160': 'KHALIL',
+                '25000179': 'AKBAR',
+                '25980162': 'FEBRI',
+                '25960167': 'DIPA',
+                '25030189': 'HAFIZ',
+                '25980161': 'AMAT',
+                '25890089': 'RAHIM',
+                '26000271': 'HALDI',
+                '25930142': 'BAGUS',
+                '25900066': 'TAUFIK',
+                '25990215': 'SYAHRIL',
+                '25990177': 'RAHMANA',
+                '25030190': 'ARI',
+                '18960013': 'ADI',
+                # Nama lengkap ke alias
+                'HADINATA AS\'AD': 'HADINATA',
+                'HADINATA ASAD': 'HADINATA',
+                'FAJRIANNOOR': 'FAJRI',
+                'MUHAMMAD IRWANSYAH': 'IRWANSYAH',
+                'HAJIS SANDI': 'HARIS',
+                'FADEL AULIA': 'FADEL',
+                'EURO HADI': 'EURO',
+                'MUHAMMAD FIRDAUS': 'FIRDAUS',
+                'MUHAMMAD RISKI': 'RISKY',
+                'BAMBANG SUSILOTOMO': 'BAMBANG',
+                'NOVRI WARDIANI': 'DANI',
+                'M.KHALILURRAHMAN': 'KHALIL',
+                'M. KHALILURRAHMAN': 'KHALIL',
+                'KHAIRUL AKBAR': 'AKBAR',
+                'M FEBRIANOOR': 'FEBRI',
+                'M. FEBRIANOOR': 'FEBRI',
+                'SANDRA DIPA MAURYA': 'DIPA',
+                'MUHAMMAD HAFIZ': 'HAFIZ',
+                'SELAMAT': 'AMAT',
+                'ABDUL RAHIM': 'RAHIM',
+                'MUHAMMAD HALDIANOOR': 'HALDI',
+                'BAGUS PRAMANA': 'BAGUS',
+                'TAUFIKKURRAHMAN': 'TAUFIK',
+                'MUHAMMAD SYAHRIL': 'SYAHRIL',
+                'ARI RAMADHAN': 'ARI',
+                'MUHAMMAD ADI AMAYYANI': 'ADI',
+            }
+
+            alias_map = dict(FALLBACK_TEKNISI_ALIAS)
+            try:
+                gs_tek_url = "https://docs.google.com/spreadsheets/d/1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o/gviz/tq?tqx=out:csv&sheet=TEKNISI%20ASSURANCE"
+                df_tek = pd.read_csv(gs_tek_url, low_memory=False)
+                if not df_tek.empty:
+                    col_map_t = {str(c).strip().upper(): c for c in df_tek.columns}
+                    nik_c = col_map_t.get('NIK')
+                    alias_c = col_map_t.get('NAMA ALIAS') or col_map_t.get('ALIAS')
+                    nama_c = col_map_t.get('NAMA') or col_map_t.get('NAMA TEKNISI')
+                    if nik_c and alias_c:
+                        for _, r_t in df_tek.iterrows():
+                            al_val = str(r_t.get(alias_c, '')).strip().upper()
+                            if not al_val or al_val == 'NAN':
+                                continue
+                            raw_nik_val = str(r_t.get(nik_c, '')).strip().split('.')[0]
+                            if raw_nik_val and raw_nik_val != 'nan':
+                                alias_map[raw_nik_val] = al_val
+                            if nama_c and pd.notna(r_t.get(nama_c)):
+                                nm_val = str(r_t.get(nama_c, '')).strip().upper()
+                                if nm_val and nm_val != 'NAN':
+                                    alias_map[nm_val] = al_val
+            except Exception:
+                pass
+
+            return df_gab, ib_map, alias_map
+
+        with st.spinner("Memuat data IBOOSTER ASGAR (Assurance)..."):
+            df_asr_gaul, ibooster_asr_map, teknisi_alias_map = load_ibooster_gaul_dataset(insera_time, ibooster_asr_sync_time)
+
+        if df_asr_gaul is None or df_asr_gaul.empty:
+            st.warning("⚠️ **Data tiket Assurance belum berhasil dimuat.**")
+            st.info("💡 Pastikan Anda telah menarik data minimal 1 kali melalui tombol **'🚀 Tarik INSERA ASR'** dan **'🚀 Tarik IBOOSTER ASGAR'** di sidebar.")
+        else:
+            df_g = df_asr_gaul.copy()
+
+            # 1. Filter STATUS TIKET harus CLOSE / CLOSED
+            stat_col_g = 'STATUS TIKET' if 'STATUS TIKET' in df_g.columns else ('STATUS' if 'STATUS' in df_g.columns else None)
+            if stat_col_g:
+                df_g = df_g[df_g[stat_col_g].astype(str).str.strip().str.upper().str.contains('CLOSE', na=False)].copy()
+
+            # 2. Hitung & Filter DURASI PELAPORAN TIKET <= 30 HARI
+            dur_series = pd.Series(np.nan, index=df_g.index)
+            if 'DURASI PELAPORAN TIKET' in df_g.columns:
+                dur_series = pd.to_numeric(
+                    df_g['DURASI PELAPORAN TIKET'].astype(str).str.extract(r'(\d+)')[0],
+                    errors='coerce'
+                )
+            rep_col_g = next((c for c in ['REPORTED DATE', 'TANGGAL REPORTED', 'STATUS DATE'] if c in df_g.columns), None)
+            if rep_col_g:
+                rep_dt_g = pd.to_datetime(df_g[rep_col_g], format='mixed', dayfirst=True, errors='coerce')
+                fallback_dur = (pd.Timestamp.now().normalize() - rep_dt_g.dt.normalize()).dt.days
+                dur_series = dur_series.fillna(fallback_dur)
+
+            df_g['Durasi_Num'] = dur_series.fillna(999)
+            df_g = df_g[(df_g['Durasi_Num'] >= 0) & (df_g['Durasi_Num'] <= 30)].copy()
+            total_closed_30d = len(df_g)
+
+            # 3. Enrich Nomor Internet (Kolom CR = FORMAT IBOOSTER / SERVICE NO), Hasil Ukur Rx dBm, ONU Link Status, dan Prioritas Unspec
+            hasil_col_existing = next((c for c in ['HASIL UKUR IBOSSTER', 'HASIL UKUR IBOOSTER', 'HASIL UKUR'] if c in df_g.columns), None)
+            onu_col_existing = next((c for c in ['ONU LINK STATUS', 'GPON ONU LINK STATUS'] if c in df_g.columns), None)
+            prio_col_existing = next((c for c in ['PRIORITAS UNSPEC', 'PRIORITAS'] if c in df_g.columns), None)
+
+            gaul_records = []
+            months_id_map = {1:'JANUARI', 2:'FEBRUARI', 3:'MARET', 4:'APRIL', 5:'MEI', 6:'JUNI', 7:'JULI', 8:'AGUSTUS', 9:'SEPTEMBER', 10:'OKTOBER', 11:'NOVEMBER', 12:'DESEMBER'}
+
+            for _, row_g in df_g.iterrows():
+                # Nomor Internet dari FORMAT IBOOSTER (CR) atau SERVICE NO
+                raw_inet = str(row_g.get('FORMAT IBOOSTER', '')).strip().rstrip(';')
+                if raw_inet.endswith('.0'):
+                    raw_inet = raw_inet[:-2]
+                if not raw_inet or raw_inet.lower() == 'nan':
+                    raw_inet = str(row_g.get('SERVICE NO', '')).strip().rstrip(';')
+                    if raw_inet.endswith('.0'):
+                        raw_inet = raw_inet[:-2]
+                inet_digits = ''.join(ch for ch in raw_inet if ch.isdigit())
+                no_inet_disp = inet_digits if len(inet_digits) >= 6 else (raw_inet if raw_inet and raw_inet.lower() != 'nan' else '-')
+
+                # Cek hasil ukur dari kolom sheet (jika ada VLOOKUP) atau dari ibooster_asr_map
+                onu_val = str(row_g.get(onu_col_existing, '')).strip().upper() if onu_col_existing else ''
+                rx_val = str(row_g.get(hasil_col_existing, '')).strip() if hasil_col_existing else ''
+                if onu_val in ['NAN', 'NONE', '-', '']:
+                    onu_val = ''
+                if rx_val.upper() in ['NAN', 'NONE', '-', '']:
+                    rx_val = ''
+
+                if (not onu_val or not rx_val) and inet_digits in ibooster_asr_map:
+                    map_onu, map_rx = ibooster_asr_map[inet_digits]
+                    if not onu_val:
+                        onu_val = map_onu
+                    if not rx_val:
+                        rx_val = map_rx
+
+                # Normalisasi LOS & Rx dBm
+                if onu_val == 'LOS' or rx_val.upper() == 'LOS':
+                    onu_status_final = 'LOS'
+                    hasil_ukur_final = 'LOS'
+                else:
+                    onu_status_final = onu_val if onu_val else '-'
+                    hasil_ukur_final = rx_val if rx_val else '-'
+
+                # Hitung Prioritas Unspec (PRIO 1 / PRIO 2)
+                prio_val = str(row_g.get(prio_col_existing, '')).strip().upper() if prio_col_existing else ''
+                if prio_val in ['NAN', 'NONE', '']:
+                    prio_val = ''
+
+                rx_num = None
+                if hasil_ukur_final not in ['-', 'LOS', '']:
+                    try:
+                        rx_num = float(str(hasil_ukur_final).replace(',', '.'))
+                    except Exception:
+                        rx_num = None
+
+                if not prio_val and rx_num is not None:
+                    if rx_num <= -27.0:
+                        prio_val = 'PRIO 1'
+                    elif rx_num <= -25.0:
+                        prio_val = 'PRIO 2'
+                    elif rx_num <= -23.0:
+                        prio_val = 'PRIO 3'
+
+                # Tentukan apakah masuk kategori GAUL UNSPEC (PRIO 1 / PRIO 2) atau LOS
+                is_los_row = (onu_status_final == 'LOS') or (hasil_ukur_final == 'LOS')
+                is_unspec_prio = (onu_status_final in ['ONLINE', 'UP', '-']) and ('PRIO 1' in prio_val or 'PRIO 2' in prio_val)
+
+                if not (is_los_row or is_unspec_prio):
+                    continue
+
+                if is_los_row:
+                    kat_ukur = 'LOS'
+                    prio_disp = prio_val if ('PRIO 1' in prio_val or 'PRIO 2' in prio_val) else '-'
+                elif 'PRIO 1' in prio_val:
+                    kat_ukur = 'PRIO 1'
+                    prio_disp = 'PRIO 1'
+                    if onu_status_final == '-':
+                        onu_status_final = 'ONLINE'
+                else:
+                    kat_ukur = 'PRIO 2'
+                    prio_disp = 'PRIO 2'
+                    if onu_status_final == '-':
+                        onu_status_final = 'ONLINE'
+
+                # Penentuan Tanggal & Bulan Tiket yang akurat
+                month_name_to_num = {
+                    'JANUARI': 1, 'FEBRUARI': 2, 'MARET': 3, 'APRIL': 4, 'MEI': 5, 'JUNI': 6,
+                    'JULI': 7, 'AGUSTUS': 8, 'SEPTEMBER': 9, 'OKTOBER': 10, 'NOVEMBER': 11, 'DESEMBER': 12,
+                    'JANUARY': 1, 'FEBRUARY': 2, 'MARCH': 3, 'MAY': 5, 'JUNE': 6, 'JULY': 7,
+                    'AUGUST': 8, 'OCTOBER': 10, 'DECEMBER': 12
+                }
+                raw_bulan_col = str(row_g.get('BULAN', '')).strip().upper() if 'BULAN' in df_g.columns else ''
+                bulan_str = '-'
+                month_idx = 0
+                tgl_tiket_str = '-'
+
+                # Ambil tanggal raw (utamakan TANGGAL REPORTED berformat YYYY-MM-DD)
+                rep_raw = ''
+                for c_rep in ['TANGGAL REPORTED', 'REPORTED DATE', 'STATUS DATE']:
+                    if c_rep in row_g and pd.notna(row_g[c_rep]):
+                        v_r = str(row_g[c_rep]).strip()
+                        if v_r and v_r.lower() != 'nan':
+                            rep_raw = v_r
+                            break
+
+                # 1. Prioritas utama: jika kolom BULAN di Sheet sudah terisi nama bulan valid (misal "November")
+                if raw_bulan_col in month_name_to_num:
+                    month_idx = month_name_to_num[raw_bulan_col]
+                    bulan_str = months_id_map[month_idx]
+                elif rep_raw:
+                    try:
+                        if len(rep_raw) >= 10 and rep_raw[4] == '-' and rep_raw[7] == '-':
+                            dt_obj = pd.to_datetime(rep_raw[:10], format='%Y-%m-%d')
+                        else:
+                            dt_obj = pd.to_datetime(rep_raw, format='mixed')
+                        month_idx = dt_obj.month
+                        bulan_str = months_id_map.get(month_idx, '-')
+                    except Exception:
+                        pass
+
+                if rep_raw:
+                    try:
+                        if len(rep_raw) >= 10 and rep_raw[4] == '-' and rep_raw[7] == '-':
+                            tgl_tiket_str = rep_raw[:10]
+                        else:
+                            tgl_tiket_str = str(rep_raw).split('.')[0]
+                    except Exception:
+                        tgl_tiket_str = str(rep_raw).split('.')[0]
+
+                if not bulan_str or bulan_str.lower() == 'nan':
+                    bulan_str = '-'
+
+                # Nama Teknisi (Kolom CP di Sheet Gabungan)
+                nama_tek = ''
+                for c_cand in ['NAMA TEKNISI', 'CP (NAMA TEKNISI)', 'CP', 'TECHNICIAN', 'NAMA_TEKNISI']:
+                    if c_cand in row_g and pd.notna(row_g[c_cand]):
+                        val = str(row_g[c_cand]).strip()
+                        if val and val.lower() not in ['nan', 'none', '-']:
+                            nama_tek = val
+                            break
+                if not nama_tek and len(row_g) > 93:
+                    try:
+                        val_cp = str(row_g.iloc[93]).strip()
+                        if val_cp and val_cp.lower() not in ['nan', 'none', '-']:
+                            nama_tek = val_cp
+                    except Exception:
+                        pass
+                if not nama_tek:
+                    nama_tek = '-'
+                if nama_tek.endswith('.0') and nama_tek[:-2].isdigit():
+                    nama_tek = nama_tek[:-2]
+
+                # Konversi NIK atau Nama Lengkap menjadi NAMA ALIAS
+                nama_tek_clean = nama_tek.strip().upper()
+                if nama_tek_clean in teknisi_alias_map:
+                    nama_tek = teknisi_alias_map[nama_tek_clean]
+                else:
+                    nik_digits = ''.join(ch for ch in nama_tek_clean if ch.isdigit())
+                    if nik_digits in teknisi_alias_map:
+                        nama_tek = teknisi_alias_map[nik_digits]
+
+                # Customer Type
+                cust_type_raw = str(row_g.get('CUSTOMER TYPE', '-')).strip().upper().replace('_', ' ')
+                if not cust_type_raw or cust_type_raw == 'NAN':
+                    cust_type_raw = 'REGULER'
+
+                # Incident
+                inc_val = str(row_g.get('INCIDENT', '-')).strip()
+                if not inc_val or inc_val.lower() == 'nan':
+                    inc_val = '-'
+
+                # Workzone & Customer Name
+                wz_val = str(row_g.get('WORKZONE', '-')).strip()
+                if not wz_val or wz_val.lower() == 'nan':
+                    wz_val = '-'
+
+                # Durasi Pelaporan Tiket
+                dur_int = int(row_g.get('Durasi_Num', 0))
+                dur_raw_txt = str(row_g.get('DURASI PELAPORAN TIKET', '')).strip().upper()
+                if not dur_raw_txt or dur_raw_txt == 'NAN':
+                    dur_raw_txt = f"{dur_int} HARI"
+
+                gaul_records.append({
+                    'NO': 0,
+                    'BULAN TIKET': bulan_str,
+                    'TGL TIKET': tgl_tiket_str,
+                    'NAMA TEKNISI': nama_tek,
+                    'CUSTOMER TYPE': cust_type_raw,
+                    'WORKZONE': wz_val,
+                    'INCIDENT': inc_val,
+                    'NO INET': no_inet_disp,
+                    'HASIL UKUR': hasil_ukur_final,
+                    'ONU LINK STATUS': onu_status_final,
+                    'PRIORITAS': prio_disp,
+                    'KATEGORI UKUR': kat_ukur,
+                    'DURASI': dur_raw_txt,
+                    'DURASI PELAPORAN TIKET': dur_raw_txt,
+                    'Durasi_Num': dur_int,
+                    'Month_Index': month_idx
+                })
+
+            # --- TABEL MONITORING IBOOSTER ASGAR (SERUPA MONITORING FFG) ---
+            st.markdown(f'''
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <h3 style="color: #cbd5e1; font-weight: bold; margin: 0; font-size: 1.35rem; letter-spacing: 0.5px;">MONITORING IBOOSTER ASGAR (30 HARI)</h3>
+                <div style="background-color: rgba(249, 115, 22, 0.15); border: 1px solid #ea580c; border-radius: 6px; padding: 4px 12px; color: #fb923c; font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    ⏱️ Last Ibooster ASR: {ibooster_asr_sync_time}
+                </div>
+            </div>
+            ''', unsafe_allow_html=True)
+
+            total_gaul = len(gaul_records)
+
+            if total_gaul == 0:
+                st.info("Belum ada tiket Assurance berstatus CLOSE (durasi <= 30 hari) yang terindikasi UNSPEC (PRIO 1 / PRIO 2) atau LOS. Silakan klik tombol **'🚀 Tarik IBOOSTER ASGAR'** di sidebar untuk memperbarui hasil ukur.")
+
+            if total_gaul > 0:
+                df_disp_g = pd.DataFrame(gaul_records)
+
+                def _status_rank_g(val):
+                    v = str(val).upper()
+                    if 'LOS' in v:
+                        return 1
+                    if 'ONLINE' in v:
+                        return 2
+                    return 3
+
+                df_disp_g['Status_Rank'] = df_disp_g['ONU LINK STATUS'].apply(_status_rank_g)
+                df_disp_g = df_disp_g.sort_values(by=['Durasi_Num', 'Status_Rank', 'PRIORITAS'], ascending=[True, True, True])
+
+                df_disp_g['DURASI'] = df_disp_g['DURASI PELAPORAN TIKET']
+                df_disp_g['NO'] = range(1, len(df_disp_g) + 1)
+
+                table_cols_g = [
+                    'NO', 'BULAN TIKET', 'NAMA TEKNISI', 'CUSTOMER TYPE',
+                    'INCIDENT', 'NO INET', 'HASIL UKUR', 'ONU LINK STATUS',
+                    'PRIORITAS', 'DURASI'
+                ]
+                df_disp_g = df_disp_g[table_cols_g].copy()
+                df_disp_g['NO'] = range(1, len(df_disp_g) + 1)
+
+                html_table_g = '<div style="width: 100%; min-height: 400px; overflow-x: auto; background-color: #0f172a; border-radius: 8px; border: 1px solid #334155;">'
+                html_table_g += '<table style="width: 100%; border-collapse: collapse; color: white; font-size: 13px; font-family: sans-serif; text-align: center;">'
+                html_table_g += '<thead><tr style="background: linear-gradient(180deg, #facc15 0%, #eab308 100%); color: #0f172a; font-weight: bold; border-bottom: 2.5px solid #a16207; font-size: 13.5px;">'
+
+                for i, col in enumerate(df_disp_g.columns):
+                    if col == 'NO':
+                        html_table_g += (
+                            '<th style="padding: 12px 6px; border: 1px solid #ca8a04; vertical-align: middle; '
+                            'text-align: center; white-space: nowrap; width: 55px; background: linear-gradient(180deg, #facc15 0%, #eab308 100%);">'
+                            '<span style="font-weight: 900; color: #0f172a; font-size: 13.5px; letter-spacing: 0.6px; text-transform: uppercase; '
+                            'text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7), 0 -1px 1px rgba(161, 98, 7, 0.4), 1px 0 1px rgba(202, 138, 4, 0.4), -1px 0 1px rgba(254, 240, 138, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.25);">'
+                            'NO</span></th>'
+                        )
+                        continue
+
+                    unique_vals = sorted(df_disp_g[col].astype(str).unique())
+                    checkboxes_html = ""
+                    for val in unique_vals:
+                        clean_val = regex.sub('<[^<]+>', '', val)
+                        checkboxes_html += (
+                            f'<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #cbd5e1; font-size: 12px; padding: 2px 0;">'
+                            f'<input type="checkbox" class="gaul-filter-cb-{i}" value="{clean_val}" checked style="cursor: pointer; accent-color: #3b82f6; width: 14px; height: 14px;">'
+                            f'<span class="gaul-filter-text-{i}">{clean_val}</span></label>'
+                        )
+
+                    html_table_g += (
+                        f'<th style="padding: 12px 10px; border: 1px solid #ca8a04; vertical-align: middle; '
+                        f'text-align: center; white-space: nowrap; position: relative; background: linear-gradient(180deg, #facc15 0%, #eab308 100%);">'
+                        f'<div style="display: flex; justify-content: center; align-items: center; gap: 5px;">'
+                        f'<span style="font-weight: 900; color: #0f172a; font-size: 13.5px; letter-spacing: 0.6px; text-transform: uppercase; '
+                        f'text-shadow: 0 1px 1px rgba(255, 255, 255, 0.7), 0 -1px 1px rgba(161, 98, 7, 0.4), 1px 0 1px rgba(202, 138, 4, 0.4), -1px 0 1px rgba(254, 240, 138, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.25);">{col}</span>'
+                        f'<div class="gaul-filter-icon" data-colindex="{i}" title="Filter {col}" style="cursor: pointer; color: #713f12; font-size: 11px; padding: 2px 4px; border-radius: 4px; font-weight: bold;">&#9660;</div>'
+                        f'</div>'
+                        f'<div class="gaul-filter-menu" id="gaul-filter-menu-{i}" style="display: none; position: absolute; top: 100%; right: 50%; transform: translateX(50%); background-color: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 12px; z-index: 100; text-align: left; min-width: 220px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); font-weight: normal;">'
+                        f'<input type="text" class="gaul-filter-search" data-colindex="{i}" placeholder="Cari..." style="width: 100%; padding: 6px 10px; margin-bottom: 12px; background-color: #0f172a; color: white; border: 1px solid #334155; border-radius: 4px; box-sizing: border-box; font-size: 12px; outline: none;">'
+                        f'<div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.7rem; color: #38bdf8; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px;"><span class="gaul-filter-select-all" data-colindex="{i}" style="cursor: pointer;">Pilih Semua</span><span class="gaul-filter-clear-all" data-colindex="{i}" style="cursor: pointer;">Bersihkan</span></div>'
+                        f'<div class="gaul-filter-options-container" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding-right: 5px;">{checkboxes_html}</div>'
+                        f'<div style="text-align: right; border-top: 1px solid #334155; padding-top: 12px;"><button class="gaul-filter-apply-btn" style="background-color: #3b82f6; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%;">Terapkan</button></div>'
+                        f'</div></th>'
+                    )
+
+                html_table_g += '</tr></thead><tbody id="gaul-tbody">'
+
+                for _, row_d in df_disp_g.iterrows():
+                    html_table_g += '<tr style="border-bottom: 1px solid #334155; font-size: 13px;">'
+                    html_table_g += f'<td style="padding: 10px 6px; border-right: 1px solid #334155; text-align: center; color: #94a3b8; font-weight: 600; width: 55px;">{row_d["NO"]}</td>'
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row_d["BULAN TIKET"]}</td>'
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155; text-align: center;">{row_d["NAMA TEKNISI"]}</td>'
+
+                    ct_val = str(row_d["CUSTOMER TYPE"]).strip().upper()
+                    if "DIAMOND" in ct_val:
+                        ct_bg = "background-color: #0c4a6e; color: #38bdf8; border-radius: 12px; padding: 4px 10px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #0284c7; font-size: 11px; letter-spacing: 0.5px;"
+                    elif "PLATINUM" in ct_val:
+                        ct_bg = "background-color: #3b0764; color: #e9d5ff; border-radius: 12px; padding: 4px 10px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #9333ea; font-size: 11px; letter-spacing: 0.5px;"
+                    elif "GOLD" in ct_val:
+                        ct_bg = "background-color: #713f12; color: #fde047; border-radius: 12px; padding: 4px 10px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #ca8a04; font-size: 11px; letter-spacing: 0.5px;"
+                    else:
+                        ct_bg = "background-color: #14532d; color: #86efac; border-radius: 12px; padding: 4px 10px; text-align: center; display: inline-block; font-weight: bold; border: 1px solid #16a34a; font-size: 11px; letter-spacing: 0.5px;"
+
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155;"><span style="{ct_bg}">{row_d["CUSTOMER TYPE"]}</span></td>'
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155; font-weight: bold; color: #38bdf8;">{row_d["INCIDENT"]}</td>'
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155;">{row_d["NO INET"]}</td>'
+
+                    ukur_c = str(row_d["HASIL UKUR"])
+                    if ukur_c != "-":
+                        ukur_c = f'<span style="background-color: #b91c1c; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 12.5px; display: inline-block;">{ukur_c}</span>'
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155; text-align: center;">{ukur_c}</td>'
+
+                    onu_raw = str(row_d["ONU LINK STATUS"]).strip().upper()
+                    if onu_raw in ["ONLINE", "UP"]:
+                        onu_c = '<span style="background-color: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #22c55e; font-size: 12.5px; display: inline-block;">ONLINE</span>'
+                    elif onu_raw == "LOS":
+                        onu_c = '<span style="background-color: #b91c1c; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #ef4444; font-size: 12.5px; display: inline-block;">LOS</span>'
+                    elif "DYING" in onu_raw:
+                        onu_c = f'<span style="background-color: #ea580c; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #f97316; font-size: 12.5px; display: inline-block;">{row_d["ONU LINK STATUS"]}</span>'
+                    elif onu_raw != "-":
+                        onu_c = f'<span style="background-color: #475569; color: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #64748b; font-size: 12.5px; display: inline-block;">{row_d["ONU LINK STATUS"]}</span>'
+                    else:
+                        onu_c = '-'
+
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155; text-align: center;">{onu_c}</td>'
+                    html_table_g += f'<td style="padding: 10px; border-right: 1px solid #334155; font-weight: bold;">{row_d["PRIORITAS"]}</td>'
+                    html_table_g += f'<td style="padding: 10px; font-weight: bold; color: #fbbf24;">{row_d["DURASI"]}</td>'
+                    html_table_g += '</tr>'
+
+                html_table_g += '</tbody></table></div>'
+                st.markdown(html_table_g, unsafe_allow_html=True)
+
+                js_gaul_filter = '''<script>
+                const parentDoc = window.parent.document;
+                function setupGaulFilters() {
+                    const icons = parentDoc.querySelectorAll('.gaul-filter-icon');
+                    if (icons.length === 0) return;
+
+                    icons.forEach(icon => {
+                        if (icon.dataset.listener) return;
+                        icon.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const colIdx = this.getAttribute('data-colindex');
+                            const menu = parentDoc.getElementById('gaul-filter-menu-' + colIdx);
+                            const isHidden = menu.style.display === 'none';
+                            parentDoc.querySelectorAll('.gaul-filter-menu').forEach(m => m.style.display = 'none');
+                            if (isHidden) {
+                                menu.style.display = 'block';
+                            }
+                        });
+                        icon.dataset.listener = 'true';
+                    });
+
+                    if (!parentDoc.body.dataset.gaulFilterClick) {
+                        parentDoc.body.addEventListener('click', function(e) {
+                            if (!e.target.closest('.gaul-filter-menu') && !e.target.closest('.gaul-filter-icon')) {
+                                parentDoc.querySelectorAll('.gaul-filter-menu').forEach(m => m.style.display = 'none');
+                            }
+                        });
+                        parentDoc.body.dataset.gaulFilterClick = 'true';
+                    }
+
+                    parentDoc.querySelectorAll('.gaul-filter-search').forEach(input => {
+                        if (input.dataset.listener) return;
+                        input.addEventListener('keyup', function() {
+                            const term = this.value.toLowerCase();
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.gaul-filter-text-' + colIdx).forEach(label => {
+                                const text = label.textContent.toLowerCase();
+                                label.parentElement.style.display = text.includes(term) ? 'flex' : 'none';
+                            });
+                        });
+                        input.dataset.listener = 'true';
+                    });
+
+                    parentDoc.querySelectorAll('.gaul-filter-select-all').forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.gaul-filter-cb-' + colIdx).forEach(cb => {
+                                if (cb.parentElement.style.display !== 'none') cb.checked = true;
+                            });
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+
+                    parentDoc.querySelectorAll('.gaul-filter-clear-all').forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            const colIdx = this.getAttribute('data-colindex');
+                            parentDoc.querySelectorAll('.gaul-filter-cb-' + colIdx).forEach(cb => {
+                                if (cb.parentElement.style.display !== 'none') cb.checked = false;
+                            });
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+
+                    parentDoc.querySelectorAll('.gaul-filter-apply-btn').forEach(btn => {
+                        if (btn.dataset.listener) return;
+                        btn.addEventListener('click', function() {
+                            parentDoc.querySelectorAll('.gaul-filter-menu').forEach(m => m.style.display = 'none');
+                            applyGaulFilters();
+                        });
+                        btn.dataset.listener = 'true';
+                    });
+                }
+
+                function applyGaulFilters() {
+                    const tbody = parentDoc.getElementById('gaul-tbody');
+                    if (!tbody) return;
+                    const trs = tbody.getElementsByTagName('tr');
+
+                    let filters = {};
+                    parentDoc.querySelectorAll('.gaul-filter-menu').forEach(menu => {
+                        const colIdx = menu.id.replace('gaul-filter-menu-', '');
+                        const checkboxes = menu.querySelectorAll('.gaul-filter-cb-' + colIdx + ':checked');
+                        filters[colIdx] = Array.from(checkboxes).map(cb => cb.value.toLowerCase().trim());
+                    });
+
+                    let visibleCount = 1;
+                    for (let i = 0; i < trs.length; i++) {
+                        let tr = trs[i];
+                        let show = true;
+
+                        for (let colIdx in filters) {
+                            const allowedVals = filters[colIdx];
+                            if (allowedVals.length === 0) {
+                                show = false;
+                                break;
+                            }
+                            const totalCbs = parentDoc.querySelectorAll('.gaul-filter-cb-' + colIdx).length;
+                            if (allowedVals.length === totalCbs) continue;
+
+                            let td = tr.getElementsByTagName('td')[colIdx];
+                            if (td) {
+                                let cellText = (td.textContent || td.innerText).toLowerCase().trim();
+                                if (!allowedVals.includes(cellText)) {
+                                    show = false;
+                                    break;
+                                }
+                            }
+                        }
+                        tr.style.display = show ? "" : "none";
+                        if (show) {
+                            let td0 = tr.getElementsByTagName('td')[0];
+                            if (td0) td0.innerHTML = visibleCount;
+                            visibleCount++;
+                        }
+                    }
+                }
+
+                let gaulFilterInterval = setInterval(() => {
+                    if (parentDoc.getElementById('gaul-tbody')) {
+                        setupGaulFilters();
+                        clearInterval(gaulFilterInterval);
+                    }
+                }, 500);
+                </script>'''
+                import streamlit.components.v1 as components
+                components.html(js_gaul_filter, height=0, width=0)
+
     elif menu == "GRAFIK TIKET PERIODE":
         df_asr, asr_source = load_assurance_data(insera_time)
         df_proactive_raw, pro_source = load_proactive_data(insera_time)
@@ -7520,7 +8597,7 @@ if not df.empty:
                             except Exception:
                                 elapsed_sec = None
 
-                        # 2. Fallback hitung otomatis dari selisih REPORTED DATE ke saat ini
+                        # 2. Fallback hitung otomatis dari selisih REPORTED DATE (WIB -> WITA +1 jam) ke saat ini
                         if elapsed_sec is None or math.isnan(elapsed_sec) or elapsed_sec < 0:
                             if rep_val:
                                 try:
@@ -7528,7 +8605,8 @@ if not df.empty:
                                     if pd.notna(dt_rep):
                                         from datetime import datetime as dt_cls
                                         now_dt = dt_cls.now()
-                                        diff = (now_dt - dt_rep.to_pydatetime()).total_seconds()
+                                        dt_rep_wita = dt_rep + pd.Timedelta(hours=1)
+                                        diff = (now_dt - dt_rep_wita.to_pydatetime()).total_seconds()
                                         if diff >= 0:
                                             elapsed_sec = diff
                                 except Exception:
@@ -7559,28 +8637,30 @@ if not df.empty:
                         h = int(elapsed_sec // 3600)
                         m = int((elapsed_sec % 3600) // 60)
                         s = int(elapsed_sec % 60)
-                        time_str = f"{h:02d}:{m:02d}:{s:02d}"
+                        # Menghilangkan detik pada display teks agar seragam (hh:mm), detik tetap ada di tooltip
+                        time_str = f"{h:02d}:{m:02d}"
+                        time_str_full = f"{h:02d}:{m:02d}:{s:02d}"
 
                         if remain_pct >= 71.0:
                             # Hijau (100% sampai 71%)
                             bg = "rgba(16, 185, 129, 0.18)"
                             bd = "#10b981"
                             cl = "#34d399"
-                            ic = "\U0001F7E2"
+                            ic = "🟢"
                             lbl = f"({int(round(remain_pct))}%)"
                         elif remain_pct >= 41.0:
                             # Kuning (70% sampai 41%)
                             bg = "rgba(234, 179, 8, 0.18)"
                             bd = "#eab308"
                             cl = "#facc15"
-                            ic = "\U0001F7E1"
+                            ic = "🟡"
                             lbl = f"({int(round(remain_pct))}%)"
                         else:
                             # Merah (40% sampai 0% atau minus / OSLA)
                             bg = "rgba(239, 68, 68, 0.18)"
                             bd = "#ef4444"
                             cl = "#f87171"
-                            ic = "\U0001F534" if remain_pct >= 0 else "\u26A0\uFE0F"
+                            ic = "🔴" if remain_pct >= 0 else "⚠️"
                             lbl = f"({int(round(max(0, remain_pct)))}%)" if remain_pct >= 0 else "(OSLA)"
 
                         target_hours = int(target_sec // 3600)
@@ -7588,7 +8668,7 @@ if not df.empty:
                             f'<span style="background: {bg}; border: 1px solid {bd}; color: {cl}; '
                             f'font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 12px; '
                             f'display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;" '
-                            f'title="TTR Berjalan: {time_str} | Sisa Waktu SLA: {lbl} (Target: {target_hours} Jam)">'
+                            f'title="TTR Berjalan: {time_str_full} | Sisa Waktu SLA: {lbl} (Target: {target_hours} Jam)">'
                             f'{ic} <span style="font-family: monospace; font-size: 0.82rem;">{time_str}</span> '
                             f'<span style="font-size: 0.69rem; opacity: 0.9;">{lbl}</span>'
                             f'</span>'
@@ -7675,17 +8755,31 @@ if not df.empty:
             sheet_id = "1bUXmomLo6DJYdk0CHGW9KCnoRgG8EqsUdOtALJ0_r7o"
             sheet_name = urllib.parse.quote("REKAP PROGRESS TEKNISI ASR")
             csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
+            frames_a = []
             try:
-                df_a = pd.read_csv(csv_url)
-                df_a.columns = df_a.columns.astype(str).str.strip().str.upper()
-                return df_a
+                df_gs = pd.read_csv(csv_url)
+                df_gs.columns = df_gs.columns.astype(str).str.strip().str.upper()
+                if not df_gs.empty:
+                    frames_a.append(df_gs)
             except Exception:
-                local_csv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rekap_progress_asr.csv")
-                if os.path.exists(local_csv):
-                    df_a = pd.read_csv(local_csv)
-                    df_a.columns = df_a.columns.astype(str).str.strip().str.upper()
-                    return df_a
-                raise
+                pass
+            local_csv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rekap_progress_asr.csv")
+            if os.path.exists(local_csv):
+                try:
+                    df_loc = pd.read_csv(local_csv)
+                    df_loc.columns = df_loc.columns.astype(str).str.strip().str.upper()
+                    if not df_loc.empty:
+                        frames_a.append(df_loc)
+                except Exception:
+                    pass
+            if frames_a:
+                df_a = pd.concat(frames_a, ignore_index=True)
+                if 'TANGGAL' in df_a.columns and 'NOMER INCIDENT' in df_a.columns:
+                    df_a['NOMER INCIDENT'] = df_a['NOMER INCIDENT'].astype(str).str.strip().str.upper()
+                    df_a = df_a[df_a['NOMER INCIDENT'].ne('') & df_a['NOMER INCIDENT'].ne('NAN')]
+                    df_a = df_a.drop_duplicates(subset=['TANGGAL', 'NOMER INCIDENT'], keep='first').reset_index(drop=True)
+                return df_a
+            return pd.DataFrame()
 
         try:
             df_asr_prog_raw = load_rekap_progress_asr()
@@ -7964,6 +9058,23 @@ if not df.empty:
                             f'<td style="padding: 12px 14px; text-align:center;"><span style="background:rgba(59,130,246,0.2); color:#ffffff; border:1px solid #3b82f6; padding:4px 15px; border-radius:999px; font-weight:800; font-size:1.05rem;">{int(r_ta["TOTAL"])}</span></td>'
                             f'</tr>'
                         )
+
+                    gt_pagi_a = int(piv_tek_a["PROGRESS PAGI"].sum())
+                    gt_siang_a = int(piv_tek_a["PROGRESS SIANG"].sum())
+                    gt_sore_a = int(piv_tek_a["PROGRESS SORE"].sum())
+                    gt_malam_a = int(piv_tek_a["PROGRESS MALAM"].sum())
+                    gt_total_a = int(piv_tek_a["TOTAL"].sum())
+
+                    rows_tek_a_html += (
+                        f'<tr style="background: #1e293b; border-top: 2px solid #eab308;">'
+                        f'<td colspan="2" style="padding: 14px 16px; text-align:center; color:#ffffff; font-weight:900; font-size:1.1rem; letter-spacing:1px;">GRAND TOTAL</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#38bdf8; font-weight:900; font-size:1.15rem;">{gt_pagi_a}</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#22c55e; font-weight:900; font-size:1.15rem;">{gt_siang_a}</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#f59e0b; font-weight:900; font-size:1.15rem;">{gt_sore_a}</td>'
+                        f'<td style="padding: 14px 12px; text-align:center; color:#a78bfa; font-weight:900; font-size:1.15rem;">{gt_malam_a}</td>'
+                        f'<td style="padding: 14px 14px; text-align:center;"><span style="background:rgba(234,179,8,0.25); color:#ffffff; border:1.5px solid #eab308; padding:4px 16px; border-radius:999px; font-weight:900; font-size:1.1rem;">{gt_total_a}</span></td>'
+                        f'</tr>'
+                    )
 
                     tek_a_table_html = (
                         '<div style="border: 1px solid #334155; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 28px;">'
